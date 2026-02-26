@@ -1,99 +1,119 @@
 
 
-# Playwright CrowdTest Demo — Implementation Plan
+# External Runner Integration Plan
 
-## Overview
-A standalone demo platform for running Playwright end-to-end tests against any Lovable website, generating polished HTML reports with screenshots, step results, and findings. Dark minimal aesthetic with monospace/terminal vibes.
-
----
-
-## Pages & UI
-
-### 1. Landing Page (`/`)
-- Dark hero section with H1: "Automated CrowdTesting with Playwright"
-- Subtitle and "Run your first test" CTA button
-- 3-step visual explainer: Add URL → Run → View Report
-- Demo banner: "Demo MVP — do not use with sensitive data."
-
-### 2. Test Runner (`/runner`)
-- **URL input** (required, validated as https://)
-- **Scenario dropdown** (one option: "Smoke journey")
-- **Collapsible advanced options**: CTA selector, success selector, fallback path, max runtime, headless toggle
-- **Run Test** + **Run Demo Test** buttons
-- **Live result panel**: status badge (queued/running/passed/failed), timer, step list with pass/fail/skipped badges, findings counters, links to report/screenshots/JSON
-- Runner-busy indicator when a test is in progress
-
-### 3. Runs History (`/runs`)
-- Table of last 20 runs: site URL, date, status, duration, "Open report" button
-
-### 4. Run Detail (`/runs/:id`)
-- Step timeline with status badges and durations
-- Screenshot gallery (from Supabase Storage)
-- Findings section: console errors + failed requests
-- Link to open full HTML report
-
-### 5. Settings (`/settings`)
-- Runner mode toggle: **Mock (in-app)** vs **External runner service**
-- External runner URL + API key fields (when external mode selected)
-- "Allow localhost URLs" toggle
-- Max runs per day config
-- Info banner explaining external runner deployment
+## Summary
+Remove mock mode entirely. All test execution goes through an external Playwright runner service, with the edge function acting as a secure proxy (API key never exposed to the browser).
 
 ---
 
-## Backend (Supabase Edge Functions)
+## 1. Settings Page (`/settings`)
 
-### Edge Functions
-- **`test-runs`** — handles POST (create run), GET with query params (list runs), and GET by ID (run detail, report, JSON, screenshots)
-- In **mock mode**: generates realistic simulated test data with fake steps, findings, and placeholder screenshots after a short delay
-- In **external mode**: forwards the test request to the configured external runner URL and stores results when complete
+**Remove** the mock/external mode toggle. Show only:
+- **Runner Base URL** (required) - e.g. `https://my-runner.onrender.com`
+- **Runner API Key** (required, password field)
+- **Allow localhost URLs** toggle
+- **Max runs per day** input
 
-### Database Tables
-- **`test_runs`** — id, site_url, scenario_id, status, created_at, started_at, finished_at, duration_ms, options (jsonb), steps (jsonb), findings (jsonb), report_path, assets (jsonb)
-- **`app_settings`** — key/value store for runner mode, external URL, API key, rate limits
+Update the info banner to explain external runner requirements (CORS config, deployment).
 
-### Storage
-- **Supabase Storage bucket** (`test-assets`) for screenshots and HTML report files per run
-- Public bucket so reports and screenshots can be viewed in-browser
+Update `AppSettings` type: remove `runner_mode`, keep `external_runner_url` and `external_runner_api_key`.
 
 ---
 
-## Mock Runner Behavior
-The mock runner simulates the "smoke_v1" scenario with realistic timing:
-1. **Open homepage** — always passes, generates a placeholder screenshot
-2. **Find and click CTA** — randomly passes or is skipped
-3. **Navigate to key page** — passes or skipped based on step 2
-4. **Collect findings** — generates 0-3 sample console errors and 0-2 failed requests
-5. **Generate report** — creates a styled HTML report file and stores it in Supabase Storage
+## 2. Edge Function (`supabase/functions/test-runs/index.ts`)
 
-This lets you demo the full flow immediately without deploying an external runner.
+Rewrite to act as a **proxy** to the external runner:
 
----
+### `action: "create"`
+1. Validate siteUrl (https required, localhost check)
+2. Rate-limit check (max runs/day from DB)
+3. Read `external_runner_url` and `external_runner_api_key` from `app_settings`
+4. If URL missing, return 400 with "Runner not configured"
+5. POST to `{RunnerBaseUrl}/v1/runs` with `{ siteUrl, scenarioId, options }` and Bearer token
+6. On success, insert a row into `test_runs` with the runner's `runId` as the local ID, status "queued"
+7. Return `{ testRunId }` to client
 
-## HTML Report (Generated per run)
-- Single self-contained HTML file, dark minimal style
-- Header with site URL, date, duration, overall status badge
-- Summary cards: result, console errors count, failed requests count
-- Step table with status badges, durations, screenshot thumbnails
-- Findings section with top errors and failed requests
-- Auto-generated "Next actions" suggestions based on findings
-- Footer: "Generated by Playwright CrowdTest Demo"
+### `action: "get"`
+1. Read local DB row for the run
+2. If status is "queued" or "running", fetch `GET {RunnerBaseUrl}/v1/runs/:id` to get latest status
+3. If runner returns completed status, update DB row with steps, findings, duration, reportUrl, screenshots
+4. Return normalized `TestRun` object with runner URLs for report/screenshots
 
----
+### `action: "list"`
+- Serve from DB (no change needed, already works)
 
-## Key Behaviors
-- **One concurrent run** enforced via status check in DB
-- **URL validation**: must be https:// (http:// only if localhost allowed in settings)
-- **Rate limiting**: max 10 runs/day tracked in DB
-- **Timeout handling**: mock runner respects max runtime setting
-- **Graceful failures**: missing selectors → step skipped, always generates a report even on failure
-- **Polling**: runner page polls for status updates every 2 seconds while a run is active
+### Error handling
+- Runner unreachable: return 502 with clear message
+- Auth failure (401/403 from runner): return 401 with "Invalid Runner API key"
+- Runner busy (409/429): return 409 with "Runner busy"
 
 ---
 
-## Design
-- Dark background throughout, monospace font accents for technical data
-- Status badges: green (pass), red (fail), yellow (skipped), blue (running), gray (queued)
-- Minimal card-based layouts with subtle borders
-- Terminal-inspired result panels
+## 3. Frontend API Layer (`src/lib/api.ts`)
+
+No structural changes needed -- it already calls the edge function via `supabase.functions.invoke()`. The edge function handles all runner communication.
+
+---
+
+## 4. Types (`src/lib/types.ts`)
+
+- Remove `runner_mode` from `AppSettings`
+- Add optional `report_url` field to `TestRun` (direct URL from runner, distinct from `report_path`)
+- Add optional `report_url` to `TestRunAssets`
+
+---
+
+## 5. Runner Page (`/runner`)
+
+- Before running, check if settings have a runner URL configured. If not, show a warning with a link to `/settings`.
+- Handle new error codes from edge function:
+  - 409: "Runner busy -- try again in a minute."
+  - 502: "Runner unreachable -- check your Runner URL in Settings."
+  - 401: "Invalid Runner API key -- update it in Settings."
+- **Report links**: Use `run.assets.reportUrl` directly (external runner URL) instead of constructing Supabase Storage URLs. Open in new tab.
+- **Screenshot URLs**: Use URLs from `run.assets.screenshots` directly (served by runner).
+
+---
+
+## 6. Run Detail Page (`/runs/:id`)
+
+- Change report link: use `run.assets.reportUrl` (runner URL) instead of Supabase Storage path
+- Screenshots: already using `run.assets.screenshots[].url` -- just ensure these come from runner responses
+- Add auto-refresh: if run is still queued/running, poll every 2s (same pattern as Runner page)
+
+---
+
+## 7. Runs List Page (`/runs`)
+
+- No major changes needed -- already reads from DB via edge function
+
+---
+
+## Technical Details
+
+### Edge function runner proxy flow
+```text
+Browser -> Edge Function -> External Runner
+                |
+                v
+           Supabase DB (stores summary)
+```
+
+### Runner API contract (expected from external service)
+- `POST /v1/runs` -- create a run, returns `{ runId, status }`
+- `GET /v1/runs/:id` -- get run status/results with steps, findings, reportUrl, screenshots
+
+### Security
+- API key stored in `app_settings` table, read only by edge function (service role key)
+- Browser never sees the runner API key
+- Edge function reads settings server-side on each request
+
+### Files to modify
+1. `src/lib/types.ts` -- remove `runner_mode`, add `report_url`
+2. `src/lib/api.ts` -- minor: settings parsing update
+3. `src/pages/SettingsPage.tsx` -- remove mode toggle, update labels
+4. `src/pages/Runner.tsx` -- settings check, error handling, report URL logic
+5. `src/pages/RunDetail.tsx` -- report URL from assets, add polling
+6. `supabase/functions/test-runs/index.ts` -- full rewrite as proxy
 
