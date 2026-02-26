@@ -6,7 +6,16 @@ export async function createTestRun(siteUrl: string, scenarioId: string, options
     method: "POST",
     body: { action: "create", siteUrl, scenarioId, options },
   });
-  if (error) throw new Error(error.message || "Failed to create test run");
+  if (error) {
+    // Try to parse structured error from edge function
+    const msg = error.message || "Failed to create test run";
+    throw new Error(msg);
+  }
+  if (data?.error) {
+    const err = new Error(data.error) as Error & { status?: number };
+    err.status = data.status;
+    throw err;
+  }
   return data;
 }
 
@@ -40,7 +49,6 @@ export async function getSettings(): Promise<AppSettings> {
   }
   
   return {
-    runner_mode: (settings.runner_mode as string) === 'external' ? 'external' : 'mock',
     external_runner_url: (settings.external_runner_url as string) || '',
     external_runner_api_key: (settings.external_runner_api_key as string) || '',
     allow_localhost: settings.allow_localhost === true,
