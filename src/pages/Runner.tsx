@@ -7,9 +7,9 @@ import { Switch } from "@/components/ui/switch";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createTestRun, getTestRun } from "@/lib/api";
-import type { TestRun, RunOptions } from "@/lib/types";
-import { Play, ChevronDown, ExternalLink, Download, ImageIcon, Loader2 } from "lucide-react";
+import { createTestRun, getTestRun, getSettings } from "@/lib/api";
+import type { TestRun, RunOptions, AppSettings } from "@/lib/types";
+import { Play, ChevronDown, ExternalLink, Loader2, AlertTriangle, Settings } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
@@ -25,8 +25,16 @@ export default function Runner() {
 
   const [activeRun, setActiveRun] = useState<TestRun | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [runnerConfigured, setRunnerConfigured] = useState<boolean | null>(null);
 
   const isRunActive = activeRun && (activeRun.status === "queued" || activeRun.status === "running");
+
+  // Check runner config on mount
+  useEffect(() => {
+    getSettings()
+      .then((s: AppSettings) => setRunnerConfigured(!!s.external_runner_url))
+      .catch(() => setRunnerConfigured(false));
+  }, []);
 
   // Poll for updates while run is active
   useEffect(() => {
@@ -45,8 +53,8 @@ export default function Runner() {
     return () => clearInterval(interval);
   }, [activeRun?.id, isRunActive]);
 
-  const handleRun = useCallback(async (demoMode = false) => {
-    const url = demoMode ? "https://lovable.dev" : siteUrl.trim();
+  const handleRun = useCallback(async () => {
+    const url = siteUrl.trim();
     if (!url) {
       toast({ title: "URL required", description: "Enter a site URL to test.", variant: "destructive" });
       return;
@@ -69,14 +77,32 @@ export default function Runner() {
       const run = await getTestRun(testRunId);
       setActiveRun(run);
     } catch (e: unknown) {
-      toast({ title: "Error", description: (e as Error).message, variant: "destructive" });
+      const err = e as Error & { status?: number };
+      const msg = err.message || "Unknown error";
+
+      if (msg.includes("Runner busy") || msg.includes("already in progress")) {
+        toast({ title: "Runner busy", description: "Try again in a minute.", variant: "destructive" });
+      } else if (msg.includes("unreachable") || msg.includes("Runner not configured")) {
+        toast({
+          title: "Runner unavailable",
+          description: "Check your Runner URL in Settings.",
+          variant: "destructive",
+        });
+      } else if (msg.includes("Invalid Runner API key") || msg.includes("Authentication")) {
+        toast({
+          title: "Auth failed",
+          description: "Invalid Runner API key — update it in Settings.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      }
     } finally {
       setIsSubmitting(false);
     }
   }, [siteUrl, headless, maxRuntime, ctaSelector, successSelector, fallbackPath, toast]);
 
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const reportUrl = activeRun?.assets?.reportUrl || activeRun?.report_path;
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,6 +110,21 @@ export default function Runner() {
       <main className="container max-w-4xl py-10">
         <h1 className="font-mono text-2xl font-bold">Test Runner</h1>
         <p className="mt-1 text-sm text-muted-foreground">Run a Playwright smoke test against any URL.</p>
+
+        {runnerConfigured === false && (
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+            <div className="text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground">Runner not configured</p>
+              <p>Set your Runner Base URL and API Key in{" "}
+                <Link to="/settings" className="inline-flex items-center gap-1 text-primary hover:underline">
+                  <Settings className="h-3 w-3" /> Settings
+                </Link>{" "}
+                before running tests.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           {/* Config panel */}
@@ -135,15 +176,10 @@ export default function Runner() {
               </CollapsibleContent>
             </Collapsible>
 
-            <div className="flex gap-3">
-              <Button onClick={() => handleRun(false)} disabled={isSubmitting || !!isRunActive} className="font-mono">
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                Run Test
-              </Button>
-              <Button variant="secondary" onClick={() => handleRun(true)} disabled={isSubmitting || !!isRunActive} className="font-mono">
-                Run Demo Test
-              </Button>
-            </div>
+            <Button onClick={handleRun} disabled={isSubmitting || !!isRunActive || runnerConfigured === false} className="font-mono">
+              {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              Run Test
+            </Button>
           </div>
 
           {/* Results panel */}
@@ -211,10 +247,10 @@ export default function Runner() {
                           <ExternalLink className="h-3 w-3" /> View Detail
                         </Link>
                       </Button>
-                      {activeRun.report_path && (
+                      {reportUrl && (
                         <Button variant="outline" size="sm" className="font-mono text-xs" asChild>
-                          <a href={`${supabaseUrl}/storage/v1/object/public/test-assets/${activeRun.report_path}`} target="_blank" rel="noopener noreferrer">
-                            <FileText className="h-3 w-3" /> HTML Report
+                          <a href={reportUrl} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3 w-3" /> HTML Report
                           </a>
                         </Button>
                       )}
@@ -227,15 +263,5 @@ export default function Runner() {
         </div>
       </main>
     </div>
-  );
-}
-
-function FileText(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      <path d="M10 9H8" /><path d="M16 13H8" /><path d="M16 17H8" />
-    </svg>
   );
 }

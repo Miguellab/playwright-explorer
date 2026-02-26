@@ -25,7 +25,6 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await Promise.all([
-        updateSetting("runner_mode", settings.runner_mode),
         updateSetting("external_runner_url", settings.external_runner_url),
         updateSetting("external_runner_api_key", settings.external_runner_api_key),
         updateSetting("allow_localhost", settings.allow_localhost),
@@ -55,52 +54,31 @@ export default function SettingsPage() {
 
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle className="font-mono text-sm uppercase tracking-wider">Runner Configuration</CardTitle>
+            <CardTitle className="font-mono text-sm uppercase tracking-wider">External Runner Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Runner mode */}
             <div className="space-y-2">
-              <Label className="font-mono text-xs">Runner Mode</Label>
-              <div className="flex gap-2">
-                {(["mock", "external"] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setSettings({ ...settings, runner_mode: mode })}
-                    className={`rounded-md border px-4 py-2 font-mono text-xs transition-colors ${
-                      settings.runner_mode === mode
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {mode === "mock" ? "Mock (in-app)" : "External Runner"}
-                  </button>
-                ))}
-              </div>
+              <Label className="font-mono text-xs">Runner Base URL <span className="text-destructive">*</span></Label>
+              <Input
+                value={settings.external_runner_url}
+                onChange={(e) => setSettings({ ...settings, external_runner_url: e.target.value })}
+                placeholder="https://my-runner.onrender.com"
+                className="font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">The base URL of your deployed Playwright runner service.</p>
             </div>
 
-            {settings.runner_mode === "external" && (
-              <>
-                <div className="space-y-2">
-                  <Label className="font-mono text-xs">Runner API Base URL</Label>
-                  <Input
-                    value={settings.external_runner_url}
-                    onChange={(e) => setSettings({ ...settings, external_runner_url: e.target.value })}
-                    placeholder="https://your-runner.railway.app"
-                    className="font-mono text-xs"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-mono text-xs">Runner API Key</Label>
-                  <Input
-                    type="password"
-                    value={settings.external_runner_api_key}
-                    onChange={(e) => setSettings({ ...settings, external_runner_api_key: e.target.value })}
-                    placeholder="Optional"
-                    className="font-mono text-xs"
-                  />
-                </div>
-              </>
-            )}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs">Runner API Key <span className="text-destructive">*</span></Label>
+              <Input
+                type="password"
+                value={settings.external_runner_api_key}
+                onChange={(e) => setSettings({ ...settings, external_runner_api_key: e.target.value })}
+                placeholder="Your runner API key"
+                className="font-mono text-xs"
+              />
+              <p className="text-[11px] text-muted-foreground">Stored securely — never sent to the browser. Only used server-side.</p>
+            </div>
 
             <div className="flex items-center gap-3">
               <Switch
@@ -129,10 +107,17 @@ export default function SettingsPage() {
 
         <div className="mt-6 flex items-start gap-3 rounded-lg border border-status-running/30 bg-status-running/5 p-4">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-status-running" />
-          <p className="text-sm text-muted-foreground">
-            If Playwright cannot run inside Lovable hosting, deploy the external runner and paste its URL above.
-            The mock mode simulates realistic test data for demo purposes.
-          </p>
+          <div className="text-sm text-muted-foreground space-y-2">
+            <p>
+              Deploy your Playwright runner externally (e.g. Render, Railway, Fly.io) and paste its URL above.
+              The runner must expose:
+            </p>
+            <ul className="list-disc pl-4 space-y-1 font-mono text-xs">
+              <li>POST /v1/runs — create a test run</li>
+              <li>GET /v1/runs/:id — get run status & results</li>
+            </ul>
+            <p>Configure CORS on the runner to allow requests from your Supabase project domain.</p>
+          </div>
         </div>
       </main>
     </div>

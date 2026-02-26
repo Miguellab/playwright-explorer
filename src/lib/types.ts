@@ -43,6 +43,7 @@ export interface TestRun {
   steps: TestStep[];
   findings: Findings;
   report_path: string | null;
+  report_url: string | null;
   assets: TestRunAssets;
 }
 
@@ -55,7 +56,6 @@ export interface RunOptions {
 }
 
 export interface AppSettings {
-  runner_mode: 'mock' | 'external';
   external_runner_url: string;
   external_runner_api_key: string;
   allow_localhost: boolean;

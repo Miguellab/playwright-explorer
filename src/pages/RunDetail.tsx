@@ -13,12 +13,29 @@ export default function RunDetail() {
   const [run, setRun] = useState<TestRun | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const isRunActive = run && (run.status === "queued" || run.status === "running");
 
   useEffect(() => {
     if (!id) return;
     getTestRun(id).then(setRun).catch(() => {}).finally(() => setLoading(false));
   }, [id]);
+
+  // Poll while active
+  useEffect(() => {
+    if (!id || !isRunActive) return;
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getTestRun(id);
+        setRun(updated);
+        if (updated.status === "passed" || updated.status === "failed") {
+          clearInterval(interval);
+        }
+      } catch { /* ignore */ }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [id, isRunActive]);
+
+  const reportUrl = run?.assets?.reportUrl || run?.report_url || null;
 
   if (loading) return (
     <div className="min-h-screen bg-background">
@@ -52,9 +69,9 @@ export default function RunDetail() {
           {run.duration_ms && ` • ${(run.duration_ms / 1000).toFixed(1)}s`}
         </p>
 
-        {run.report_path && (
+        {reportUrl && (
           <Button variant="outline" size="sm" className="mt-4 font-mono text-xs" asChild>
-            <a href={`${supabaseUrl}/storage/v1/object/public/test-assets/${run.report_path}`} target="_blank" rel="noopener noreferrer">
+            <a href={reportUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3 w-3" /> Open HTML Report
             </a>
           </Button>
@@ -66,7 +83,7 @@ export default function RunDetail() {
             <CardTitle className="font-mono text-sm uppercase tracking-wider">Steps</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {run.steps.map((step, i) => (
+            {run.steps && run.steps.map((step, i) => (
               <div key={i} className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3">
                 <div>
                   <p className="font-mono text-sm">{step.name}</p>
@@ -78,6 +95,12 @@ export default function RunDetail() {
                 </div>
               </div>
             ))}
+            {(!run.steps || run.steps.length === 0) && isRunActive && (
+              <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="font-mono text-sm">Waiting for results…</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -107,7 +130,7 @@ export default function RunDetail() {
               <CardTitle className="font-mono text-sm uppercase tracking-wider">Findings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {run.findings.consoleErrors.length > 0 && (
+              {run.findings.consoleErrors && run.findings.consoleErrors.length > 0 && (
                 <div>
                   <p className="mb-2 font-mono text-xs font-semibold text-status-fail">Console Errors ({run.findings.consoleErrors.length})</p>
                   {run.findings.consoleErrors.slice(0, 5).map((err, i) => (
@@ -118,7 +141,7 @@ export default function RunDetail() {
                   ))}
                 </div>
               )}
-              {run.findings.failedRequests.length > 0 && (
+              {run.findings.failedRequests && run.findings.failedRequests.length > 0 && (
                 <div>
                   <p className="mb-2 font-mono text-xs font-semibold text-status-skipped">Failed Requests ({run.findings.failedRequests.length})</p>
                   {run.findings.failedRequests.slice(0, 5).map((req, i) => (
@@ -129,7 +152,8 @@ export default function RunDetail() {
                   ))}
                 </div>
               )}
-              {run.findings.consoleErrors.length === 0 && run.findings.failedRequests.length === 0 && (
+              {(!run.findings.consoleErrors || run.findings.consoleErrors.length === 0) &&
+               (!run.findings.failedRequests || run.findings.failedRequests.length === 0) && (
                 <p className="font-mono text-sm text-muted-foreground">No issues found.</p>
               )}
             </CardContent>
