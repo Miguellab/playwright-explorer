@@ -45,7 +45,7 @@ export async function getSettings(): Promise<AppSettings> {
   
   const settings: Record<string, unknown> = {};
   for (const row of (data as { key: string; value: unknown }[]) || []) {
-    settings[row.key] = typeof row.value === 'string' ? JSON.parse(row.value as string) : row.value;
+    settings[row.key] = row.value;
   }
   
   return {
@@ -57,10 +57,9 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 export async function updateSetting(key: string, value: unknown): Promise<void> {
-  const jsonValue = JSON.stringify(value);
   const { error } = await (supabase as any)
     .from("app_settings")
-    .update({ value: jsonValue, updated_at: new Date().toISOString() })
+    .update({ value, updated_at: new Date().toISOString() })
     .eq("key", key);
   if (error) throw new Error(error.message);
 }
