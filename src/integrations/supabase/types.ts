@@ -14,7 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      test_runs: {
+        Row: {
+          assets: Json | null
+          created_at: string
+          duration_ms: number | null
+          findings: Json | null
+          finished_at: string | null
+          id: string
+          options: Json | null
+          report_path: string | null
+          scenario_id: string
+          site_url: string
+          started_at: string | null
+          status: string
+          steps: Json | null
+        }
+        Insert: {
+          assets?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          findings?: Json | null
+          finished_at?: string | null
+          id?: string
+          options?: Json | null
+          report_path?: string | null
+          scenario_id?: string
+          site_url: string
+          started_at?: string | null
+          status?: string
+          steps?: Json | null
+        }
+        Update: {
+          assets?: Json | null
+          created_at?: string
+          duration_ms?: number | null
+          findings?: Json | null
+          finished_at?: string | null
+          id?: string
+          options?: Json | null
+          report_path?: string | null
+          scenario_id?: string
+          site_url?: string
+          started_at?: string | null
+          status?: string
+          steps?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

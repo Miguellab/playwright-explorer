@@ -1,1 +1,4 @@
 project_id = "ipogqrytklavioyfqgsw"
+
+[functions.test-runs]
+verify_jwt = false
