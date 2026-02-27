@@ -175,8 +175,8 @@ export default function RunDetail() {
                   <p className="mb-2 font-mono text-xs font-semibold text-status-fail">Console Errors ({run.findings.consoleErrors.length})</p>
                   {run.findings.consoleErrors.slice(0, 5).map((err, i) => (
                     <div key={i} className="mb-1 rounded border border-status-fail/20 bg-status-fail/5 px-3 py-2">
-                      <p className="font-mono text-xs">{err.message}</p>
-                      {err.location && <p className="font-mono text-[10px] text-muted-foreground">{err.location}</p>}
+                      <p className="font-mono text-xs">{err.text}</p>
+                      {err.url && <p className="font-mono text-[10px] text-muted-foreground">{err.url}</p>}
                     </div>
                   ))}
                 </div>
