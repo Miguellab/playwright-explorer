@@ -72,7 +72,7 @@ export default function Runner() {
   const [fallbackPath, setFallbackPath] = useState("");
 
   // login_flow options
-  const [loginPath, setLoginPath] = useState("/login");
+  const [loginPath, setLoginPath] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [successUrl, setSuccessUrl] = useState("");
@@ -144,7 +144,7 @@ export default function Runner() {
       case "smoke_v1":
         return { ...base, ctaSelector: ctaSelector || null, successSelector: successSelector || null, fallbackPath: fallbackPath || null };
       case "login_flow":
-        return { ...base, loginPath, email, password, successUrl: successUrl || undefined };
+        return { ...base, loginPath: loginPath || undefined, email, password, successUrl: successUrl || undefined };
       case "navigation_check":
         return { ...base, paths: paths.split("\n").map(p => p.trim()).filter(Boolean), assertSelector: assertSelector || undefined };
       case "form_submission":
@@ -253,8 +253,8 @@ export default function Runner() {
         return (
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label className="font-mono text-xs">Login Path</Label>
-              <Input placeholder="/login" value={loginPath} onChange={(e) => setLoginPath(e.target.value)} className="font-mono text-xs" />
+              <Label className="font-mono text-xs">Login Path (optional)</Label>
+              <Input placeholder="/login (leave empty for site URL)" value={loginPath} onChange={(e) => setLoginPath(e.target.value)} className="font-mono text-xs" />
             </div>
             <div className="space-y-1">
               <Label className="font-mono text-xs">Email</Label>

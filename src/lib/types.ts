@@ -11,8 +11,9 @@ export interface TestStep {
 }
 
 export interface ConsoleError {
-  message: string;
-  location: string | null;
+  text: string;
+  url?: string;
+  timestamp?: string;
 }
 
 export interface FailedRequest {
