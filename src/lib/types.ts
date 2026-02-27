@@ -50,9 +50,35 @@ export interface TestRun {
 export interface RunOptions {
   headless?: boolean;
   maxRuntimeSec?: number;
+  // smoke_v1
   ctaSelector?: string | null;
   successSelector?: string | null;
   fallbackPath?: string | null;
+  // login_flow
+  loginPath?: string;
+  email?: string;
+  password?: string;
+  emailSelector?: string;
+  passwordSelector?: string;
+  submitSelector?: string;
+  successUrl?: string;
+  // navigation_check / responsive_check / performance_audit
+  paths?: string[];
+  assertSelector?: string;
+  // form_submission
+  formPath?: string;
+  fields?: FormField[];
+  // responsive_check
+  viewports?: { name: string; width: number; height: number }[];
+  // performance_audit
+  thresholds?: { maxLoadTime?: number; maxFCP?: number };
+}
+
+export interface FormField {
+  selector: string;
+  value: string;
+  label?: string;
+  type?: 'text' | 'select' | 'checkbox';
 }
 
 export interface AppSettings {
@@ -60,4 +86,39 @@ export interface AppSettings {
   external_runner_api_key: string;
   allow_localhost: boolean;
   max_runs_per_day: number;
+}
+
+// ── Scenario & Block metadata (from backend API) ──
+
+export interface ScenarioMeta {
+  id: string;
+  name: string;
+  description: string;
+  requiredOptions: string[];
+  optionalOptions: string[];
+}
+
+export interface BlockParamMeta {
+  name: string;
+  type: string;
+  required?: boolean;
+  default?: unknown;
+  description?: string;
+  values?: string[];
+}
+
+export interface BlockMeta {
+  action: string;
+  name: string;
+  category: string;
+  description: string;
+  params: BlockParamMeta[];
+}
+
+export interface CustomStep {
+  action: string;
+  label?: string;
+  params: Record<string, unknown>;
+  optional?: boolean;
+  fatal?: boolean;
 }

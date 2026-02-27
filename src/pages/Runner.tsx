@@ -4,25 +4,97 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTestRun, getTestRun, getSettings } from "@/lib/api";
-import type { TestRun, RunOptions, AppSettings } from "@/lib/types";
-import { Play, ChevronDown, ExternalLink, Loader2, AlertTriangle, Settings } from "lucide-react";
+import type { TestRun, RunOptions, AppSettings, CustomStep, FormField } from "@/lib/types";
+import { Play, ChevronDown, ExternalLink, Loader2, AlertTriangle, Settings, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
+// ── Scenario definitions ──
+
+const SCENARIOS = [
+  { id: "smoke_v1", name: "Smoke Test", description: "Homepage → CTA → key page" },
+  { id: "login_flow", name: "Login Flow", description: "Navigate to login, fill credentials, verify success" },
+  { id: "navigation_check", name: "Navigation Check", description: "Visit multiple paths, assert elements" },
+  { id: "form_submission", name: "Form Submission", description: "Fill and submit a form" },
+  { id: "responsive_check", name: "Responsive Check", description: "Check pages across viewports" },
+  { id: "performance_audit", name: "Performance Audit", description: "Measure load time and FCP" },
+  { id: "custom", name: "Custom Scenario", description: "Build your own with block actions" },
+] as const;
+
+const BLOCK_ACTIONS = [
+  "navigate", "click", "fill", "screenshot", "assert_visible", "assert_text",
+  "assert_url", "wait", "set_viewport", "hover", "press", "select",
+  "check", "check_console", "check_network", "measure_performance",
+] as const;
+
+const BLOCK_PARAM_HINTS: Record<string, string[]> = {
+  navigate: ["url"],
+  click: ["selector"],
+  fill: ["selector", "value"],
+  screenshot: ["label"],
+  assert_visible: ["selector"],
+  assert_text: ["selector", "text"],
+  assert_url: ["pattern"],
+  wait: ["ms"],
+  set_viewport: ["width", "height"],
+  hover: ["selector"],
+  press: ["key"],
+  select: ["selector", "value"],
+  check: ["selector"],
+  check_console: [],
+  check_network: [],
+  measure_performance: [],
+};
+
+// ── Component ──
+
 export default function Runner() {
   const { toast } = useToast();
+
+  // URL & scenario
   const [siteUrl, setSiteUrl] = useState("");
+  const [scenarioId, setScenarioId] = useState("smoke_v1");
+
+  // Runtime options
   const [headless, setHeadless] = useState(true);
   const [maxRuntime, setMaxRuntime] = useState(60);
+  const [runtimeOpen, setRuntimeOpen] = useState(false);
+
+  // smoke_v1 options
   const [ctaSelector, setCtaSelector] = useState("");
   const [successSelector, setSuccessSelector] = useState("");
   const [fallbackPath, setFallbackPath] = useState("");
-  const [advancedOpen, setAdvancedOpen] = useState(false);
 
+  // login_flow options
+  const [loginPath, setLoginPath] = useState("/login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [successUrl, setSuccessUrl] = useState("");
+
+  // navigation_check / responsive_check / performance_audit
+  const [paths, setPaths] = useState("");
+  const [assertSelector, setAssertSelector] = useState("");
+
+  // form_submission
+  const [formPath, setFormPath] = useState("");
+  const [formFields, setFormFields] = useState<FormField[]>([{ selector: "", value: "" }]);
+  const [formSubmitSelector, setFormSubmitSelector] = useState("");
+  const [formSuccessSelector, setFormSuccessSelector] = useState("");
+
+  // performance_audit thresholds
+  const [maxLoadTime, setMaxLoadTime] = useState(5000);
+  const [maxFCP, setMaxFCP] = useState(2000);
+
+  // custom steps
+  const [customSteps, setCustomSteps] = useState<CustomStep[]>([]);
+
+  // Run state
   const [activeRun, setActiveRun] = useState<TestRun | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runnerConfigured, setRunnerConfigured] = useState<boolean | null>(null);
@@ -53,6 +125,31 @@ export default function Runner() {
     return () => clearInterval(interval);
   }, [activeRun?.id, isRunActive]);
 
+  // ── Build options from state ──
+
+  const buildOptions = useCallback((): RunOptions => {
+    const base: RunOptions = { headless, maxRuntimeSec: maxRuntime };
+
+    switch (scenarioId) {
+      case "smoke_v1":
+        return { ...base, ctaSelector: ctaSelector || null, successSelector: successSelector || null, fallbackPath: fallbackPath || null };
+      case "login_flow":
+        return { ...base, loginPath, email, password, successUrl: successUrl || undefined };
+      case "navigation_check":
+        return { ...base, paths: paths.split("\n").map(p => p.trim()).filter(Boolean), assertSelector: assertSelector || undefined };
+      case "form_submission":
+        return { ...base, formPath, fields: formFields.filter(f => f.selector), submitSelector: formSubmitSelector || undefined, successSelector: formSuccessSelector || null };
+      case "responsive_check":
+        return { ...base, paths: paths.split("\n").map(p => p.trim()).filter(Boolean) };
+      case "performance_audit":
+        return { ...base, paths: paths.split("\n").map(p => p.trim()).filter(Boolean), thresholds: { maxLoadTime, maxFCP } };
+      default:
+        return base;
+    }
+  }, [scenarioId, headless, maxRuntime, ctaSelector, successSelector, fallbackPath, loginPath, email, password, successUrl, paths, assertSelector, formPath, formFields, formSubmitSelector, formSuccessSelector, maxLoadTime, maxFCP]);
+
+  // ── Submit ──
+
   const handleRun = useCallback(async () => {
     const url = siteUrl.trim();
     if (!url) {
@@ -63,17 +160,16 @@ export default function Runner() {
       toast({ title: "Invalid URL", description: "URL must start with https://", variant: "destructive" });
       return;
     }
+    if (scenarioId === "custom" && customSteps.length === 0) {
+      toast({ title: "No steps", description: "Add at least one block to your custom scenario.", variant: "destructive" });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const options: RunOptions = {
-        headless,
-        maxRuntimeSec: maxRuntime,
-        ctaSelector: ctaSelector || null,
-        successSelector: successSelector || null,
-        fallbackPath: fallbackPath || null,
-      };
-      const { testRunId } = await createTestRun(url, "smoke_v1", options);
+      const options = buildOptions();
+      const steps = scenarioId === "custom" ? customSteps : undefined;
+      const { testRunId } = await createTestRun(url, scenarioId, options, steps);
       const run = await getTestRun(testRunId);
       setActiveRun(run);
     } catch (e: unknown) {
@@ -83,25 +179,222 @@ export default function Runner() {
       if (msg.includes("Runner busy") || msg.includes("already in progress")) {
         toast({ title: "Runner busy", description: "Try again in a minute.", variant: "destructive" });
       } else if (msg.includes("unreachable") || msg.includes("Runner not configured")) {
-        toast({
-          title: "Runner unavailable",
-          description: "Check your Runner URL in Settings.",
-          variant: "destructive",
-        });
+        toast({ title: "Runner unavailable", description: "Check your Runner URL in Settings.", variant: "destructive" });
       } else if (msg.includes("Invalid Runner API key") || msg.includes("Authentication")) {
-        toast({
-          title: "Auth failed",
-          description: "Invalid Runner API key — update it in Settings.",
-          variant: "destructive",
-        });
+        toast({ title: "Auth failed", description: "Invalid Runner API key — update it in Settings.", variant: "destructive" });
       } else {
         toast({ title: "Error", description: msg, variant: "destructive" });
       }
     } finally {
       setIsSubmitting(false);
     }
-  }, [siteUrl, headless, maxRuntime, ctaSelector, successSelector, fallbackPath, toast]);
+  }, [siteUrl, scenarioId, customSteps, buildOptions, toast]);
 
+  // ── Custom step helpers ──
+
+  const addCustomStep = (action: string) => {
+    const params: Record<string, unknown> = {};
+    for (const p of BLOCK_PARAM_HINTS[action] || []) {
+      params[p] = "";
+    }
+    setCustomSteps(prev => [...prev, { action, params }]);
+  };
+
+  const removeCustomStep = (index: number) => {
+    setCustomSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateStepParam = (index: number, key: string, value: unknown) => {
+    setCustomSteps(prev => prev.map((s, i) => i === index ? { ...s, params: { ...s.params, [key]: value } } : s));
+  };
+
+  // ── Form field helpers ──
+
+  const addFormField = () => setFormFields(prev => [...prev, { selector: "", value: "" }]);
+  const removeFormField = (index: number) => setFormFields(prev => prev.filter((_, i) => i !== index));
+  const updateFormField = (index: number, key: keyof FormField, value: string) => {
+    setFormFields(prev => prev.map((f, i) => i === index ? { ...f, [key]: value } : f));
+  };
+
+  // ── Scenario options panel ──
+
+  const renderScenarioOptions = () => {
+    switch (scenarioId) {
+      case "smoke_v1":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">CTA Selector</Label>
+              <Input placeholder='e.g. button:has-text("Get Started")' value={ctaSelector} onChange={(e) => setCtaSelector(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Success Selector</Label>
+              <Input placeholder="e.g. h1" value={successSelector} onChange={(e) => setSuccessSelector(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Fallback Path</Label>
+              <Input placeholder="/about" value={fallbackPath} onChange={(e) => setFallbackPath(e.target.value)} className="font-mono text-xs" />
+            </div>
+          </div>
+        );
+
+      case "login_flow":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Login Path</Label>
+              <Input placeholder="/login" value={loginPath} onChange={(e) => setLoginPath(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Email</Label>
+              <Input placeholder="test@example.com" value={email} onChange={(e) => setEmail(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Password</Label>
+              <Input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Success URL (contains)</Label>
+              <Input placeholder="/dashboard" value={successUrl} onChange={(e) => setSuccessUrl(e.target.value)} className="font-mono text-xs" />
+            </div>
+          </div>
+        );
+
+      case "navigation_check":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Paths (one per line)</Label>
+              <Textarea placeholder={"/about\n/pricing\n/docs"} value={paths} onChange={(e) => setPaths(e.target.value)} className="font-mono text-xs" rows={4} />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Assert Selector</Label>
+              <Input placeholder="e.g. main, h1" value={assertSelector} onChange={(e) => setAssertSelector(e.target.value)} className="font-mono text-xs" />
+            </div>
+          </div>
+        );
+
+      case "form_submission":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Form Path</Label>
+              <Input placeholder="/contact" value={formPath} onChange={(e) => setFormPath(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Fields</Label>
+              <div className="space-y-2">
+                {formFields.map((field, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <Input placeholder="selector" value={field.selector} onChange={(e) => updateFormField(i, "selector", e.target.value)} className="font-mono text-xs flex-1" />
+                    <Input placeholder="value" value={field.value} onChange={(e) => updateFormField(i, "value", e.target.value)} className="font-mono text-xs flex-1" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeFormField(i)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" size="sm" className="font-mono text-xs" onClick={addFormField}>
+                  <Plus className="h-3 w-3" /> Add Field
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Submit Selector</Label>
+              <Input placeholder='button[type="submit"]' value={formSubmitSelector} onChange={(e) => setFormSubmitSelector(e.target.value)} className="font-mono text-xs" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Success Selector</Label>
+              <Input placeholder=".success-message" value={formSuccessSelector} onChange={(e) => setFormSuccessSelector(e.target.value)} className="font-mono text-xs" />
+            </div>
+          </div>
+        );
+
+      case "responsive_check":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Paths (one per line)</Label>
+              <Textarea placeholder={"/\n/about\n/pricing"} value={paths} onChange={(e) => setPaths(e.target.value)} className="font-mono text-xs" rows={4} />
+            </div>
+          </div>
+        );
+
+      case "performance_audit":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Paths (one per line)</Label>
+              <Textarea placeholder={"/\n/about"} value={paths} onChange={(e) => setPaths(e.target.value)} className="font-mono text-xs" rows={4} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="font-mono text-xs">Max Load Time (ms)</Label>
+                <Input type="number" value={maxLoadTime} onChange={(e) => setMaxLoadTime(Number(e.target.value))} className="font-mono text-xs" />
+              </div>
+              <div className="space-y-1">
+                <Label className="font-mono text-xs">Max FCP (ms)</Label>
+                <Input type="number" value={maxFCP} onChange={(e) => setMaxFCP(Number(e.target.value))} className="font-mono text-xs" />
+              </div>
+            </div>
+          </div>
+        );
+
+      case "custom":
+        return (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Steps</Label>
+              {customSteps.length === 0 && (
+                <p className="text-xs text-muted-foreground">No steps yet. Add a block below.</p>
+              )}
+              <div className="space-y-2">
+                {customSteps.map((step, i) => (
+                  <div key={i} className="rounded border bg-secondary/30 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-semibold">{i + 1}. {step.action}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeCustomStep(i)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    {Object.keys(step.params).map((key) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <Label className="font-mono text-[10px] w-16 shrink-0 text-muted-foreground">{key}</Label>
+                        <Input
+                          value={String(step.params[key] ?? "")}
+                          onChange={(e) => updateStepParam(i, key, e.target.value)}
+                          className="font-mono text-xs h-7"
+                          placeholder={key}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="font-mono text-xs">Add Block</Label>
+              <Select onValueChange={(v) => addCustomStep(v)}>
+                <SelectTrigger className="font-mono text-xs">
+                  <SelectValue placeholder="Choose an action..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOCK_ACTIONS.map((action) => (
+                    <SelectItem key={action} value={action} className="font-mono text-xs">
+                      {action}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  const currentScenario = SCENARIOS.find(s => s.id === scenarioId);
   const reportUrl = activeRun?.assets?.reportUrl || activeRun?.report_path;
 
   return (
@@ -109,7 +402,7 @@ export default function Runner() {
       <AppNav />
       <main className="container max-w-4xl py-10">
         <h1 className="font-mono text-2xl font-bold">Test Runner</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Run a Playwright smoke test against any URL.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Run Playwright tests against any URL.</p>
 
         {runnerConfigured === false && (
           <div className="mt-4 flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
@@ -129,6 +422,7 @@ export default function Runner() {
         <div className="mt-8 grid gap-8 lg:grid-cols-2">
           {/* Config panel */}
           <div className="space-y-6">
+            {/* Site URL */}
             <div className="space-y-2">
               <Label htmlFor="siteUrl" className="font-mono text-xs uppercase tracking-wider">Site URL</Label>
               <Input
@@ -140,31 +434,39 @@ export default function Runner() {
               />
             </div>
 
+            {/* Scenario selector */}
             <div className="space-y-2">
               <Label className="font-mono text-xs uppercase tracking-wider">Scenario</Label>
-              <div className="rounded-md border bg-secondary/50 px-3 py-2 font-mono text-sm text-secondary-foreground">
-                Smoke journey (homepage → CTA → key page)
-              </div>
+              <Select value={scenarioId} onValueChange={setScenarioId}>
+                <SelectTrigger className="font-mono text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCENARIOS.map((s) => (
+                    <SelectItem key={s.id} value={s.id} className="font-mono text-sm">
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {currentScenario && (
+                <p className="text-xs text-muted-foreground">{currentScenario.description}</p>
+              )}
             </div>
 
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            {/* Dynamic scenario options */}
+            <div className="space-y-2">
+              <Label className="font-mono text-xs uppercase tracking-wider">Scenario Options</Label>
+              {renderScenarioOptions()}
+            </div>
+
+            {/* Runtime options (collapsible) */}
+            <Collapsible open={runtimeOpen} onOpenChange={setRuntimeOpen}>
               <CollapsibleTrigger className="flex w-full items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-                Advanced options
+                <ChevronDown className={`h-4 w-4 transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
+                Runtime options
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <Label className="font-mono text-xs">CTA Selector</Label>
-                  <Input placeholder='e.g. button:has-text("Get Started")' value={ctaSelector} onChange={(e) => setCtaSelector(e.target.value)} className="font-mono text-xs" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-mono text-xs">Success Selector</Label>
-                  <Input placeholder="e.g. h1" value={successSelector} onChange={(e) => setSuccessSelector(e.target.value)} className="font-mono text-xs" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-mono text-xs">Fallback Path</Label>
-                  <Input placeholder="/about" value={fallbackPath} onChange={(e) => setFallbackPath(e.target.value)} className="font-mono text-xs" />
-                </div>
                 <div className="space-y-2">
                   <Label className="font-mono text-xs">Max Runtime (seconds)</Label>
                   <Input type="number" value={maxRuntime} onChange={(e) => setMaxRuntime(Number(e.target.value))} className="font-mono text-xs w-24" />
@@ -200,6 +502,9 @@ export default function Runner() {
                     <StatusBadge status={activeRun.status} />
                   </div>
                   <p className="font-mono text-xs text-muted-foreground truncate">{activeRun.site_url}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground">
+                    Scenario: {SCENARIOS.find(s => s.id === activeRun.scenario_id)?.name || activeRun.scenario_id}
+                  </p>
                   {activeRun.duration_ms && (
                     <p className="font-mono text-xs text-muted-foreground">{(activeRun.duration_ms / 1000).toFixed(1)}s</p>
                   )}

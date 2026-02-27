@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
 
     // ── CREATE ──────────────────────────────────────────────
     if (action === "create") {
-      const { siteUrl, scenarioId, options } = body;
+      const { siteUrl, scenarioId, options, steps } = body;
 
       if (!siteUrl || typeof siteUrl !== "string") {
         return jsonResponse({ error: "siteUrl is required" }, 400);
@@ -104,7 +104,12 @@ Deno.serve(async (req: Request) => {
           const resp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
             method: "POST",
             headers,
-            body: JSON.stringify({ siteUrl, scenarioId: scenarioId || "smoke_v1", options }),
+            body: JSON.stringify({
+              siteUrl,
+              scenarioId: scenarioId || "smoke_v1",
+              options,
+              ...(scenarioId === "custom" && steps ? { steps } : {}),
+            }),
           });
 
           if (resp.status === 401 || resp.status === 403) {

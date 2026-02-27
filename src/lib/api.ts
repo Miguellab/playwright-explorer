@@ -1,13 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { TestRun, RunOptions, AppSettings } from "./types";
+import type { TestRun, RunOptions, AppSettings, CustomStep } from "./types";
 
-export async function createTestRun(siteUrl: string, scenarioId: string, options: RunOptions): Promise<{ testRunId: string; status: string }> {
+export async function createTestRun(
+  siteUrl: string,
+  scenarioId: string,
+  options: RunOptions,
+  steps?: CustomStep[],
+): Promise<{ testRunId: string; status: string }> {
+  const body: Record<string, unknown> = { action: "create", siteUrl, scenarioId, options };
+  if (scenarioId === "custom" && steps) {
+    body.steps = steps;
+  }
   const { data, error } = await supabase.functions.invoke("test-runs", {
     method: "POST",
-    body: { action: "create", siteUrl, scenarioId, options },
+    body,
   });
   if (error) {
-    // Try to parse structured error from edge function
     const msg = error.message || "Failed to create test run";
     throw new Error(msg);
   }
