@@ -6,14 +6,24 @@ import { getTestRun } from "@/lib/api";
 import type { TestRun } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, ChevronDown, ChevronRight, AlertTriangle, Bug, Search } from "lucide-react";
 
 export default function RunDetail() {
   const { id } = useParams<{ id: string }>();
   const [run, setRun] = useState<TestRun | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
 
   const isRunActive = run && (run.status === "queued" || run.status === "running");
+
+  const toggleStep = (index: number) => {
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -77,24 +87,54 @@ export default function RunDetail() {
           </Button>
         )}
 
+        {/* Error banner */}
+        {run.status === "failed" && run.error && (
+          <div className="mt-6 flex items-start gap-3 rounded-lg border border-status-fail/30 bg-status-fail/5 p-4">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-fail" />
+            <pre className="font-mono text-xs text-status-fail whitespace-pre-wrap break-words">{run.error}</pre>
+          </div>
+        )}
+
         {/* Steps */}
         <Card className="mt-8">
           <CardHeader className="pb-3">
             <CardTitle className="font-mono text-sm uppercase tracking-wider">Steps</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {run.steps && run.steps.map((step, i) => (
-              <div key={i} className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3">
-                <div>
-                  <p className="font-mono text-sm">{step.name}</p>
-                  {step.note && <p className="font-mono text-xs text-muted-foreground">{step.note}</p>}
+            {run.steps && run.steps.map((step, i) => {
+              const isExpanded = expandedSteps.has(i);
+              const hasDetail = !!step.detail;
+              return (
+                <div key={i} className="rounded border bg-secondary/30 overflow-hidden">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                    onClick={() => hasDetail && toggleStep(i)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {hasDetail ? (
+                        isExpanded ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <span className="w-3.5 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm truncate">{step.name}</p>
+                        {step.note && <p className="font-mono text-xs text-muted-foreground">{step.note}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 ml-2">
+                      <span className="font-mono text-xs text-muted-foreground">{step.durationMs}ms</span>
+                      <StatusBadge status={step.status} />
+                    </div>
+                  </button>
+                  {isExpanded && step.detail && (
+                    <div className="border-t bg-secondary/10 px-4 py-3">
+                      <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap break-words">{step.detail}</pre>
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-muted-foreground">{step.durationMs}ms</span>
-                  <StatusBadge status={step.status} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {(!run.steps || run.steps.length === 0) && isRunActive && (
               <div className="flex items-center gap-2 py-4 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -153,8 +193,60 @@ export default function RunDetail() {
                 </div>
               )}
               {(!run.findings.consoleErrors || run.findings.consoleErrors.length === 0) &&
-               (!run.findings.failedRequests || run.findings.failedRequests.length === 0) && (
+               (!run.findings.failedRequests || run.findings.failedRequests.length === 0) &&
+               (!run.findings.diagnostics || run.findings.diagnostics.length === 0) && (
                 <p className="font-mono text-sm text-muted-foreground">No issues found.</p>
+              )}
+
+              {/* Diagnostics */}
+              {run.findings.diagnostics && run.findings.diagnostics.length > 0 && (
+                <div>
+                  <p className="mb-2 font-mono text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Search className="h-3 w-3" /> Diagnostics ({run.findings.diagnostics.length})
+                  </p>
+                  <div className="space-y-2">
+                    {run.findings.diagnostics.map((diag, i) => (
+                      <div key={i} className="rounded border bg-secondary/20 p-3 space-y-2">
+                        <div className="flex items-center gap-2">
+                          {diag.error ? <Bug className="h-3.5 w-3.5 shrink-0 text-status-fail" /> : <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                          <span className="font-mono text-xs font-semibold">{diag.step}</span>
+                          {diag.type && <span className="font-mono text-[10px] text-muted-foreground">({diag.type})</span>}
+                        </div>
+                        {diag.error && (
+                          <pre className="font-mono text-xs text-status-fail whitespace-pre-wrap break-words rounded bg-status-fail/5 border border-status-fail/20 p-2">{diag.error}</pre>
+                        )}
+                        {diag.type === "page_audit" && (
+                          <div className="space-y-1.5">
+                            {diag.url && <p className="font-mono text-[10px] text-muted-foreground truncate">URL: {diag.url}</p>}
+                            {diag.title && <p className="font-mono text-[10px] text-muted-foreground">Title: {diag.title}</p>}
+                            {diag.frameCount != null && <p className="font-mono text-[10px] text-muted-foreground">Frames: {diag.frameCount}</p>}
+                            {diag.frames && diag.frames.map((frame, fi) => (
+                              <div key={fi} className="rounded border bg-secondary/30 p-2 space-y-1">
+                                <p className="font-mono text-[10px] text-muted-foreground truncate">Frame: {frame.url}</p>
+                                {frame.inputs.length > 0 && (
+                                  <div>
+                                    <p className="font-mono text-[10px] font-semibold text-muted-foreground">Inputs ({frame.inputCount}):</p>
+                                    {frame.inputs.map((inp, ii) => (
+                                      <code key={ii} className="block font-mono text-[10px] text-muted-foreground pl-2 break-all">{inp}</code>
+                                    ))}
+                                  </div>
+                                )}
+                                {frame.buttons.length > 0 && (
+                                  <div>
+                                    <p className="font-mono text-[10px] font-semibold text-muted-foreground">Buttons ({frame.buttonCount}):</p>
+                                    {frame.buttons.map((btn, bi) => (
+                                      <code key={bi} className="block font-mono text-[10px] text-muted-foreground pl-2 break-all">{btn}</code>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>
