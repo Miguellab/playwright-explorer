@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createTestRun, getTestRun, getSettings } from "@/lib/api";
 import type { TestRun, RunOptions, AppSettings, CustomStep, FormField } from "@/lib/types";
-import { Play, ChevronDown, ExternalLink, Loader2, AlertTriangle, Settings, Plus, Trash2 } from "lucide-react";
+import { Play, ChevronDown, ChevronRight, ExternalLink, Loader2, AlertTriangle, Settings, Plus, Trash2, Bug, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
@@ -98,8 +98,18 @@ export default function Runner() {
   const [activeRun, setActiveRun] = useState<TestRun | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [runnerConfigured, setRunnerConfigured] = useState<boolean | null>(null);
+  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
 
   const isRunActive = activeRun && (activeRun.status === "queued" || activeRun.status === "running");
+
+  const toggleStep = (index: number) => {
+    setExpandedSteps(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  };
 
   // Check runner config on mount
   useEffect(() => {
@@ -171,6 +181,7 @@ export default function Runner() {
       const steps = scenarioId === "custom" ? customSteps : undefined;
       const { testRunId } = await createTestRun(url, scenarioId, options, steps);
       const run = await getTestRun(testRunId);
+      setExpandedSteps(new Set());
       setActiveRun(run);
     } catch (e: unknown) {
       const err = e as Error & { status?: number };
@@ -510,27 +521,57 @@ export default function Runner() {
                   )}
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Steps */}
+                  {/* Error banner */}
+                  {activeRun.status === "failed" && activeRun.error && (
+                    <div className="flex items-start gap-2 rounded-lg border border-status-fail/30 bg-status-fail/5 p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-fail" />
+                      <p className="font-mono text-xs text-status-fail whitespace-pre-wrap">{activeRun.error}</p>
+                    </div>
+                  )}
+
+                  {/* Steps (expandable) */}
                   {activeRun.steps && activeRun.steps.length > 0 && (
                     <div className="space-y-2">
                       <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground">Steps</p>
                       <div className="space-y-1.5">
-                        {activeRun.steps.map((step, i) => (
-                          <div key={i} className="flex items-center justify-between rounded border bg-secondary/30 px-3 py-2">
-                            <span className="font-mono text-xs">{step.name}</span>
-                            <div className="flex items-center gap-2">
-                              {step.durationMs > 0 && (
-                                <span className="font-mono text-[10px] text-muted-foreground">{step.durationMs}ms</span>
+                        {activeRun.steps.map((step, i) => {
+                          const isExpanded = expandedSteps.has(i);
+                          const hasDetail = !!step.detail;
+                          return (
+                            <div key={i} className="rounded border bg-secondary/30 overflow-hidden">
+                              <button
+                                type="button"
+                                className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
+                                onClick={() => hasDetail && toggleStep(i)}
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  {hasDetail ? (
+                                    isExpanded ? <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" /> : <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                  ) : (
+                                    <span className="w-3 shrink-0" />
+                                  )}
+                                  <span className="font-mono text-xs truncate">{step.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-2">
+                                  {step.durationMs > 0 && (
+                                    <span className="font-mono text-[10px] text-muted-foreground">{step.durationMs}ms</span>
+                                  )}
+                                  <StatusBadge status={step.status} />
+                                </div>
+                              </button>
+                              {isExpanded && step.detail && (
+                                <div className="border-t bg-secondary/10 px-3 py-2">
+                                  <pre className="font-mono text-[11px] text-muted-foreground whitespace-pre-wrap break-words">{step.detail}</pre>
+                                </div>
                               )}
-                              <StatusBadge status={step.status} />
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
-                  {/* Findings */}
+                  {/* Findings counters */}
                   {activeRun.findings && (
                     <div className="flex gap-4">
                       <div className="rounded border bg-secondary/30 px-3 py-2 text-center">
@@ -540,6 +581,56 @@ export default function Runner() {
                       <div className="rounded border bg-secondary/30 px-3 py-2 text-center">
                         <p className="font-mono text-lg font-bold text-status-skipped">{activeRun.findings.failedRequests?.length || 0}</p>
                         <p className="font-mono text-[10px] text-muted-foreground">Failed Requests</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Diagnostics */}
+                  {activeRun.findings?.diagnostics && activeRun.findings.diagnostics.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="font-mono text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Search className="h-3 w-3" /> Diagnostics
+                      </p>
+                      <div className="space-y-2">
+                        {activeRun.findings.diagnostics.map((diag, i) => (
+                          <div key={i} className="rounded border bg-secondary/20 p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              {diag.error ? <Bug className="h-3 w-3 shrink-0 text-status-fail" /> : <Search className="h-3 w-3 shrink-0 text-muted-foreground" />}
+                              <span className="font-mono text-xs font-semibold">{diag.step}</span>
+                              {diag.type && <span className="font-mono text-[10px] text-muted-foreground">({diag.type})</span>}
+                            </div>
+                            {diag.error && (
+                              <pre className="font-mono text-[11px] text-status-fail whitespace-pre-wrap break-words rounded bg-status-fail/5 border border-status-fail/20 p-2">{diag.error}</pre>
+                            )}
+                            {diag.type === "page_audit" && (
+                              <div className="space-y-1">
+                                {diag.url && <p className="font-mono text-[10px] text-muted-foreground truncate">URL: {diag.url}</p>}
+                                {diag.title && <p className="font-mono text-[10px] text-muted-foreground">Title: {diag.title}</p>}
+                                {diag.frames && diag.frames.map((frame, fi) => (
+                                  <div key={fi} className="rounded border bg-secondary/30 p-2 space-y-1">
+                                    <p className="font-mono text-[10px] text-muted-foreground truncate">Frame: {frame.url}</p>
+                                    {frame.inputs.length > 0 && (
+                                      <div>
+                                        <p className="font-mono text-[10px] font-semibold text-muted-foreground">Inputs ({frame.inputCount}):</p>
+                                        {frame.inputs.map((inp, ii) => (
+                                          <code key={ii} className="block font-mono text-[10px] text-muted-foreground truncate pl-2">{inp}</code>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {frame.buttons.length > 0 && (
+                                      <div>
+                                        <p className="font-mono text-[10px] font-semibold text-muted-foreground">Buttons ({frame.buttonCount}):</p>
+                                        {frame.buttons.map((btn, bi) => (
+                                          <code key={bi} className="block font-mono text-[10px] text-muted-foreground truncate pl-2">{btn}</code>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}

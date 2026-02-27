@@ -6,6 +6,7 @@ export interface TestStep {
   status: StepStatus;
   durationMs: number;
   note: string | null;
+  detail?: string | null;
   screenshotUrl: string | null;
 }
 
@@ -19,9 +20,28 @@ export interface FailedRequest {
   status: number;
 }
 
+export interface DiagnosticFrame {
+  url: string;
+  inputCount: number;
+  inputs: string[];
+  buttonCount: number;
+  buttons: string[];
+}
+
+export interface Diagnostic {
+  step: string;
+  type?: string;
+  url?: string;
+  title?: string;
+  frameCount?: number;
+  frames?: DiagnosticFrame[];
+  error?: string;
+}
+
 export interface Findings {
   consoleErrors: ConsoleError[];
   failedRequests: FailedRequest[];
+  diagnostics?: Diagnostic[];
 }
 
 export interface TestRunAssets {
@@ -35,6 +55,7 @@ export interface TestRun {
   site_url: string;
   scenario_id: string;
   status: RunStatus;
+  error?: string | null;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
