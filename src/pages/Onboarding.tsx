@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AppNav } from "@/components/AppNav";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,10 +134,7 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="border-b bg-background/80 backdrop-blur-sm px-6 py-4">
-        <h1 className="font-mono text-lg font-bold tracking-tight">Sentinelle</h1>
-      </header>
+      <AppNav />
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg space-y-8">

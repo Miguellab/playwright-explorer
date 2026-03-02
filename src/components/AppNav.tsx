@@ -1,10 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { Shield, LayoutDashboard, Plus } from "lucide-react";
+import { Shield, LayoutDashboard, Settings } from "lucide-react";
 
 const links = [
   { to: "/", label: "Projets", icon: LayoutDashboard },
-  { to: "/onboarding", label: "Nouveau", icon: Plus },
+  { to: "/settings", label: "Paramètres", icon: Settings },
 ];
 
 export function AppNav() {
