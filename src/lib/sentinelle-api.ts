@@ -63,7 +63,8 @@ export async function createProject(body: CreateProjectBody): Promise<Project> {
 }
 
 export async function listProjects(): Promise<Project[]> {
-  return request("/projects");
+  const data = await request<{ projects: Project[] } | Project[]>("/projects");
+  return Array.isArray(data) ? data : data.projects ?? [];
 }
 
 export async function getProject(id: string): Promise<Project> {
@@ -84,7 +85,8 @@ export async function testNow(projectId: string): Promise<{ runId: string; statu
 }
 
 export async function listRuns(projectId: string, limit = 20): Promise<Run[]> {
-  return request(`/projects/${projectId}/runs?limit=${limit}`);
+  const data = await request<{ runs: Run[] } | Run[]>(`/projects/${projectId}/runs?limit=${limit}`);
+  return Array.isArray(data) ? data : data.runs ?? [];
 }
 
 export async function getRun(runId: string): Promise<Run> {
