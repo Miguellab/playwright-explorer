@@ -29,8 +29,8 @@ import { useToast } from "@/hooks/use-toast";
 
 const GOAL_META: Record<string, { emoji: string; labelFr: string; descFr: string }> = {
   SIGNUP: { emoji: "📝", labelFr: "Inscription", descFr: "Vos utilisateurs doivent pouvoir s'inscrire" },
-  BOOKING: { emoji: "📅", labelFr: "Réservation", descFr: "Vos utilisateurs doivent pouvoir réserver" },
-  PURCHASE: { emoji: "🛒", labelFr: "Achat", descFr: "Vos utilisateurs doivent pouvoir acheter" },
+  BOOK: { emoji: "📅", labelFr: "Réservation", descFr: "Vos utilisateurs doivent pouvoir réserver" },
+  BUY: { emoji: "🛒", labelFr: "Achat", descFr: "Vos utilisateurs doivent pouvoir acheter" },
   CONTACT: { emoji: "💬", labelFr: "Contact", descFr: "Vos utilisateurs doivent pouvoir vous contacter" },
 };
 
@@ -84,8 +84,8 @@ export default function Onboarding() {
           // Fallback goals
           setGoals([
             { id: "SIGNUP", label: "Sign Up" },
-            { id: "BOOKING", label: "Booking" },
-            { id: "PURCHASE", label: "Purchase" },
+            { id: "BOOK", label: "Book / Schedule" },
+            { id: "BUY", label: "Buy / Checkout" },
             { id: "CONTACT", label: "Contact" },
           ]);
         });

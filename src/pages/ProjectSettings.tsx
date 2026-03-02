@@ -45,8 +45,8 @@ export default function ProjectSettings() {
             ? g
             : [
                 { id: "SIGNUP", label: "Sign Up" },
-                { id: "BOOKING", label: "Booking" },
-                { id: "PURCHASE", label: "Purchase" },
+                { id: "BOOK", label: "Book / Schedule" },
+                { id: "BUY", label: "Buy / Checkout" },
                 { id: "CONTACT", label: "Contact" },
               ],
         );
