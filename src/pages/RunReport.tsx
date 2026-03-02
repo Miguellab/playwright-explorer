@@ -206,7 +206,7 @@ export default function RunReport() {
                         ) : (
                           <span className="w-3.5 shrink-0" />
                         )}
-                        <span className="font-mono text-sm truncate">{step.name}</span>
+                        <span className="font-mono text-sm truncate">{step.label}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2">
                         {step.durationMs > 0 && (

@@ -1,7 +1,7 @@
 // ── Sentinelle MVP Types ──
 
 export type Verdict = "SAFE" | "RISKY" | "FAILED";
-export type RunStatus = "queued" | "running" | "passed" | "failed";
+export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled";
 export type IssueSeverity = "critical" | "warning";
@@ -21,11 +21,11 @@ export interface Project {
   enabled: boolean;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
+  runnerBaseUrl: string;
   lastSeenSignature: string | null;
   lastSeenAt: string | null;
   lastCheckedAt: string | null;
   hasRunnerApiKey: boolean;
-  createdByUserId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -54,10 +54,11 @@ export interface UpdateProjectBody {
 // ── Run ──
 
 export interface RunStep {
-  name: string;
+  action: string;
+  label: string;
   status: StepStatus;
+  durationMs?: number;
   detail?: string;
-  durationMs: number;
 }
 
 export interface ConsoleError {

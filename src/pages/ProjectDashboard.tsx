@@ -85,7 +85,7 @@ export default function ProjectDashboard() {
       try {
         const updated = await getRun(activeRunId);
         setActiveRun(updated);
-        if (updated.status === "passed" || updated.status === "failed") {
+        if (updated.status === "passed" || updated.status === "failed" || updated.status === "error") {
           clearInterval(interval);
           // Refresh runs list
           if (id) listRuns(id).then((r) => setRuns(Array.isArray(r) ? r : []));
@@ -294,10 +294,10 @@ export default function ProjectDashboard() {
                         ) : (
                           <span className="w-3 shrink-0" />
                         )}
-                        <span className="font-mono text-xs truncate">{step.name}</span>
+                        <span className="font-mono text-xs truncate">{step.label}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        {step.durationMs > 0 && (
+                        {step.durationMs && step.durationMs > 0 && (
                           <span className="font-mono text-[10px] text-muted-foreground">
                             {formatDuration(step.durationMs)}
                           </span>
