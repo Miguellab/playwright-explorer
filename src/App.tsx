@@ -3,7 +3,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
+import Onboarding from "./pages/Onboarding";
+import ProjectDashboard from "./pages/ProjectDashboard";
+import RunReport from "./pages/RunReport";
+import ProjectSettings from "./pages/ProjectSettings";
 import Runner from "./pages/Runner";
 import Runs from "./pages/Runs";
 import RunDetail from "./pages/RunDetail";
@@ -19,7 +23,13 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
+          {/* Sentinelle MVP */}
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/project/:id" element={<ProjectDashboard />} />
+          <Route path="/project/:id/run/:runId" element={<RunReport />} />
+          <Route path="/project/:id/settings" element={<ProjectSettings />} />
+          {/* Legacy runner */}
           <Route path="/runner" element={<Runner />} />
           <Route path="/runs" element={<Runs />} />
           <Route path="/runs/:id" element={<RunDetail />} />
