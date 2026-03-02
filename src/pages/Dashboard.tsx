@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { AppNav } from "@/components/AppNav";
-import { VerdictBadge } from "@/components/VerdictBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { listProjects } from "@/lib/sentinelle-api";
 import type { Project } from "@/lib/sentinelle-types";
-import { Plus, Loader2, ExternalLink, Clock } from "lucide-react";
+import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -21,26 +20,28 @@ function timeAgo(date: string): string {
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchProjects = () => {
+    setLoading(true);
+    setError(null);
     listProjects()
       .then((data) => {
         if (Array.isArray(data)) setProjects(data);
         else setProjects([]);
       })
-      .catch(() => setProjects([]))
+      .catch((err) => {
+        setProjects([]);
+        setError(err?.message || "Impossible de charger les projets.");
+      })
       .finally(() => setLoading(false));
-  }, []);
+  };
 
-  // Redirect to onboarding if no projects
   useEffect(() => {
-    if (!loading && projects.length === 0) {
-      navigate("/onboarding");
-    }
-  }, [loading, projects.length, navigate]);
+    fetchProjects();
+  }, []);
 
   if (loading) {
     return (
@@ -71,60 +72,94 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <div className="mt-8 space-y-4">
-          {projects.map((project) => (
-            <Link key={project.id} to={`/project/${project.id}`} className="block">
-              <Card className="transition-colors hover:bg-secondary/30">
-                <CardContent className="flex items-center gap-4 p-5">
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
-                      <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                        {project.goal}
-                      </Badge>
-                      {!project.enabled && (
-                        <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
-                          Pause
+        {/* Error state */}
+        {error && (
+          <div className="mt-8 flex flex-col items-center gap-4 rounded-lg border border-status-fail/30 bg-status-fail/5 p-8 text-center">
+            <AlertCircle className="h-8 w-8 text-status-fail" />
+            <div>
+              <p className="font-mono text-sm font-semibold">Erreur de connexion</p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">{error}</p>
+            </div>
+            <Button variant="outline" size="sm" className="font-mono" onClick={fetchProjects}>
+              <RefreshCw className="mr-2 h-3 w-3" /> Reessayer
+            </Button>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!error && projects.length === 0 && (
+          <div className="mt-8 flex flex-col items-center gap-4 rounded-lg border border-dashed p-12 text-center">
+            <ShieldCheck className="h-10 w-10 text-muted-foreground" />
+            <div>
+              <p className="font-mono text-sm font-semibold">Aucun projet surveille</p>
+              <p className="mt-1 font-mono text-xs text-muted-foreground">
+                Creez votre premier projet pour commencer a surveiller vos applications.
+              </p>
+            </div>
+            <Button asChild className="font-mono">
+              <Link to="/onboarding">
+                <Plus className="mr-2 h-4 w-4" /> Creer un projet
+              </Link>
+            </Button>
+          </div>
+        )}
+
+        {/* Project list */}
+        {!error && projects.length > 0 && (
+          <div className="mt-8 space-y-4">
+            {projects.map((project) => (
+              <Link key={project.id} to={`/project/${project.id}`} className="block">
+                <Card className="transition-colors hover:bg-secondary/30">
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
+                        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                          {project.goal}
                         </Badge>
-                      )}
+                        {!project.enabled && (
+                          <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
+                            Pause
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
+                        <a
+                          href={project.siteUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 hover:text-foreground truncate"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                          {project.siteUrl}
+                        </a>
+                        {project.lastCheckedAt && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <Clock className="h-3 w-3" />
+                            {timeAgo(project.lastCheckedAt)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                      <a
-                        href={project.siteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 hover:text-foreground truncate"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                        {project.siteUrl}
-                      </a>
-                      {project.lastCheckedAt && (
-                        <span className="flex items-center gap-1 shrink-0">
-                          <Clock className="h-3 w-3" />
-                          {timeAgo(project.lastCheckedAt)}
+
+                    <div className="shrink-0">
+                      {project.lastSeenSignature ? (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          Derniere verification {project.lastCheckedAt ? timeAgo(project.lastCheckedAt) : "—"}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          En attente...
                         </span>
                       )}
                     </div>
-                  </div>
-
-                  {/* Placeholder for last verdict - will be filled by runs */}
-                  <div className="shrink-0">
-                    {project.lastSeenSignature ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        Derniere verification {project.lastCheckedAt ? timeAgo(project.lastCheckedAt) : "—"}
-                      </span>
-                    ) : (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        En attente...
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
