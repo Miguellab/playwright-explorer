@@ -7,12 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  healthCheck,
   listGoals,
   createProject,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
+import { getSettings } from "@/lib/api";
 import type { Goal, OnboardingData } from "@/lib/sentinelle-types";
 import {
   Globe,
@@ -65,11 +65,11 @@ export default function Onboarding() {
     autoTest: true,
   });
 
-  // Check API on mount
+  // Check service connectivity on mount (Supabase + runner configured)
   useEffect(() => {
     setCheckingApi(true);
-    healthCheck()
-      .then(() => setApiConnected(true))
+    getSettings()
+      .then((s) => setApiConnected(!!s.external_runner_url))
       .catch(() => setApiConnected(false))
       .finally(() => setCheckingApi(false));
   }, []);
