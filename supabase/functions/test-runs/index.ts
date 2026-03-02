@@ -14,7 +14,8 @@ function jsonResponse(data: unknown, status = 200) {
 }
 
 /** Read a setting value from app_settings (service role, server-side only) */
-async function getSetting(supabase: ReturnType<typeof createClient>, key: string): Promise<unknown> {
+// deno-lint-ignore no-explicit-any
+async function getSetting(supabase: any, key: string): Promise<unknown> {
   const { data } = await supabase.from("app_settings").select("value").eq("key", key).single();
   if (!data) return null;
   try {

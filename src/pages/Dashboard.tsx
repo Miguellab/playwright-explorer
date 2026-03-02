@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { AppNav } from "@/components/AppNav";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +12,7 @@ import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "a l'instant";
+  if (min < 1) return "à l'instant";
   if (min < 60) return `il y a ${min} min`;
   const hrs = Math.floor(min / 60);
   if (hrs < 24) return `il y a ${hrs}h`;
@@ -54,10 +55,13 @@ export default function Dashboard() {
     );
   }
 
+  const hasProjects = !error && projects.length > 0;
+
   return (
     <div className="min-h-screen bg-background">
       <AppNav />
       <main className="container max-w-4xl py-10">
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-mono text-2xl font-bold">Mes projets</h1>
@@ -65,52 +69,65 @@ export default function Dashboard() {
               Sentinelle surveille vos applications en continu.
             </p>
           </div>
-          <Button asChild className="font-mono">
-            <Link to="/onboarding">
-              <Plus className="mr-2 h-4 w-4" /> Nouveau projet
-            </Link>
-          </Button>
+          {hasProjects && (
+            <Button asChild className="font-mono">
+              <Link to="/onboarding">
+                <Plus className="mr-2 h-4 w-4" /> Nouveau projet
+              </Link>
+            </Button>
+          )}
         </div>
 
         {/* Error state */}
         {error && (
-          <div className="mt-8 flex flex-col items-center gap-4 rounded-lg border border-status-fail/30 bg-status-fail/5 p-8 text-center">
-            <AlertCircle className="h-8 w-8 text-status-fail" />
+          <div className="mt-8 flex flex-col items-center gap-4 rounded-lg border border-destructive/30 bg-destructive/5 p-8 text-center">
+            <AlertCircle className="h-8 w-8 text-destructive" />
             <div>
               <p className="font-mono text-sm font-semibold">Erreur de connexion</p>
               <p className="mt-1 font-mono text-xs text-muted-foreground">{error}</p>
             </div>
             <Button variant="outline" size="sm" className="font-mono" onClick={fetchProjects}>
-              <RefreshCw className="mr-2 h-3 w-3" /> Reessayer
+              <RefreshCw className="mr-2 h-3 w-3" /> Réessayer
             </Button>
           </div>
         )}
 
         {/* Empty state */}
         {!error && projects.length === 0 && (
-          <div className="mt-8 flex flex-col items-center gap-4 rounded-lg border border-dashed p-12 text-center">
-            <ShieldCheck className="h-10 w-10 text-muted-foreground" />
-            <div>
-              <p className="font-mono text-sm font-semibold">Aucun projet surveille</p>
-              <p className="mt-1 font-mono text-xs text-muted-foreground">
-                Creez votre premier projet pour commencer a surveiller vos applications.
+          <div className="mt-16 flex flex-col items-center gap-6 rounded-xl border border-dashed border-muted-foreground/20 p-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck className="h-8 w-8 text-primary" />
+            </div>
+            <div className="space-y-2">
+              <p className="font-mono text-base font-semibold">Aucun projet surveillé</p>
+              <p className="font-mono text-sm text-muted-foreground max-w-sm">
+                Créez votre premier projet pour commencer à surveiller vos applications automatiquement.
               </p>
             </div>
-            <Button asChild className="font-mono">
+            <Button asChild size="lg" className="font-mono mt-2">
               <Link to="/onboarding">
-                <Plus className="mr-2 h-4 w-4" /> Creer un projet
+                <Plus className="mr-2 h-4 w-4" /> Créer un projet
               </Link>
             </Button>
           </div>
         )}
 
         {/* Project list */}
-        {!error && projects.length > 0 && (
-          <div className="mt-8 space-y-4">
+        {hasProjects && (
+          <div className="mt-8 space-y-3">
             {projects.map((project) => (
-              <Link key={project.id} to={`/project/${project.id}`} className="block">
-                <Card className="transition-colors hover:bg-secondary/30">
+              <Link key={project.id} to={`/project/${project.id}`} className="block group">
+                <Card className="transition-all duration-150 group-hover:bg-secondary/30 group-hover:border-primary/20">
                   <CardContent className="flex items-center gap-4 p-5">
+                    {/* Status dot */}
+                    <div
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full shrink-0",
+                        project.enabled ? "bg-primary" : "bg-muted-foreground/40"
+                      )}
+                    />
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
@@ -124,16 +141,10 @@ export default function Dashboard() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-                        <a
-                          href={project.siteUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 hover:text-foreground truncate"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                        <span className="flex items-center gap-1 truncate">
                           <ExternalLink className="h-3 w-3 shrink-0" />
-                          {project.siteUrl}
-                        </a>
+                          {project.siteUrl.replace(/^https?:\/\//, "")}
+                        </span>
                         {project.lastCheckedAt && (
                           <span className="flex items-center gap-1 shrink-0">
                             <Clock className="h-3 w-3" />
@@ -141,18 +152,6 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                    </div>
-
-                    <div className="shrink-0">
-                      {project.lastSeenSignature ? (
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          Derniere verification {project.lastCheckedAt ? timeAgo(project.lastCheckedAt) : "—"}
-                        </span>
-                      ) : (
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          En attente...
-                        </span>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -164,3 +163,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
