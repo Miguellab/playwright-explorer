@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   healthCheck,
   listGoals,
@@ -24,8 +23,6 @@ import {
   CheckCircle2,
   Loader2,
   AlertTriangle,
-  ChevronDown,
-  Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,11 +64,6 @@ export default function Onboarding() {
     maxRunsPerDay: 10,
     autoTest: true,
   });
-
-  // Advanced config
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [runnerUrl, setRunnerUrl] = useState(DEFAULT_RUNNER_URL);
-  const [runnerKey, setRunnerKey] = useState(DEFAULT_RUNNER_KEY);
 
   // Check API on mount
   useEffect(() => {
@@ -126,8 +118,8 @@ export default function Onboarding() {
         goal: selectedGoal,
         checkFrequencyMin: data.checkFrequencyMin,
         maxRunsPerDay: data.maxRunsPerDay,
-        runnerBaseUrl: runnerUrl,
-        runnerApiKey: runnerKey,
+        runnerBaseUrl: DEFAULT_RUNNER_URL,
+        runnerApiKey: DEFAULT_RUNNER_KEY,
       });
       toast({ title: "Projet cree", description: `${project.name} est maintenant surveille.` });
       navigate(`/project/${project.id}`);
@@ -352,35 +344,6 @@ export default function Onboarding() {
                     />
                   </div>
 
-                  {/* Advanced config */}
-                  <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                    <CollapsibleTrigger className="flex w-full items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors font-mono">
-                      <Settings className="h-3.5 w-3.5" />
-                      Configuration avancee
-                      <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3 space-y-3">
-                      <div className="space-y-2">
-                        <Label className="font-mono text-xs">URL du runner Playwright</Label>
-                        <Input
-                          placeholder="https://my-runner.railway.app"
-                          value={runnerUrl}
-                          onChange={(e) => setRunnerUrl(e.target.value)}
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="font-mono text-xs">Cle API du runner</Label>
-                        <Input
-                          type="password"
-                          placeholder="runner-secret-key"
-                          value={runnerKey}
-                          onChange={(e) => setRunnerKey(e.target.value)}
-                          className="font-mono text-xs"
-                        />
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
                 </div>
 
                 <div className="flex gap-3">
