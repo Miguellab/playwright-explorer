@@ -1,0 +1,96 @@
+import type {
+  Goal,
+  Project,
+  CreateProjectBody,
+  UpdateProjectBody,
+  Run,
+} from "./sentinelle-types";
+
+const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
+const API_KEY = import.meta.env.VITE_SENTINELLE_API_KEY || "";
+
+export const DEFAULT_RUNNER_URL = import.meta.env.VITE_DEFAULT_RUNNER_URL || "";
+export const DEFAULT_RUNNER_KEY = import.meta.env.VITE_DEFAULT_RUNNER_KEY || "";
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
+      ...init?.headers,
+    },
+  });
+
+  if (res.status === 429) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.error || "Limite quotidienne atteinte") as Error & { status: number };
+    err.status = 429;
+    throw err;
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const err = new Error(body.error || `Erreur ${res.status}`) as Error & { status: number };
+    err.status = res.status;
+    throw err;
+  }
+
+  return res.json();
+}
+
+// ── Health ──
+
+export async function healthCheck(): Promise<{ service: string; status: string }> {
+  return request("/health");
+}
+
+// ── Goals ──
+
+export async function listGoals(): Promise<Goal[]> {
+  const data = await request<{ goals: Goal[] }>("/goals");
+  return data.goals;
+}
+
+// ── Projects ──
+
+export async function createProject(body: CreateProjectBody): Promise<Project> {
+  return request("/projects", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listProjects(): Promise<Project[]> {
+  return request("/projects");
+}
+
+export async function getProject(id: string): Promise<Project> {
+  return request(`/projects/${id}`);
+}
+
+export async function updateProject(id: string, body: UpdateProjectBody): Promise<Project> {
+  return request(`/projects/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+// ── Runs ──
+
+export async function testNow(projectId: string): Promise<{ runId: string; status: string }> {
+  return request(`/projects/${projectId}/test-now`, { method: "POST" });
+}
+
+export async function listRuns(projectId: string, limit = 20): Promise<Run[]> {
+  return request(`/projects/${projectId}/runs?limit=${limit}`);
+}
+
+export async function getRun(runId: string): Promise<Run> {
+  return request(`/runs/${runId}`);
+}
+
+export function getReportUrl(runId: string): string {
+  return `${BASE_URL}/runs/${runId}/report`;
+}

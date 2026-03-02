@@ -1,0 +1,147 @@
+// ── Sentinelle MVP Types ──
+
+export type Verdict = "SAFE" | "RISKY" | "FAILED";
+export type RunStatus = "queued" | "running" | "passed" | "failed";
+export type StepStatus = "passed" | "failed" | "skipped" | "running";
+export type Trigger = "release_detected" | "manual" | "scheduled";
+export type IssueSeverity = "critical" | "warning";
+
+export interface Goal {
+  id: string;
+  label: string;
+}
+
+// ── Project ──
+
+export interface Project {
+  id: string;
+  name: string;
+  siteUrl: string;
+  goal: string;
+  enabled: boolean;
+  checkFrequencyMin: number;
+  maxRunsPerDay: number;
+  lastSeenSignature: string | null;
+  lastSeenAt: string | null;
+  lastCheckedAt: string | null;
+  hasRunnerApiKey: boolean;
+  createdByUserId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateProjectBody {
+  name: string;
+  siteUrl: string;
+  goal: string;
+  checkFrequencyMin: number;
+  maxRunsPerDay: number;
+  runnerBaseUrl: string;
+  runnerApiKey: string;
+}
+
+export interface UpdateProjectBody {
+  name?: string;
+  siteUrl?: string;
+  goal?: string;
+  enabled?: boolean;
+  checkFrequencyMin?: number;
+  maxRunsPerDay?: number;
+  runnerBaseUrl?: string;
+  runnerApiKey?: string;
+}
+
+// ── Run ──
+
+export interface RunStep {
+  name: string;
+  status: StepStatus;
+  detail?: string;
+  durationMs: number;
+}
+
+export interface ConsoleError {
+  text: string;
+  url?: string;
+  timestamp?: string;
+}
+
+export interface FailedRequest {
+  url: string;
+  status: number;
+  timestamp?: string;
+}
+
+export interface DiagnosticFrame {
+  url: string;
+  inputCount: number;
+  inputs: string[];
+  buttonCount: number;
+  buttons: string[];
+}
+
+export interface Diagnostic {
+  step: string;
+  type?: string;
+  url?: string;
+  title?: string;
+  frameCount?: number;
+  frames?: DiagnosticFrame[];
+  error?: string;
+}
+
+export interface Findings {
+  consoleErrors: ConsoleError[];
+  failedRequests: FailedRequest[];
+  diagnostics: Diagnostic[];
+}
+
+export interface VerdictIssue {
+  severity: IssueSeverity;
+  message: string;
+  details?: string[];
+  humanQA?: boolean;
+}
+
+export interface VerdictSummary {
+  verdict: Verdict;
+  headline: string;
+  forUser: string;
+  forCTO: string;
+  issues: VerdictIssue[];
+}
+
+export interface RunAssets {
+  reportUrl?: string;
+  screenshots?: { label: string; filename: string; path: string }[];
+}
+
+export interface Run {
+  id: string;
+  projectId: string;
+  trigger: Trigger;
+  releaseSignature?: string;
+  status: RunStatus;
+  verdict?: Verdict;
+  verdictSummary?: VerdictSummary;
+  runnerRunId?: string;
+  runnerStatus?: string;
+  steps: RunStep[];
+  findings: Findings;
+  assets?: RunAssets;
+  error: string | null;
+  durationMs: number | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+}
+
+// ── Onboarding state ──
+
+export interface OnboardingData {
+  siteUrl: string;
+  name: string;
+  goal: string;
+  checkFrequencyMin: number;
+  maxRunsPerDay: number;
+  autoTest: boolean;
+}
