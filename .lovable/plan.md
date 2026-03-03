@@ -1,25 +1,22 @@
 
 
-# Fix : liens invisibles dans la sidebar
+# Fix : écran blanc causé par une variable CSS invalide
 
 ## Diagnostic
 
-Le problème est dans les variables CSS. La sidebar a un fond sombre (`--sidebar-background: 220 18% 10%`) mais le texte (`--sidebar-foreground`) est quasi-noir (`265 4% 12.9%`). Texte sombre sur fond sombre = invisible.
-
-Les variables `--sidebar-accent` et `--sidebar-accent-foreground` ont le même problème.
+La variable `--sidebar-border: 0 0% 100% / 10%;` casse le build. Tailwind génère `hsl(var(--sidebar-border))`, et la notation `/ 10%` (alpha) à l'intérieur d'un `hsl()` produit du CSS invalide dans certains contextes de compilation Tailwind. Résultat : le bundle JS n'est pas généré → 404 → écran blanc.
 
 ## Correction
 
-**Fichier `src/index.css`** — Dans le bloc `:root`, remplacer les variables sidebar par des couleurs claires adaptées au fond sombre :
+**Fichier `src/index.css`** (ligne 54) — remplacer la valeur alpha par une couleur HSL simple :
 
 ```css
---sidebar-foreground: 248 0.3% 98.4%;        /* was dark, now light */
---sidebar-primary: 264 24.3% 48.8%;           /* accent violet */
---sidebar-primary-foreground: 248 0.3% 98.4%; /* stays light */
---sidebar-accent: 220 15% 18%;                /* slightly lighter than bg */
---sidebar-accent-foreground: 248 0.3% 98.4%;  /* light text */
---sidebar-border: 0 0% 100% / 10%;            /* subtle light border */
+/* Avant */
+--sidebar-border: 0 0% 100% / 10%;
+
+/* Après — blanc à 20% de luminosité, pas d'alpha */
+--sidebar-border: 220 10% 20%;
 ```
 
-Un seul fichier à modifier, 6 lignes.
+Une seule ligne à changer.
 
