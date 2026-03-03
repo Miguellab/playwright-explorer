@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AppNav } from "@/components/AppNav";
+import { StepActionIcon } from "@/components/StepActionIcon";
 import { StatusBadge } from "@/components/StatusBadge";
 import { getTestRun } from "@/lib/api";
 import type { TestRun } from "@/lib/types";
@@ -117,9 +118,10 @@ export default function RunDetail() {
                       ) : (
                         <span className="w-3.5 shrink-0" />
                       )}
+                      <StepActionIcon action={(step as any).action || ""} />
                       <div className="min-w-0">
-                        <p className="font-mono text-sm truncate">{step.name}</p>
-                        {step.note && <p className="font-mono text-xs text-muted-foreground">{step.note}</p>}
+                        <p className="font-mono text-sm truncate">{(step as any).label || step.name}</p>
+                        {step.detail && <p className="font-mono text-xs text-muted-foreground">{step.detail}</p>}
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0 ml-2">

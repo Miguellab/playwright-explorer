@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 
+import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -198,6 +199,7 @@ export default function RunReport() {
                         ) : (
                           <span className="w-3.5 shrink-0" />
                         )}
+                        <StepActionIcon action={step.action} />
                         <span className="font-mono text-sm truncate">{step.label}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2">
