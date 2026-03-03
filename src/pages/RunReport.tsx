@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getRun, getReportUrl } from "@/lib/sentinelle-api";
+import { getRun, getReportUrl, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
