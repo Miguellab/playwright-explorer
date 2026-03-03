@@ -28,6 +28,8 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronRight,
+  Rocket,
+  Search,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
