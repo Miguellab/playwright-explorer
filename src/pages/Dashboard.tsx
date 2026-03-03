@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { listProjects, toggleProject } from "@/lib/sentinelle-api";
-import type { Project } from "@/lib/sentinelle-types";
+import { VerdictBadge } from "@/components/VerdictBadge";
+import { listProjects, toggleProject, listRuns } from "@/lib/sentinelle-api";
+import type { Project, Run } from "@/lib/sentinelle-types";
 import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
 
 function timeAgo(date: string): string {
@@ -23,6 +24,7 @@ function timeAgo(date: string): string {
 
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [lastRuns, setLastRuns] = useState<Record<string, Run>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
@@ -31,9 +33,23 @@ export default function Dashboard() {
     setLoading(true);
     setError(null);
     listProjects()
-      .then((data) => {
-        if (Array.isArray(data)) setProjects(data);
-        else setProjects([]);
+      .then(async (data) => {
+        const list = Array.isArray(data) ? data : [];
+        setProjects(list);
+        // Fetch last run for each project
+        const runEntries = await Promise.allSettled(
+          list.map(async (p) => {
+            const runs = await listRuns(p.id, 1);
+            return [p.id, runs[0]] as const;
+          })
+        );
+        const runMap: Record<string, Run> = {};
+        for (const entry of runEntries) {
+          if (entry.status === "fulfilled" && entry.value[1]) {
+            runMap[entry.value[0]] = entry.value[1];
+          }
+        }
+        setLastRuns(runMap);
       })
       .catch((err) => {
         setProjects([]);
@@ -154,6 +170,13 @@ export default function Dashboard() {
                         <Badge variant="outline" className="font-mono text-[10px] shrink-0">
                           {project.goal}
                         </Badge>
+                        {lastRuns[project.id]?.verdict ? (
+                          <VerdictBadge verdict={lastRuns[project.id].verdict!} />
+                        ) : (
+                          <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
+                            En attente
+                          </Badge>
+                        )}
                         {!project.enabled && (
                           <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
                             En pause
@@ -172,6 +195,11 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
+                      {lastRuns[project.id]?.verdictSummary?.headline && (
+                        <p className="font-mono text-xs text-muted-foreground truncate">
+                          {lastRuns[project.id].verdictSummary!.headline}
+                        </p>
+                      )}
                     </div>
 
                     {/* Toggle */}

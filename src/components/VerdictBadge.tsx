@@ -1,20 +1,20 @@
 import { cn } from "@/lib/utils";
-import { Shield, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
 import type { Verdict } from "@/lib/sentinelle-types";
 
-const config: Record<Verdict, { label: string; icon: typeof Shield; className: string }> = {
-  SAFE: {
-    label: "SAFE",
-    icon: Shield,
+const config: Record<Verdict, { label: string; icon: typeof CheckCircle; className: string }> = {
+  OK: {
+    label: "OK",
+    icon: CheckCircle,
     className: "bg-status-pass/15 text-status-pass border-status-pass/30",
   },
-  RISKY: {
-    label: "RISKY",
+  ALERTE: {
+    label: "ALERTE",
     icon: AlertTriangle,
     className: "bg-status-skipped/15 text-status-skipped border-status-skipped/30",
   },
-  FAILED: {
-    label: "FAILED",
+  ERREUR: {
+    label: "ERREUR",
     icon: XCircle,
     className: "bg-status-fail/15 text-status-fail border-status-fail/30",
   },
@@ -47,14 +47,14 @@ export function VerdictBadge({
 
 export function VerdictText({ verdict }: { verdict: Verdict }) {
   const texts: Record<Verdict, string> = {
-    SAFE: "Tout est bon, vous pouvez publier en confiance.",
-    RISKY: "Attention, quelque chose pourrait gêner vos utilisateurs.",
-    FAILED: "Votre application n'a pas pu être validée.",
+    OK: "Tout est bon, vous pouvez publier en confiance.",
+    ALERTE: "Attention, quelque chose pourrait gêner vos utilisateurs.",
+    ERREUR: "Votre application n'a pas pu être validée.",
   };
   const colors: Record<Verdict, string> = {
-    SAFE: "text-status-pass",
-    RISKY: "text-status-skipped",
-    FAILED: "text-status-fail",
+    OK: "text-status-pass",
+    ALERTE: "text-status-skipped",
+    ERREUR: "text-status-fail",
   };
   return <p className={cn("font-mono text-sm", colors[verdict])}>{texts[verdict]}</p>;
 }
