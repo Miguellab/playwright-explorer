@@ -1,56 +1,68 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+# Découverte automatique des parcours
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+## Résumé
 
-## Ce qui reste à faire
+Refonte du flow de création de projet : suppression de l'étape "Objectif" obligatoire, remplacement par une découverte automatique post-création qui propose des parcours à surveiller.
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+## Fichiers impactés
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
-
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
-
-### 2. Refonte affichage verdict dans RunReport.tsx
-
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
-
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
+| Fichier | Action |
 |---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+| `sentinelle-types.ts` | Ajouter `SuggestedFlow`, rendre `goal` nullable, ajouter `monitoredFlows`/`suggestedFlows` au `Project` |
+| `sentinelle-api.ts` | Ajouter `discoverFlows()`, rendre `goal` optionnel dans `CreateProjectBody` |
+| `Onboarding.tsx` | Refonte : supprimer step 2 (goal), passer de 3 à 2 steps (App + Surveillance), après soumission rediriger vers `/project/:id/discover` |
+| `DiscoverFlows.tsx` | **Nouvelle page** — affiche le loading pendant le crawl, puis les cards de parcours suggérés avec checkboxes, bouton de confirmation |
+| `App.tsx` | Ajouter route `/project/:id/discover` |
 
-4 fichiers, ~80 lignes modifiées.
+## Détails techniques
+
+### 1. Types — `sentinelle-types.ts`
+
+```ts
+export interface SuggestedFlow {
+  id: string;
+  goal: string;
+  labelFr: string;
+  descriptionFr: string;
+  confidence: number;
+  evidence: string[];
+  ctaText: string | null;
+  pagePath: string | null;
+}
+```
+
+- `Project.goal` : `string` → `string | null`
+- Ajouter `suggestedFlows?: SuggestedFlow[]` et `monitoredFlows?: SuggestedFlow[]` au `Project`
+- `CreateProjectBody.goal` : `string` → `string | undefined` (optionnel)
+
+### 2. API — `sentinelle-api.ts`
+
+Ajouter `discoverFlows(projectId)` qui POST `/projects/:id/discover` et retourne `{ runId, flows, screenshots }`.
+
+### 3. Onboarding — simplification
+
+- **2 steps** : "Application" (nom + URL) → "Surveillance" (fréquence + max runs)
+- Supprimer step "Objectif" (plus de sélection manuelle de goal)
+- Ajouter texte explicatif : "Sentinelle analysera votre site et vous proposera les parcours à surveiller"
+- Après `createProject()` → `navigate(/project/${id}/discover)`
+
+### 4. Nouvelle page `DiscoverFlows.tsx`
+
+- Route : `/project/:id/discover`
+- Au montage : appelle `discoverFlows(projectId)` (30-60s)
+- **État loading** : spinner + "Analyse de votre site en cours..." + progress animation
+- **État résultats** : grille de cards, chaque card contient :
+  - Checkbox (pré-cochée si confidence > 50%)
+  - `labelFr` en titre, `descriptionFr` en description
+  - Badge confiance coloré (vert >70, orange 40-70, gris <40)
+  - `evidence` en petit texte
+  - `ctaText` en surbrillance si présent
+- Screenshots du crawl affichés en aperçu
+- Bouton "Surveiller les parcours sélectionnés" → `updateProject(id, { monitoredFlows, goal })` → redirect `/project/:id`
+
+### 5. Route — `App.tsx`
+
+Ajouter : `<Route path="/project/:id/discover" element={<DiscoverFlows />} />`
 
