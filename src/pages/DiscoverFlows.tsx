@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { discoverFlows, updateProject } from "@/lib/sentinelle-api";
 import type { SuggestedFlow } from "@/lib/sentinelle-types";
-import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PROGRESS_MESSAGES = [
@@ -51,16 +51,19 @@ export default function DiscoverFlows() {
     return () => clearInterval(interval);
   }, [phase]);
 
-  // API call
-  useEffect(() => {
-    if (!id || startedRef.current) return;
+  const startDiscovery = () => {
+    if (!id) return;
     startedRef.current = true;
+    setPhase("loading");
+    setProgress(0);
+    setMessageIdx(0);
 
     discoverFlows(id)
       .then((result) => {
-        setFlows(result);
+        const flowList = result.flows;
+        setFlows(flowList);
         const preSelected = new Set(
-          result.filter((f) => f.confidence > 0.5).map((f) => f.id)
+          flowList.filter((f) => f.confidence >= 50).map((f) => f.id)
         );
         setSelected(preSelected);
         setProgress(100);
@@ -70,6 +73,12 @@ export default function DiscoverFlows() {
         setErrorMsg(err?.message || "Impossible d'analyser le site.");
         setPhase("error");
       });
+  };
+
+  // Initial API call
+  useEffect(() => {
+    if (!id || startedRef.current) return;
+    startDiscovery();
   }, [id]);
 
   const toggleFlow = (flowId: string) => {
@@ -87,9 +96,11 @@ export default function DiscoverFlows() {
     try {
       const selectedFlows = flows.filter((f) => selected.has(f.id));
       const primaryGoal = selectedFlows[0]?.goal;
-      if (primaryGoal) {
-        await updateProject(id, { goal: primaryGoal });
-      }
+      await updateProject(id, {
+        goal: primaryGoal || undefined,
+        suggestedFlows: flows,
+        monitoredFlows: selectedFlows,
+      });
       toast({ title: "Parcours confirmés", description: "La surveillance est configurée." });
       navigate(`/project/${id}`);
     } catch (e: unknown) {
@@ -101,14 +112,14 @@ export default function DiscoverFlows() {
   };
 
   const confidenceColor = (c: number) => {
-    if (c >= 0.7) return "text-status-pass";
-    if (c >= 0.4) return "text-status-skipped";
+    if (c >= 70) return "text-status-pass";
+    if (c >= 40) return "text-status-skipped";
     return "text-muted-foreground";
   };
 
   const confidenceLabel = (c: number) => {
-    if (c >= 0.7) return "Confiance élevée";
-    if (c >= 0.4) return "Confiance moyenne";
+    if (c >= 70) return "Confiance élevée";
+    if (c >= 40) return "Confiance moyenne";
     return "Confiance faible";
   };
 
@@ -155,15 +166,7 @@ export default function DiscoverFlows() {
                   <Button variant="outline" className="font-mono" onClick={() => navigate(-1)}>
                     Retour
                   </Button>
-                  <Button
-                    className="font-mono"
-                    onClick={() => {
-                      startedRef.current = false;
-                      setPhase("loading");
-                      setProgress(0);
-                      setMessageIdx(0);
-                    }}
-                  >
+                  <Button className="font-mono" onClick={startDiscovery}>
                     Réessayer
                   </Button>
                 </div>
@@ -226,9 +229,14 @@ export default function DiscoverFlows() {
                                 </Badge>
                               </div>
                               <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
+                              {flow.ctaText && (
+                                <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
+                                  CTA: {flow.ctaText}
+                                </p>
+                              )}
                               {flow.evidence?.length > 0 && (
                                 <div className="flex flex-wrap gap-1.5">
-                                  {flow.evidence.map((e, i) => (
+                                  {flow.evidence.slice(0, 3).map((e, i) => (
                                     <Badge key={i} variant="secondary" className="font-mono text-[10px]">
                                       {e}
                                     </Badge>
@@ -241,7 +249,7 @@ export default function DiscoverFlows() {
                             </div>
                             <div className="shrink-0 text-right space-y-1">
                               <p className={`font-mono text-sm font-bold ${confidenceColor(flow.confidence)}`}>
-                                {Math.round(flow.confidence * 100)}%
+                                {Math.round(flow.confidence)}%
                               </p>
                               <p className={`font-mono text-[10px] ${confidenceColor(flow.confidence)}`}>
                                 {confidenceLabel(flow.confidence)}
@@ -253,19 +261,29 @@ export default function DiscoverFlows() {
                     })}
                   </div>
 
-                  <Button
-                    onClick={handleConfirm}
-                    disabled={selected.size === 0 || submitting}
-                    className="w-full font-mono"
-                    size="lg"
-                  >
-                    {submitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                    )}
-                    Confirmer {selected.size} parcours et démarrer
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={startDiscovery}
+                      className="font-mono"
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Relancer la découverte
+                    </Button>
+                    <Button
+                      onClick={handleConfirm}
+                      disabled={selected.size === 0 || submitting}
+                      className="flex-1 font-mono"
+                      size="lg"
+                    >
+                      {submitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                      )}
+                      Surveiller {selected.size} parcours sélectionné{selected.size > 1 ? "s" : ""}
+                    </Button>
+                  </div>
                 </>
               )}
             </div>

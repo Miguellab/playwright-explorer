@@ -202,6 +202,18 @@ export default function ProjectDashboard() {
           </div>
         </div>
 
+        {/* Monitored flows summary */}
+        {project.monitoredFlows && project.monitoredFlows.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
+            {project.monitoredFlows.map((flow) => (
+              <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
+                {flow.labelFr}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         {/* Last check info */}
         <div className="mt-2 flex items-center gap-2 text-xs font-mono text-muted-foreground">
           <Clock className="h-3 w-3" />

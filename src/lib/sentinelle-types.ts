@@ -62,6 +62,8 @@ export interface UpdateProjectBody {
   maxRunsPerDay?: number;
   runnerBaseUrl?: string;
   runnerApiKey?: string;
+  suggestedFlows?: SuggestedFlow[];
+  monitoredFlows?: SuggestedFlow[];
 }
 
 // ── Run ──
