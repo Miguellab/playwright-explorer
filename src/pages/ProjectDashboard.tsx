@@ -163,9 +163,11 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              <Badge variant="outline" className="font-mono text-xs">
-                {project.goal}
-              </Badge>
+              {project.goal && (
+                <Badge variant="outline" className="font-mono text-xs">
+                  {project.goal}
+                </Badge>
+              )}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
