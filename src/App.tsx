@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
+import DiscoverFlows from "./pages/DiscoverFlows";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import RunReport from "./pages/RunReport";
 import ProjectSettings from "./pages/ProjectSettings";
