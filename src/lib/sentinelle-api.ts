@@ -4,6 +4,7 @@ import type {
   CreateProjectBody,
   UpdateProjectBody,
   Run,
+  SuggestedFlow,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
