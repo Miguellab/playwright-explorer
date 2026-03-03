@@ -44,7 +44,7 @@ export interface Project {
 export interface CreateProjectBody {
   name: string;
   siteUrl: string;
-  goal: string;
+  goal?: string;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
   runnerBaseUrl: string;
