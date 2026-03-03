@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, ScrollText, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
