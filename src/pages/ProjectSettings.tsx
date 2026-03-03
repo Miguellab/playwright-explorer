@@ -15,13 +15,11 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
