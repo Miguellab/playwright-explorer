@@ -1,84 +1,56 @@
 
 
-# Mise à jour frontend Sentinelle v3
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-5 chantiers, 8 fichiers impactés.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
----
+## Ce qui reste à faire
 
-## 1. API : `deleteProject` + `toggleProject` — `sentinelle-api.ts`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-Ajouter deux fonctions :
-```ts
-export async function deleteProject(id: string): Promise<void> {
-  await request(`/projects/${id}`, { method: "DELETE" });
-}
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-export async function toggleProject(id: string): Promise<Project> {
-  return request(`/projects/${id}/toggle`, { method: "POST" });
-}
-```
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-## 2. Suppression de projet — `ProjectSettings.tsx`
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-En bas de page, après le bouton "Sauvegarder" :
-- Ajouter un `Separator` puis une zone danger avec un bouton rouge "Supprimer le projet"
-- Au clic : ouvrir un `AlertDialog` avec message "Cette action est irréversible. Tous les runs et données seront supprimés."
-- Si confirmé : `deleteProject(id)` → `navigate("/")` → toast "Projet supprimé"
-- Imports à ajouter : `AlertDialog*`, `useNavigate`, `Trash2`, `deleteProject`
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-## 3. Toggle enabled — `Dashboard.tsx` + `ProjectDashboard.tsx`
+### 3. Badge verdict sur les cartes Dashboard
 
-**Dashboard.tsx** :
-- Ajouter un `Switch` à droite de chaque carte projet (à côté du chevron implicite)
-- `onClick` avec `e.preventDefault()` + `e.stopPropagation()` pour ne pas naviguer
-- Appeler `toggleProject(project.id)` et mettre à jour le state local
-- Carte en `opacity-60` quand `enabled: false`
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**ProjectDashboard.tsx** :
-- Ajouter un `Switch` dans le header à côté du nom du projet
-- Même logique : `toggleProject` + mise à jour locale de `project.enabled`
+### 4. Collapsible CTO dans RunReport
 
-## 4. Galerie screenshots — `RunReport.tsx` + `ProjectDashboard.tsx`
-
-**RunReport.tsx** — Nouvelle section après les steps :
-- Si `run.assets?.screenshots?.length > 0`, afficher une Card "Captures d'écran"
-- Grille responsive : `grid grid-cols-1 md:grid-cols-2 gap-4`
-- Chaque screenshot : Card avec `<img>` + label en dessous
-- Clic : ouvrir un `Dialog` avec l'image en plein écran
-
-**ProjectDashboard.tsx** :
-- Si le dernier run a des screenshots, afficher une petite vignette (48x48) dans la carte verdict
-
-## 5. Nettoyage legacy
-
-**Supprimer les fichiers :**
-- `src/pages/Runner.tsx`
-- `src/pages/Runs.tsx`
-- `src/pages/RunDetail.tsx`
-- `src/lib/api.ts`
-- `src/lib/types.ts`
-
-**App.tsx** — Supprimer les 3 routes legacy (`/runner`, `/runs`, `/runs/:id`) et leurs imports.
-
-**AppSidebar.tsx** — Déjà propre (pas de lien legacy).
-
-## 6. Types — `sentinelle-types.ts`
-
-`RunStatus` a déjà `"error"`. `RunAssets` utilise déjà `path`. Rien à changer.
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
 ---
 
-## Résumé des fichiers
+## Fichiers modifiés
 
-| Fichier | Action |
+| Fichier | Changement |
 |---|---|
-| `sentinelle-api.ts` | +2 fonctions |
-| `ProjectSettings.tsx` | Zone danger + AlertDialog suppression |
-| `Dashboard.tsx` | Switch toggle par projet |
-| `ProjectDashboard.tsx` | Switch toggle + vignette screenshot |
-| `RunReport.tsx` | Galerie screenshots + Dialog plein écran |
-| `Runner.tsx`, `Runs.tsx`, `RunDetail.tsx` | Supprimer |
-| `api.ts`, `types.ts` | Supprimer |
-| `App.tsx` | Retirer routes + imports legacy |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
