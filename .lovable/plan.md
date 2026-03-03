@@ -1,39 +1,19 @@
 
 
-## Implémentation du flow Discover
+## Remplacer le point noir par une pastille verdict colorée
 
-Les changements discutés précédemment n'ont jamais été appliqués au code. Voici le plan complet pour les implémenter.
+Le point noir actuel (lignes 158-164 de `Dashboard.tsx`) est statique et n'apporte aucune info. On le remplace par une pastille colorée basée sur le verdict du dernier run.
 
-### 1. Types (`src/lib/sentinelle-types.ts`)
+### Changement unique : `src/pages/Dashboard.tsx`
 
-- Ajouter `SuggestedFlow` interface (id, goal, labelFr, descriptionFr, confidence, evidence, ctaText, pagePath)
-- Rendre `goal` nullable/optionnel dans `Project`
-- Retirer `goal` de `CreateProjectBody` (le goal sera défini après discover)
-- Retirer `goal` de `OnboardingData`
+**Supprimer** le bloc "Status dot" (lignes 158-164) et le remplacer par une pastille colorée dynamique basée sur `lastRuns[project.id]?.verdict` :
 
-### 2. API (`src/lib/sentinelle-api.ts`)
+- **OK** → pastille verte (`bg-status-pass`)
+- **ALERTE** → pastille orange (`bg-status-skipped`)
+- **ERREUR** → pastille rouge (`bg-status-fail`)
+- **Pas de run / projet désactivé** → pastille grise (`bg-muted-foreground/40`)
 
-- Ajouter `discoverFlows(projectId)` : `POST /projects/:id/discover` retournant `{ runId, flows: SuggestedFlow[], screenshots }`
+La pastille reste un simple `div` rond de 2.5 (ou 3) avec la couleur correspondante. Pas de badge texte, juste le point coloré à gauche du nom pour un aperçu visuel immédiat.
 
-### 3. Onboarding simplifié (`src/pages/Onboarding.tsx`)
-
-- Passer de 3 étapes à 2 : **Application** + **Surveillance** (supprimer l'étape "Objectif")
-- Supprimer `listGoals`, `GOAL_META`, `goals`, `selectedGoal`, l'import `Target`
-- `createProject` sans `goal`
-- Après création, rediriger vers `/project/:id/discover` au lieu de `/project/:id`
-- Texte adapté : "Sentinelle analysera automatiquement les parcours"
-
-### 4. Nouvelle page DiscoverFlows (`src/pages/DiscoverFlows.tsx`)
-
-- Loading animé avec barre de progression (30-60s d'attente)
-- Appel `discoverFlows(id)` au mount
-- Affichage des flows en cards cochables avec confidence, evidence, CTA, pagePath
-- Pre-sélection des flows avec confidence > 50%
-- Bouton confirmer : `updateProject(id, { goal: primaryFlow.goal })`
-- Redirige vers `/project/:id` après confirmation
-- Gestion erreur avec retry
-
-### 5. Route (`src/App.tsx`)
-
-- Ajouter `<Route path="/project/:id/discover" element={<DiscoverFlows />} />`
+On pourra aussi retirer le `VerdictBadge` dupliqué (lignes 173-175) puisque la pastille porte déjà l'info — ou le garder si vous souhaitez les deux. Par défaut je garde les deux : pastille couleur + badge texte.
 
