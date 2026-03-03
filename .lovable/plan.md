@@ -1,22 +1,17 @@
 
 
-# Fix : écran blanc causé par une variable CSS invalide
+# Fix : texte "Sentinelle" invisible dans la sidebar
 
 ## Diagnostic
 
-La variable `--sidebar-border: 0 0% 100% / 10%;` casse le build. Tailwind génère `hsl(var(--sidebar-border))`, et la notation `/ 10%` (alpha) à l'intérieur d'un `hsl()` produit du CSS invalide dans certains contextes de compilation Tailwind. Résultat : le bundle JS n'est pas généré → 404 → écran blanc.
+Le logo utilise `text-primary` qui en mode light correspond à `hsl(266 4% 20.8%)` — un gris très foncé, quasi invisible sur le fond sombre de la sidebar (`220 18% 10%`).
 
 ## Correction
 
-**Fichier `src/index.css`** (ligne 54) — remplacer la valeur alpha par une couleur HSL simple :
+**`src/components/AppSidebar.tsx`** (lignes 35 et 37) — remplacer `text-primary` par `text-sidebar-foreground` pour que le texte et l'icône héritent de la couleur claire de la sidebar :
 
-```css
-/* Avant */
---sidebar-border: 0 0% 100% / 10%;
+- Icône Shield : `text-sidebar-foreground`
+- Texte "Sentinelle" : `text-sidebar-foreground`
 
-/* Après — blanc à 20% de luminosité, pas d'alpha */
---sidebar-border: 220 10% 20%;
-```
-
-Une seule ligne à changer.
+2 classes à changer, 1 fichier.
 
