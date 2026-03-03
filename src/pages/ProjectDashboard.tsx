@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 
+import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -286,6 +287,7 @@ export default function ProjectDashboard() {
                         ) : (
                           <span className="w-3 shrink-0" />
                         )}
+                        <StepActionIcon action={step.action} className="h-3 w-3" />
                         <span className="font-mono text-xs truncate">{step.label}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">

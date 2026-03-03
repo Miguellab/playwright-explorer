@@ -342,6 +342,13 @@ export default function Onboarding() {
 
                 </div>
 
+                <div className="rounded-lg border border-dashed p-3 space-y-1.5">
+                  <p className="text-xs text-muted-foreground">• Sentinelle vérifie votre site à la fréquence choisie</p>
+                  <p className="text-xs text-muted-foreground">• Un test est lancé automatiquement si un changement est détecté (nouveau déploiement, contenu modifié)</p>
+                  <p className="text-xs text-muted-foreground">• Le maximum de tests par jour évite de surcharger le système</p>
+                  <p className="text-xs text-muted-foreground">• Les tests manuels (bouton "Tester maintenant") comptent aussi dans le quota quotidien</p>
+                </div>
+
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour

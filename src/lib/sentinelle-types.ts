@@ -54,6 +54,7 @@ export interface UpdateProjectBody {
 // ── Run ──
 
 export interface RunStep {
+  name: string;
   action: string;
   label: string;
   status: StepStatus;
