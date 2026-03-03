@@ -1,32 +1,51 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   createProject,
   healthCheck,
+  discoverFlows,
+  updateProject,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
-import type { OnboardingData } from "@/lib/sentinelle-types";
+import type { OnboardingData, SuggestedFlow } from "@/lib/sentinelle-types";
 import {
   Globe,
+  Target,
   Eye,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Loader2,
   AlertTriangle,
+  Search,
+  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const STEPS = [
   { icon: Globe, label: "Application" },
+  { icon: Target, label: "Objectifs" },
   { icon: Eye, label: "Surveillance" },
+];
+
+const PROGRESS_MESSAGES = [
+  "Chargement de la page d'accueil…",
+  "Détection des liens et boutons…",
+  "Analyse des formulaires…",
+  "Exploration des parcours utilisateur…",
+  "Évaluation des objectifs business…",
+  "Finalisation de l'analyse…",
 ];
 
 export default function Onboarding() {
@@ -35,11 +54,23 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  // Step 0
   const [siteUrl, setSiteUrl] = useState("");
   const [projectName, setProjectName] = useState("");
   const [apiConnected, setApiConnected] = useState<boolean | null>(null);
   const [checkingApi, setCheckingApi] = useState(false);
 
+  // Step 1 — Discovery
+  const [projectId, setProjectId] = useState<string | null>(null);
+  const [phase, setPhase] = useState<"loading" | "results" | "error">("loading");
+  const [flows, setFlows] = useState<SuggestedFlow[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [progress, setProgress] = useState(0);
+  const [messageIdx, setMessageIdx] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
+  const discoveryStarted = useRef(false);
+
+  // Step 2 — Surveillance
   const [data, setData] = useState<OnboardingData>({
     siteUrl: "",
     name: "",
@@ -56,19 +87,49 @@ export default function Onboarding() {
       .finally(() => setCheckingApi(false));
   }, []);
 
-  const canNext = () => {
-    if (step === 0) return siteUrl.startsWith("https://") && projectName.trim().length > 0;
-    return true;
+  // Simulated progress for discovery
+  useEffect(() => {
+    if (step !== 1 || phase !== "loading") return;
+    const interval = setInterval(() => {
+      setProgress((p) => (p >= 95 ? 95 : p + Math.random() * 8 + 2));
+    }, 800);
+    return () => clearInterval(interval);
+  }, [step, phase]);
+
+  useEffect(() => {
+    if (step !== 1 || phase !== "loading") return;
+    const interval = setInterval(() => {
+      setMessageIdx((i) => (i + 1) % PROGRESS_MESSAGES.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [step, phase]);
+
+  const canNextStep0 = siteUrl.startsWith("https://") && projectName.trim().length > 0;
+
+  const startDiscovery = (pid: string) => {
+    discoveryStarted.current = true;
+    setPhase("loading");
+    setProgress(0);
+    setMessageIdx(0);
+
+    discoverFlows(pid)
+      .then((result) => {
+        const flowList = result.flows;
+        setFlows(flowList);
+        const preSelected = new Set(
+          flowList.filter((f) => f.confidence >= 50).map((f) => f.id)
+        );
+        setSelected(preSelected);
+        setProgress(100);
+        setTimeout(() => setPhase("results"), 600);
+      })
+      .catch((err) => {
+        setErrorMsg(err?.message || "Impossible d'analyser le site.");
+        setPhase("error");
+      });
   };
 
-  const handleNext = () => {
-    if (step === 0) {
-      setData(prev => ({ ...prev, siteUrl, name: projectName }));
-      setStep(1);
-    }
-  };
-
-  const handleSubmit = async () => {
+  const handleStep0Next = async () => {
     setSubmitting(true);
     try {
       const project = await createProject({
@@ -79,8 +140,53 @@ export default function Onboarding() {
         runnerBaseUrl: DEFAULT_RUNNER_URL,
         runnerApiKey: DEFAULT_RUNNER_KEY,
       });
-      toast({ title: "Projet créé", description: "Analyse des parcours en cours…" });
-      navigate(`/project/${project.id}/discover`);
+      setProjectId(project.id);
+      setStep(1);
+      startDiscovery(project.id);
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleFlow = (flowId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(flowId)) next.delete(flowId);
+      else next.add(flowId);
+      return next;
+    });
+  };
+
+  const confidenceColor = (c: number) => {
+    if (c >= 70) return "text-status-pass";
+    if (c >= 40) return "text-status-skipped";
+    return "text-muted-foreground";
+  };
+
+  const confidenceLabel = (c: number) => {
+    if (c >= 70) return "Confiance élevée";
+    if (c >= 40) return "Confiance moyenne";
+    return "Confiance faible";
+  };
+
+  const handleFinalSubmit = async () => {
+    if (!projectId) return;
+    setSubmitting(true);
+    try {
+      const selectedFlows = flows.filter((f) => selected.has(f.id));
+      const primaryGoal = selectedFlows[0]?.goal;
+      await updateProject(projectId, {
+        goal: primaryGoal || undefined,
+        suggestedFlows: flows,
+        monitoredFlows: selectedFlows,
+        checkFrequencyMin: data.checkFrequencyMin,
+        maxRunsPerDay: data.maxRunsPerDay,
+      });
+      toast({ title: "Projet configuré", description: "La surveillance est active." });
+      navigate(`/project/${projectId}`);
     } catch (e: unknown) {
       const err = e as Error;
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -125,7 +231,7 @@ export default function Onboarding() {
             })}
           </div>
 
-          {/* Step 1: Connect app */}
+          {/* ─── Step 0: Application ─── */}
           {step === 0 && (
             <Card>
               <CardContent className="p-6 space-y-6">
@@ -180,21 +286,183 @@ export default function Onboarding() {
                   </div>
                 </div>
 
-                <Button onClick={handleNext} disabled={!canNext()} className="w-full font-mono">
+                <Button onClick={handleStep0Next} disabled={!canNextStep0 || submitting} className="w-full font-mono">
+                  {submitting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
                   Continuer <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Step 2: Surveillance */}
+          {/* ─── Step 1: Objectifs (Discovery) ─── */}
           {step === 1 && (
+            <div className="space-y-6">
+              {phase === "loading" && (
+                <div className="space-y-8 text-center">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative">
+                      <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Search className="h-8 w-8 text-primary animate-pulse" />
+                      </div>
+                      <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-primary animate-bounce" />
+                    </div>
+                    <div>
+                      <h2 className="font-mono text-xl font-bold">Analyse en cours</h2>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Sentinelle explore votre site pour détecter les parcours utilisateur…
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-3 max-w-sm mx-auto">
+                    <Progress value={Math.min(progress, 100)} className="h-2" />
+                    <p className="font-mono text-xs text-muted-foreground animate-pulse">
+                      {PROGRESS_MESSAGES[messageIdx]}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {phase === "error" && (
+                <Card>
+                  <CardContent className="p-8 text-center space-y-4">
+                    <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+                    <div>
+                      <p className="font-mono text-sm font-semibold">Analyse impossible</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{errorMsg}</p>
+                    </div>
+                    <div className="flex gap-3 justify-center">
+                      <Button variant="outline" className="font-mono" onClick={() => setStep(0)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+                      </Button>
+                      <Button className="font-mono" onClick={() => projectId && startDiscovery(projectId)}>
+                        Réessayer
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {phase === "results" && (
+                <>
+                  <div className="text-center space-y-1">
+                    <div className="flex items-center justify-center gap-2">
+                      <CheckCircle2 className="h-5 w-5 text-status-pass" />
+                      <h2 className="font-mono text-xl font-bold">
+                        {flows.length} parcours détecté{flows.length > 1 ? "s" : ""}
+                      </h2>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Sélectionnez les parcours que vous souhaitez surveiller.
+                    </p>
+                  </div>
+
+                  {flows.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-8 text-center space-y-3">
+                        <p className="font-mono text-sm text-muted-foreground">
+                          Aucun parcours détecté. Vous pourrez configurer les objectifs manuellement.
+                        </p>
+                        <Button className="font-mono" onClick={() => setStep(2)}>
+                          Continuer <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <>
+                      <div className="space-y-3">
+                        {flows.map((flow) => {
+                          const isSelected = selected.has(flow.id);
+                          return (
+                            <Card
+                              key={flow.id}
+                              className={`cursor-pointer transition-all ${
+                                isSelected
+                                  ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                  : "hover:bg-secondary/30"
+                              }`}
+                              onClick={() => toggleFlow(flow.id)}
+                            >
+                              <CardContent className="flex items-start gap-4 p-5">
+                                <Checkbox
+                                  checked={isSelected}
+                                  onCheckedChange={() => toggleFlow(flow.id)}
+                                  className="mt-1 shrink-0"
+                                />
+                                <div className="flex-1 min-w-0 space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
+                                    <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                                      {flow.goal}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
+                                  {flow.ctaText && (
+                                    <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
+                                      CTA: {flow.ctaText}
+                                    </p>
+                                  )}
+                                  {flow.evidence?.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {flow.evidence.slice(0, 3).map((e, i) => (
+                                        <Badge key={i} variant="secondary" className="font-mono text-[10px]">
+                                          {e}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {flow.pagePath && (
+                                    <p className="font-mono text-[10px] text-muted-foreground">📄 {flow.pagePath}</p>
+                                  )}
+                                </div>
+                                <div className="shrink-0 text-right space-y-1">
+                                  <p className={`font-mono text-sm font-bold ${confidenceColor(flow.confidence)}`}>
+                                    {Math.round(flow.confidence)}%
+                                  </p>
+                                  <p className={`font-mono text-[10px] ${confidenceColor(flow.confidence)}`}>
+                                    {confidenceLabel(flow.confidence)}
+                                  </p>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => projectId && startDiscovery(projectId)}
+                          className="font-mono"
+                        >
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          Relancer
+                        </Button>
+                        <Button
+                          onClick={() => setStep(2)}
+                          disabled={selected.size === 0}
+                          className="flex-1 font-mono"
+                        >
+                          Continuer avec {selected.size} parcours
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ─── Step 2: Surveillance ─── */}
+          {step === 2 && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-mono text-xl font-bold">Surveillance</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Après création, Sentinelle analysera automatiquement les parcours possibles de votre site.
+                    Configurez la fréquence de surveillance pour les {selected.size} parcours sélectionnés.
                   </p>
                 </div>
 
@@ -246,16 +514,16 @@ export default function Onboarding() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(0)} className="font-mono">
+                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour
                   </Button>
-                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 font-mono">
+                  <Button onClick={handleFinalSubmit} disabled={submitting} className="flex-1 font-mono">
                     {submitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Eye className="mr-2 h-4 w-4" />
                     )}
-                    Créer et analyser les parcours
+                    Lancer la surveillance
                   </Button>
                 </div>
               </CardContent>
