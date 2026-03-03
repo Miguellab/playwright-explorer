@@ -1,33 +1,10 @@
 
 
-## Analyse
+## Suppression de la Zone de danger dans ProjectSettings
 
-La suppression de projet est déjà implémentée dans `ProjectSettings.tsx` (zone de danger en bas de page). Le chemin pour y accéder :
+La suppression de projet est maintenant accessible directement depuis le Dashboard via le menu contextuel (⋯). La "Zone de danger" dans `ProjectSettings.tsx` est donc redondante.
 
-1. Dashboard → cliquer sur la carte projet → **ProjectDashboard**
-2. En haut à droite, bouton **"Paramètres"** → **ProjectSettings**
-3. Scroller jusqu'à la **Zone de danger** → bouton rouge **"Supprimer"**
+### Modification
 
-Le flow existe mais il est enfoui (3 clics + scroll). 
-
-## Proposition : accès direct à la suppression depuis le Dashboard
-
-Ajouter un **menu contextuel** (dropdown "⋯") sur chaque carte projet dans `Dashboard.tsx` avec les options :
-- **Paramètres** → lien vers `/project/:id/settings`
-- **Supprimer** → AlertDialog de confirmation directement inline
-
-### Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `Dashboard.tsx` | Ajouter un `DropdownMenu` avec icône `MoreVertical` sur chaque carte, contenant "Paramètres" et "Supprimer" avec AlertDialog de confirmation |
-
-### Détail technique
-
-- Importer `DropdownMenu`, `AlertDialog`, `deleteProject` et icônes `MoreVertical`, `Settings`, `Trash2`
-- Le dropdown se place à droite de la carte, à côté du Switch existant
-- L'option "Supprimer" ouvre un `AlertDialog` identique à celui de `ProjectSettings.tsx`
-- Après suppression : retirer le projet de la liste locale + toast "Projet supprimé"
-
-~40 lignes ajoutées dans `Dashboard.tsx`.
+**`src/pages/ProjectSettings.tsx`** : Supprimer le bloc `<Separator>` + `<Card className="border-destructive/30">` (zone de danger) ainsi que les imports et state devenus inutiles (`deleteProject`, `AlertDialog*`, `Trash2`, `deleting`, `handleDelete`, `navigate`).
 
