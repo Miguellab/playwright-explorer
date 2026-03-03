@@ -1,38 +1,25 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getProject, updateProject, listGoals, deleteProject } from "@/lib/sentinelle-api";
+import { getProject, updateProject, listGoals } from "@/lib/sentinelle-api";
 import type { Project, Goal } from "@/lib/sentinelle-types";
-import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [project, setProject] = useState<Project | null>(null);
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -87,21 +74,6 @@ export default function ProjectSettings() {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      await deleteProject(id);
-      toast({ title: "Projet supprimé", description: "Le projet a été supprimé." });
-      navigate("/");
-    } catch (e: unknown) {
-      const err = e as Error;
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -216,52 +188,6 @@ export default function ProjectSettings() {
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Sauvegarder
             </Button>
-          </CardContent>
-        </Card>
-
-        {/* Zone de danger */}
-        <Card className="mt-8 border-destructive/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-mono text-sm uppercase tracking-wider text-destructive">
-              Zone de danger
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-sm font-semibold">Supprimer le projet</p>
-                <p className="text-xs text-muted-foreground">
-                  Cette action est irréversible. Toutes les données seront perdues.
-                </p>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="font-mono">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-mono">Supprimer le projet ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Vous êtes sur le point de supprimer <strong>{project.name}</strong>. Cette action est irréversible et supprimera toutes les données associées.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
-                    >
-                      {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Supprimer définitivement
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
           </CardContent>
         </Card>
 
