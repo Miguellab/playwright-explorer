@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { listProjects, listRuns } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -27,6 +27,7 @@ function formatDuration(ms: number | null): string {
 export default function Logs() {
   const [rows, setRows] = useState<RunWithProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -81,24 +82,18 @@ export default function Logs() {
             </TableHeader>
             <TableBody>
               {rows.map((run) => (
-                <TableRow key={run.id}>
-                  <TableCell className="font-mono text-xs">
-                    <Link
-                      to={`/project/${run.projectId}/run/${run.id}`}
-                      className="hover:underline"
-                    >
-                      {run.startedAt
-                        ? new Date(run.startedAt).toLocaleString("fr-FR")
-                        : "—"}
-                    </Link>
+                <TableRow
+                  key={run.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/project/${run.projectId}/run/${run.id}`)}
+                >
+                  <TableCell className="font-mono text-xs text-primary font-medium">
+                    {run.startedAt
+                      ? new Date(run.startedAt).toLocaleString("fr-FR")
+                      : "—"}
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    <Link
-                      to={`/project/${run.projectId}`}
-                      className="hover:underline"
-                    >
-                      {run.projectName}
-                    </Link>
+                    {run.projectName}
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={run.status} />
