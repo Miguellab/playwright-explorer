@@ -32,9 +32,9 @@ export function AppSidebar() {
       <SidebarContent>
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-5">
-          <Shield className="h-5 w-5 shrink-0 text-primary" />
+          <Shield className="h-5 w-5 shrink-0 text-sidebar-foreground" />
           {!collapsed && (
-            <span className="font-mono text-sm font-bold tracking-tight text-primary">
+            <span className="font-mono text-sm font-bold tracking-tight text-sidebar-foreground">
               Sentinelle
             </span>
           )}
