@@ -163,9 +163,11 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              <Badge variant="outline" className="font-mono text-xs">
-                {project.goal}
-              </Badge>
+              {project.goal && (
+                <Badge variant="outline" className="font-mono text-xs">
+                  {project.goal}
+                </Badge>
+              )}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
@@ -199,6 +201,18 @@ export default function ProjectDashboard() {
             </Link>
           </div>
         </div>
+
+        {/* Monitored flows summary */}
+        {project.monitoredFlows && project.monitoredFlows.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
+            {project.monitoredFlows.map((flow) => (
+              <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
+                {flow.labelFr}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Last check info */}
         <div className="mt-2 flex items-center gap-2 text-xs font-mono text-muted-foreground">

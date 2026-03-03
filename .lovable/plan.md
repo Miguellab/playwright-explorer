@@ -1,33 +1,56 @@
 
 
-## Plan : Mise à jour complète du système de découverte des parcours
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Problème
-Le code actuel ne correspond pas à la spec API réelle : le format de retour de `discoverFlows` est différent, la confidence est sur 100 (pas 0-1), et les champs `suggestedFlows`/`monitoredFlows` manquent du type Project.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Changements
+## Ce qui reste à faire
 
-#### 1. Types (`src/lib/sentinelle-types.ts`)
-- `SuggestedFlow.confidence` : déjà un `number`, OK (on ajuste les seuils dans le UI pour 0-100)
-- `SuggestedFlow.ctaText` et `pagePath` : passer à `string | null`
-- `Project` : ajouter `suggestedFlows?: SuggestedFlow[]` et `monitoredFlows?: SuggestedFlow[]`
-- `UpdateProjectBody` : ajouter `suggestedFlows?` et `monitoredFlows?`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-#### 2. API (`src/lib/sentinelle-api.ts`)
-- `discoverFlows` retourne maintenant `{ runId, flows, screenshots }` au lieu de `SuggestedFlow[]`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-#### 3. Page DiscoverFlows (`src/pages/DiscoverFlows.tsx`)
-- Adapter au nouveau format de retour (destructurer `{ flows }`)
-- Seuils de confidence sur 100 au lieu de 0-1 (pre-sélection >= 50, couleurs à 70/40)
-- Confirmation : PATCH avec `{ goal, suggestedFlows: flows, monitoredFlows: selectedFlows }`
-- Ajouter bouton "Relancer la découverte" en secondaire
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-#### 4. Dashboard projet (`src/pages/ProjectDashboard.tsx`)
-- Si `project.monitoredFlows` existe, afficher un résumé sous les infos projet (liste des parcours surveillés avec badges)
-- Gérer `goal` nullable (ne pas afficher le badge si vide)
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-#### 5. Dashboard liste (`src/pages/Dashboard.tsx`)
-- Gérer `goal` nullable : ne pas afficher le badge si `project.goal` est vide/null
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-5 fichiers modifiés.
+### 3. Badge verdict sur les cartes Dashboard
+
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

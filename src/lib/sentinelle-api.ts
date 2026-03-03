@@ -94,12 +94,14 @@ export async function getRun(runId: string): Promise<Run> {
   return request(`/runs/${runId}`);
 }
 
-export async function discoverFlows(projectId: string): Promise<SuggestedFlow[]> {
-  const data = await request<{ flows: SuggestedFlow[] } | SuggestedFlow[]>(
-    `/projects/${projectId}/discover`,
-    { method: "POST" }
-  );
-  return Array.isArray(data) ? data : data.flows ?? [];
+export interface DiscoverResult {
+  runId: string;
+  flows: SuggestedFlow[];
+  screenshots: { label: string; filename: string; path: string }[];
+}
+
+export async function discoverFlows(projectId: string): Promise<DiscoverResult> {
+  return request<DiscoverResult>(`/projects/${projectId}/discover`, { method: "POST" });
 }
 
 export async function deleteProject(id: string): Promise<void> {

@@ -173,9 +173,11 @@ export default function Dashboard() {
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
-                        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                          {project.goal}
-                        </Badge>
+                        {project.goal && (
+                          <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                            {project.goal}
+                          </Badge>
+                        )}
                         {lastRuns[project.id]?.verdict ? (
                           <VerdictBadge verdict={lastRuns[project.id].verdict!} />
                         ) : (
