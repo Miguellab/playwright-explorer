@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getProject, updateProject, listGoals, deleteProject } from "@/lib/sentinelle-api";
+import { getProject, updateProject, listGoals } from "@/lib/sentinelle-api";
 import type { Project, Goal } from "@/lib/sentinelle-types";
 import { ArrowLeft, Loader2, Save, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
