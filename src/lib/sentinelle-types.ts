@@ -11,6 +11,17 @@ export interface Goal {
   label: string;
 }
 
+export interface SuggestedFlow {
+  id: string;
+  goal: string;
+  labelFr: string;
+  descriptionFr: string;
+  confidence: number;
+  evidence: string[];
+  ctaText?: string;
+  pagePath?: string;
+}
+
 // ── Project ──
 
 export interface Project {
