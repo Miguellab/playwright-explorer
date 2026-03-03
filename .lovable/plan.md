@@ -1,56 +1,39 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Implémentation du flow Discover
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Les changements discutés précédemment n'ont jamais été appliqués au code. Voici le plan complet pour les implémenter.
 
-## Ce qui reste à faire
+### 1. Types (`src/lib/sentinelle-types.ts`)
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+- Ajouter `SuggestedFlow` interface (id, goal, labelFr, descriptionFr, confidence, evidence, ctaText, pagePath)
+- Rendre `goal` nullable/optionnel dans `Project`
+- Retirer `goal` de `CreateProjectBody` (le goal sera défini après discover)
+- Retirer `goal` de `OnboardingData`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+### 2. API (`src/lib/sentinelle-api.ts`)
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+- Ajouter `discoverFlows(projectId)` : `POST /projects/:id/discover` retournant `{ runId, flows: SuggestedFlow[], screenshots }`
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+### 3. Onboarding simplifié (`src/pages/Onboarding.tsx`)
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+- Passer de 3 étapes à 2 : **Application** + **Surveillance** (supprimer l'étape "Objectif")
+- Supprimer `listGoals`, `GOAL_META`, `goals`, `selectedGoal`, l'import `Target`
+- `createProject` sans `goal`
+- Après création, rediriger vers `/project/:id/discover` au lieu de `/project/:id`
+- Texte adapté : "Sentinelle analysera automatiquement les parcours"
 
-### 3. Badge verdict sur les cartes Dashboard
+### 4. Nouvelle page DiscoverFlows (`src/pages/DiscoverFlows.tsx`)
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+- Loading animé avec barre de progression (30-60s d'attente)
+- Appel `discoverFlows(id)` au mount
+- Affichage des flows en cards cochables avec confidence, evidence, CTA, pagePath
+- Pre-sélection des flows avec confidence > 50%
+- Bouton confirmer : `updateProject(id, { goal: primaryFlow.goal })`
+- Redirige vers `/project/:id` après confirmation
+- Gestion erreur avec retry
 
-### 4. Collapsible CTO dans RunReport
+### 5. Route (`src/App.tsx`)
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+- Ajouter `<Route path="/project/:id/discover" element={<DiscoverFlows />} />`
 
