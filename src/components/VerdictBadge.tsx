@@ -27,7 +27,7 @@ export function VerdictBadge({
   verdict: Verdict;
   size?: "sm" | "lg";
 }) {
-  const c = config[verdict];
+  const c = config[verdict] || config.OK;
   const Icon = c.icon;
   const isLg = size === "lg";
 
@@ -46,15 +46,15 @@ export function VerdictBadge({
 }
 
 export function VerdictText({ verdict }: { verdict: Verdict }) {
-  const texts: Record<Verdict, string> = {
+  const texts: Record<string, string> = {
     OK: "Tout est bon, vous pouvez publier en confiance.",
     ALERTE: "Attention, quelque chose pourrait gêner vos utilisateurs.",
     ERREUR: "Votre application n'a pas pu être validée.",
   };
-  const colors: Record<Verdict, string> = {
+  const colors: Record<string, string> = {
     OK: "text-status-pass",
     ALERTE: "text-status-skipped",
     ERREUR: "text-status-fail",
   };
-  return <p className={cn("font-mono text-sm", colors[verdict])}>{texts[verdict]}</p>;
+  return <p className={cn("font-mono text-sm", colors[verdict] || "text-muted-foreground")}>{texts[verdict] || verdict}</p>;
 }
