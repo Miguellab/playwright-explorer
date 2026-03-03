@@ -28,7 +28,7 @@ export interface Project {
   id: string;
   name: string;
   siteUrl: string;
-  goal: string;
+  goal?: string;
   enabled: boolean;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
