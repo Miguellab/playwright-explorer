@@ -191,51 +191,6 @@ export default function ProjectSettings() {
           </CardContent>
         </Card>
 
-        {/* Danger zone */}
-        <Separator className="my-8" />
-        <Card className="border-destructive/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-mono text-sm uppercase tracking-wider text-destructive">
-              Zone de danger
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-sm font-semibold">Supprimer le projet</p>
-                <p className="text-xs text-muted-foreground">
-                  Supprime definitivement le projet et tous ses runs.
-                </p>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="font-mono">
-                    <Trash2 className="mr-2 h-3 w-3" /> Supprimer
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-mono">Supprimer « {project.name} » ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Cette action est irreversible. Tous les runs et donnees seront supprimes.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
-                    >
-                      {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Supprimer definitivement
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
     </div>
   );
 }
