@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { AppNav } from "@/components/AppNav";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +46,8 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -58,9 +55,7 @@ export default function Dashboard() {
   const hasProjects = !error && projects.length > 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav />
-      <main className="container max-w-4xl py-10">
+    <div className="container max-w-4xl py-10">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -159,7 +154,6 @@ export default function Dashboard() {
             ))}
           </div>
         )}
-      </main>
     </div>
   );
 }

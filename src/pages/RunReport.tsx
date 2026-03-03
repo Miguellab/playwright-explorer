@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { AppNav } from "@/components/AppNav";
+
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +57,7 @@ export default function RunReport() {
       try {
         const updated = await getRun(runId);
         setRun(updated);
-        if (updated.status === "passed" || updated.status === "failed") {
+        if (updated.status === "passed" || updated.status === "failed" || updated.status === "error") {
           clearInterval(interval);
         }
       } catch {
@@ -78,22 +78,16 @@ export default function RunReport() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!run) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="container py-10 text-center font-mono text-muted-foreground">
-          Run introuvable.
-        </div>
+      <div className="container py-10 text-center font-mono text-muted-foreground">
+        Run introuvable.
       </div>
     );
   }
@@ -103,9 +97,7 @@ export default function RunReport() {
   const hasHumanQA = vs?.issues.some((i) => i.humanQA);
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav />
-      <main className="container max-w-4xl py-10">
+    <div className="container max-w-4xl py-10">
         {/* Back */}
         <Link
           to={`/project/${projectId}`}
@@ -474,7 +466,6 @@ export default function RunReport() {
             </Button>
           </div>
         )}
-      </main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AppNav } from "@/components/AppNav";
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -133,10 +133,8 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <AppNav />
-
-      <main className="flex-1 flex items-center justify-center px-4 py-12">
+    <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-lg space-y-8">
           {/* Stepper */}
           <div className="flex items-center justify-center gap-4">
@@ -365,7 +363,7 @@ export default function Onboarding() {
             </Card>
           )}
         </div>
-      </main>
+      </div>
     </div>
   );
 }
