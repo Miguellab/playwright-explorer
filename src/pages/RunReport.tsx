@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getRun, getReportUrl } from "@/lib/sentinelle-api";
+import { getRun, getReportUrl, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
@@ -275,10 +275,10 @@ export default function RunReport() {
                     key={i}
                     type="button"
                     className="rounded-lg border bg-secondary/20 overflow-hidden hover:border-primary/40 transition-colors text-left"
-                    onClick={() => setLightboxSrc(shot.path)}
+                    onClick={() => setLightboxSrc(getScreenshotUrl(shot.path))}
                   >
                     <img
-                      src={shot.path}
+                      src={getScreenshotUrl(shot.path)}
                       alt={shot.label}
                       className="w-full h-auto object-contain"
                       loading="lazy"

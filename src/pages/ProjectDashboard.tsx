@@ -28,6 +28,8 @@ import {
   CalendarClock,
   ChevronDown,
   ChevronRight,
+  Rocket,
+  Search,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -35,6 +37,8 @@ const TRIGGER_LABELS: Record<string, { icon: typeof RotateCcw; label: string }> 
   release_detected: { icon: RotateCcw, label: "Changement detecte" },
   manual: { icon: Hand, label: "Test manuel" },
   scheduled: { icon: CalendarClock, label: "Verification planifiee" },
+  deploy_webhook: { icon: Rocket, label: "Deploy webhook" },
+  discovery: { icon: Search, label: "Découverte" },
 };
 
 function timeAgo(date: string): string {
