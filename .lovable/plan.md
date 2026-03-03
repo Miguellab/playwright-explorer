@@ -1,68 +1,84 @@
 
 
-# Mise à jour du contrat API Sentinelle v2
+# Mise à jour frontend Sentinelle v3
 
-3 axes de changements à appliquer.
+5 chantiers, 8 fichiers impactés.
 
 ---
 
-## 1. Mise à jour des types — `src/lib/sentinelle-types.ts`
+## 1. API : `deleteProject` + `toggleProject` — `sentinelle-api.ts`
 
-Ajouter les champs `name` et `action` à l'interface `RunStep` :
-
+Ajouter deux fonctions :
 ```ts
-interface RunStep {
-  name: string;       // legacy, = label
-  action: string;     // type technique (navigate, screenshot, click_first_match, etc.)
-  label: string;      // texte à afficher
-  status: StepStatus;
-  durationMs?: number;
-  detail?: string;
+export async function deleteProject(id: string): Promise<void> {
+  await request(`/projects/${id}`, { method: "DELETE" });
+}
+
+export async function toggleProject(id: string): Promise<Project> {
+  return request(`/projects/${id}/toggle`, { method: "POST" });
 }
 ```
 
-## 2. Icônes par action dans les steps — nouveau helper + 3 pages
+## 2. Suppression de projet — `ProjectSettings.tsx`
 
-Créer un composant utilitaire `StepActionIcon` dans `src/components/StepActionIcon.tsx` qui mappe `step.action` vers une icône Lucide :
+En bas de page, après le bouton "Sauvegarder" :
+- Ajouter un `Separator` puis une zone danger avec un bouton rouge "Supprimer le projet"
+- Au clic : ouvrir un `AlertDialog` avec message "Cette action est irréversible. Tous les runs et données seront supprimés."
+- Si confirmé : `deleteProject(id)` → `navigate("/")` → toast "Projet supprimé"
+- Imports à ajouter : `AlertDialog*`, `useNavigate`, `Trash2`, `deleteProject`
 
-| action | icône |
-|---|---|
-| `launch_browser` | `Globe` |
-| `navigate` | `ExternalLink` |
-| `screenshot` | `Camera` |
-| `page_audit` | `ClipboardCheck` |
-| `click_first_match` / `click` | `MousePointer` |
-| `check_console` | `Terminal` |
-| `check_network` | `Wifi` |
-| fallback | `CircleDot` |
+## 3. Toggle enabled — `Dashboard.tsx` + `ProjectDashboard.tsx`
 
-Modifier l'affichage des steps dans **3 fichiers** pour ajouter l'icône avant le label :
+**Dashboard.tsx** :
+- Ajouter un `Switch` à droite de chaque carte projet (à côté du chevron implicite)
+- `onClick` avec `e.preventDefault()` + `e.stopPropagation()` pour ne pas naviguer
+- Appeler `toggleProject(project.id)` et mettre à jour le state local
+- Carte en `opacity-60` quand `enabled: false`
 
-- **`src/pages/RunReport.tsx`** (lignes ~191-201) — ajouter `<StepActionIcon>` avant `step.label`
-- **`src/pages/ProjectDashboard.tsx`** (lignes ~279-289) — idem
-- **`src/pages/RunDetail.tsx`** (lignes ~114-121) — idem (page legacy)
+**ProjectDashboard.tsx** :
+- Ajouter un `Switch` dans le header à côté du nom du projet
+- Même logique : `toggleProject` + mise à jour locale de `project.enabled`
 
-## 3. Onboarding étape 3 — texte explicatif
+## 4. Galerie screenshots — `RunReport.tsx` + `ProjectDashboard.tsx`
 
-**`src/pages/Onboarding.tsx`** (lignes ~296-343) — Ajouter sous le titre "Surveillance" un bloc d'explications pour l'utilisateur :
+**RunReport.tsx** — Nouvelle section après les steps :
+- Si `run.assets?.screenshots?.length > 0`, afficher une Card "Captures d'écran"
+- Grille responsive : `grid grid-cols-1 md:grid-cols-2 gap-4`
+- Chaque screenshot : Card avec `<img>` + label en dessous
+- Clic : ouvrir un `Dialog` avec l'image en plein écran
 
-- Sentinelle vérifie le site à la fréquence choisie
-- Un test est lancé automatiquement si un changement est détecté
-- Le max de tests/jour évite la surcharge
-- Les tests manuels comptent dans le quota
+**ProjectDashboard.tsx** :
+- Si le dernier run a des screenshots, afficher une petite vignette (48x48) dans la carte verdict
 
-4 bullet points en texte `text-xs text-muted-foreground` dans une div sous les contrôles existants.
+## 5. Nettoyage legacy
+
+**Supprimer les fichiers :**
+- `src/pages/Runner.tsx`
+- `src/pages/Runs.tsx`
+- `src/pages/RunDetail.tsx`
+- `src/lib/api.ts`
+- `src/lib/types.ts`
+
+**App.tsx** — Supprimer les 3 routes legacy (`/runner`, `/runs`, `/runs/:id`) et leurs imports.
+
+**AppSidebar.tsx** — Déjà propre (pas de lien legacy).
+
+## 6. Types — `sentinelle-types.ts`
+
+`RunStatus` a déjà `"error"`. `RunAssets` utilise déjà `path`. Rien à changer.
 
 ---
 
-## Résumé des fichiers modifiés
+## Résumé des fichiers
 
-| Fichier | Changement |
+| Fichier | Action |
 |---|---|
-| `src/lib/sentinelle-types.ts` | Ajouter `name`, `action` à `RunStep` |
-| `src/components/StepActionIcon.tsx` | **Nouveau** — composant icône par action |
-| `src/pages/RunReport.tsx` | Icône action avant chaque step label |
-| `src/pages/ProjectDashboard.tsx` | Idem |
-| `src/pages/RunDetail.tsx` | Idem |
-| `src/pages/Onboarding.tsx` | Texte explicatif étape 3 |
+| `sentinelle-api.ts` | +2 fonctions |
+| `ProjectSettings.tsx` | Zone danger + AlertDialog suppression |
+| `Dashboard.tsx` | Switch toggle par projet |
+| `ProjectDashboard.tsx` | Switch toggle + vignette screenshot |
+| `RunReport.tsx` | Galerie screenshots + Dialog plein écran |
+| `Runner.tsx`, `Runs.tsx`, `RunDetail.tsx` | Supprimer |
+| `api.ts`, `types.ts` | Supprimer |
+| `App.tsx` | Retirer routes + imports legacy |
 
