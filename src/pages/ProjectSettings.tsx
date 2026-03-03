@@ -191,52 +191,6 @@ export default function ProjectSettings() {
           </CardContent>
         </Card>
 
-        {/* Zone de danger */}
-        <Card className="mt-8 border-destructive/30">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-mono text-sm uppercase tracking-wider text-destructive">
-              Zone de danger
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-mono text-sm font-semibold">Supprimer le projet</p>
-                <p className="text-xs text-muted-foreground">
-                  Cette action est irréversible. Toutes les données seront perdues.
-                </p>
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="destructive" size="sm" className="font-mono">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Supprimer
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="font-mono">Supprimer le projet ?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Vous êtes sur le point de supprimer <strong>{project.name}</strong>. Cette action est irréversible et supprimera toutes les données associées.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
-                    >
-                      {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Supprimer définitivement
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardContent>
-        </Card>
-
     </div>
   );
 }
