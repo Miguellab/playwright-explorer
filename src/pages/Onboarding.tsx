@@ -10,10 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   listGoals,
   createProject,
+  healthCheck,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
-import { getSettings } from "@/lib/api";
 import type { Goal, OnboardingData } from "@/lib/sentinelle-types";
 import {
   Globe,
@@ -69,8 +69,8 @@ export default function Onboarding() {
   // Check service connectivity on mount (Supabase + runner configured)
   useEffect(() => {
     setCheckingApi(true);
-    getSettings()
-      .then((s) => setApiConnected(!!s.external_runner_url))
+    healthCheck()
+      .then(() => setApiConnected(true))
       .catch(() => setApiConnected(false))
       .finally(() => setCheckingApi(false));
   }, []);

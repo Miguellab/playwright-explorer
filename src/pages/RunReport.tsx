@@ -7,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getRun, getReportUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
@@ -21,6 +22,7 @@ import {
   Search,
   UserCheck,
   Terminal,
+  Camera,
 } from "lucide-react";
 
 function formatDuration(ms: number | null): string {
@@ -40,6 +42,7 @@ export default function RunReport() {
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [ctoOpen, setCtoOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   const isRunActive = run && (run.status === "queued" || run.status === "running");
 
@@ -233,6 +236,46 @@ export default function RunReport() {
             )}
           </CardContent>
         </Card>
+
+        {/* Screenshots */}
+        {run.assets?.screenshots && run.assets.screenshots.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="h-3.5 w-3.5" /> Captures d'ecran ({run.assets.screenshots.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {run.assets.screenshots.map((shot, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="rounded-lg border bg-secondary/20 overflow-hidden hover:border-primary/40 transition-colors text-left"
+                    onClick={() => setLightboxSrc(shot.path)}
+                  >
+                    <img
+                      src={shot.path}
+                      alt={shot.label}
+                      className="w-full h-auto object-contain"
+                      loading="lazy"
+                    />
+                    <p className="px-3 py-2 font-mono text-xs text-muted-foreground">{shot.label}</p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Screenshot lightbox */}
+        <Dialog open={!!lightboxSrc} onOpenChange={() => setLightboxSrc(null)}>
+          <DialogContent className="max-w-4xl p-2">
+            {lightboxSrc && (
+              <img src={lightboxSrc} alt="Screenshot" className="w-full h-auto rounded" />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Issues */}
         {hasIssues && vs && (

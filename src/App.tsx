@@ -10,9 +10,6 @@ import ProjectDashboard from "./pages/ProjectDashboard";
 import RunReport from "./pages/RunReport";
 import ProjectSettings from "./pages/ProjectSettings";
 import Logs from "./pages/Logs";
-import Runner from "./pages/Runner";
-import Runs from "./pages/Runs";
-import RunDetail from "./pages/RunDetail";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -34,10 +31,6 @@ const App = () => (
             <Route path="/logs" element={<Logs />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
-          {/* Legacy runner */}
-          <Route path="/runner" element={<Runner />} />
-          <Route path="/runs" element={<Runs />} />
-          <Route path="/runs/:id" element={<RunDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

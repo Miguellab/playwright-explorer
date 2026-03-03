@@ -5,7 +5,8 @@ import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { listProjects } from "@/lib/sentinelle-api";
+import { Switch } from "@/components/ui/switch";
+import { listProjects, toggleProject } from "@/lib/sentinelle-api";
 import type { Project } from "@/lib/sentinelle-types";
 import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
 
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
   const fetchProjects = () => {
     setLoading(true);
@@ -43,6 +45,26 @@ export default function Dashboard() {
   useEffect(() => {
     fetchProjects();
   }, []);
+
+  const handleToggle = async (e: React.MouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTogglingIds((prev) => new Set(prev).add(projectId));
+    try {
+      const updated = await toggleProject(projectId);
+      setProjects((prev) =>
+        prev.map((p) => (p.id === updated.id ? updated : p))
+      );
+    } catch {
+      /* ignore */
+    } finally {
+      setTogglingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(projectId);
+        return next;
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -112,7 +134,10 @@ export default function Dashboard() {
           <div className="mt-8 space-y-3">
             {projects.map((project) => (
               <Link key={project.id} to={`/project/${project.id}`} className="block group">
-                <Card className="transition-all duration-150 group-hover:bg-secondary/30 group-hover:border-primary/20">
+                <Card className={cn(
+                  "transition-all duration-150 group-hover:bg-secondary/30 group-hover:border-primary/20",
+                  !project.enabled && "opacity-60"
+                )}>
                   <CardContent className="flex items-center gap-4 p-5">
                     {/* Status dot */}
                     <div
@@ -131,7 +156,7 @@ export default function Dashboard() {
                         </Badge>
                         {!project.enabled && (
                           <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
-                            Pause
+                            En pause
                           </Badge>
                         )}
                       </div>
@@ -148,6 +173,14 @@ export default function Dashboard() {
                         )}
                       </div>
                     </div>
+
+                    {/* Toggle */}
+                    <div onClick={(e) => handleToggle(e, project.id)}>
+                      <Switch
+                        checked={project.enabled}
+                        disabled={togglingIds.has(project.id)}
+                      />
+                    </div>
                   </CardContent>
                 </Card>
               </Link>
@@ -157,4 +190,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
