@@ -28,7 +28,9 @@ export interface Project {
   id: string;
   name: string;
   siteUrl: string;
-  goal?: string;
+  goal?: string | null;
+  suggestedFlows?: SuggestedFlow[];
+  monitoredFlows?: SuggestedFlow[];
   enabled: boolean;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
