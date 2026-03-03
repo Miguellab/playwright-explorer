@@ -1,56 +1,29 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Onboarding en 3 étapes : Application → Objectifs → Surveillance
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Concept
 
-## Ce qui reste à faire
+Fusionner la logique de `DiscoverFlows.tsx` directement dans `Onboarding.tsx` comme étape 2, au lieu de naviguer vers une page séparée après création du projet.
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### Nouveau flux
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+1. **Étape 0 — Application** : Nom + URL (inchangé)
+2. **Étape 1 — Objectifs** : Créer le projet, lancer `discoverFlows`, afficher le loading animé puis les cards cochables avec les parcours détectés
+3. **Étape 2 — Surveillance** : Fréquence, max tests/jour, auto-test (inchangé mais étape 2 au lieu de 1). Le bouton final confirme les parcours sélectionnés via `updateProject` puis redirige vers `/project/:id`
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### Changements
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+#### `src/pages/Onboarding.tsx`
+- Ajouter l'icône `Target` aux STEPS : `[Globe, Target, Eye]` (Application, Objectifs, Surveillance)
+- Importer `discoverFlows`, `updateProject`, `Checkbox`, `Badge`, `Progress`, etc.
+- Ajouter les states : `flows`, `selected`, `progress`, `messageIdx`, `phase`, `projectId`, `errorMsg`
+- **Étape 0 → "Continuer"** : crée le projet via `createProject`, stocke `projectId`, lance `discoverFlows(projectId)` avec loading animé (progress bar + messages tournants)
+- **Étape 1** : Affiche le loading pendant l'analyse, puis les cards cochables (même UI que `DiscoverFlows.tsx` actuel). Bouton "Continuer" pour passer à l'étape 2 (disabled si aucun flow sélectionné, sauf si 0 flows détectés). Bouton "Relancer" en secondaire
+- **Étape 2** : Config surveillance (inchangée). Le bouton final appelle `updateProject(projectId, { goal, suggestedFlows, monitoredFlows, checkFrequencyMin, maxRunsPerDay })` puis redirige vers `/project/:id`
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+#### `src/pages/DiscoverFlows.tsx`
+- Garder tel quel pour accès standalone via `/project/:id/discover` (relance manuelle depuis le dashboard)
 
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+1 fichier modifié : `Onboarding.tsx`.
 
