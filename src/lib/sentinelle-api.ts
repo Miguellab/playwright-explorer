@@ -115,3 +115,8 @@ export async function toggleProject(id: string): Promise<Project> {
 export function getReportUrl(runId: string): string {
   return `${BASE_URL}/runs/${runId}/report`;
 }
+
+export function getScreenshotUrl(path: string): string {
+  if (path.startsWith("http")) return path;
+  return `${BASE_URL}${path}`;
+}

@@ -275,10 +275,10 @@ export default function RunReport() {
                     key={i}
                     type="button"
                     className="rounded-lg border bg-secondary/20 overflow-hidden hover:border-primary/40 transition-colors text-left"
-                    onClick={() => setLightboxSrc(shot.path)}
+                    onClick={() => setLightboxSrc(getScreenshotUrl(shot.path))}
                   >
                     <img
-                      src={shot.path}
+                      src={getScreenshotUrl(shot.path)}
                       alt={shot.label}
                       className="w-full h-auto object-contain"
                       loading="lazy"
