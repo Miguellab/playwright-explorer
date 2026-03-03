@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, ScrollText, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -31,11 +31,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarContent>
         {/* Logo */}
-        <div className="flex items-center gap-2 px-4 py-5">
-          <Shield className="h-5 w-5 shrink-0 text-sidebar-foreground" />
+        <div className="flex items-center px-4 py-5">
           {!collapsed && (
             <span className="font-mono text-sm font-bold tracking-tight text-sidebar-foreground">
-              Sentinelle
+              SENTINELLE
             </span>
           )}
         </div>
