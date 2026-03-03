@@ -154,7 +154,6 @@ export interface Run {
 export interface OnboardingData {
   siteUrl: string;
   name: string;
-  goal: string;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
   autoTest: boolean;
