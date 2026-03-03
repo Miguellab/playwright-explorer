@@ -18,8 +18,8 @@ export interface SuggestedFlow {
   descriptionFr: string;
   confidence: number;
   evidence: string[];
-  ctaText?: string;
-  pagePath?: string;
+  ctaText: string | null;
+  pagePath: string | null;
 }
 
 // ── Project ──
