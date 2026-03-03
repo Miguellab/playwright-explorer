@@ -98,8 +98,8 @@ export default function RunReport() {
   }
 
   const vs = run.verdictSummary;
-  const hasIssues = vs && vs.issues.length > 0;
-  const hasHumanQA = vs?.issues.some((i) => i.humanQA);
+  const hasIssues = vs && vs.issues && vs.issues.length > 0;
+  const hasHumanQA = vs?.issues?.some((i) => i.humanQA);
 
   return (
     <div className="container max-w-4xl py-10">
