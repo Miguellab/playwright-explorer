@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { AppNav } from "@/components/AppNav";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -79,30 +79,22 @@ export default function ProjectSettings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="container py-10 text-center font-mono text-muted-foreground">
-          Projet introuvable.
-        </div>
+      <div className="container py-10 text-center font-mono text-muted-foreground">
+        Projet introuvable.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav />
-      <main className="container max-w-2xl py-10">
+    <div className="container max-w-2xl py-10">
         <Link
           to={`/project/${project.id}`}
           className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -198,7 +190,6 @@ export default function ProjectSettings() {
             </Button>
           </CardContent>
         </Card>
-      </main>
     </div>
   );
 }

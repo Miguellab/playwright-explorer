@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AppNav } from "@/components/AppNav";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -39,17 +39,15 @@ export default function SettingsPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-background"><AppNav /><div className="flex h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div></div>
+    <div className="flex h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
   );
 
   if (!settings) return (
-    <div className="min-h-screen bg-background"><AppNav /><div className="container py-10 text-center font-mono text-muted-foreground">Failed to load settings.</div></div>
+    <div className="container py-10 text-center font-mono text-muted-foreground">Failed to load settings.</div>
   );
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav />
-      <main className="container max-w-2xl py-10">
+    <div className="container max-w-2xl py-10">
         <h1 className="font-mono text-2xl font-bold">Settings</h1>
 
         <Card className="mt-8">
@@ -119,7 +117,6 @@ export default function SettingsPage() {
             <p>Configure CORS on the runner to allow requests from your Supabase project domain.</p>
           </div>
         </div>
-      </main>
     </div>
   );
 }

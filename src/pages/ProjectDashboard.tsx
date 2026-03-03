@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { AppNav } from "@/components/AppNav";
+
 import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,30 +131,22 @@ export default function ProjectDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="flex h-[60vh] items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-background">
-        <AppNav />
-        <div className="container py-10 text-center font-mono text-muted-foreground">
-          Projet introuvable.
-        </div>
+      <div className="container py-10 text-center font-mono text-muted-foreground">
+        Projet introuvable.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AppNav />
-      <main className="container max-w-4xl py-10">
+    <div className="container max-w-4xl py-10">
         {/* Back */}
         <Link
           to="/"
@@ -370,7 +362,6 @@ export default function ProjectDashboard() {
             )}
           </CardContent>
         </Card>
-      </main>
     </div>
   );
 }
