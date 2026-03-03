@@ -7,11 +7,13 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   getProject,
   listRuns,
   testNow,
   getRun,
+  toggleProject,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
@@ -180,11 +182,22 @@ export default function ProjectDashboard() {
               {project.siteUrl}
             </a>
           </div>
-          <Link to={`/project/${project.id}/settings`}>
-            <Button variant="outline" size="sm" className="font-mono text-xs">
-              <Settings className="h-3 w-3" /> Parametres
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={project.enabled}
+              onCheckedChange={async () => {
+                try {
+                  const updated = await toggleProject(project.id);
+                  setProject(updated);
+                } catch {}
+              }}
+            />
+            <Link to={`/project/${project.id}/settings`}>
+              <Button variant="outline" size="sm" className="font-mono text-xs">
+                <Settings className="h-3 w-3" /> Parametres
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Last check info */}

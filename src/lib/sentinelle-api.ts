@@ -93,6 +93,14 @@ export async function getRun(runId: string): Promise<Run> {
   return request(`/runs/${runId}`);
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  await request(`/projects/${id}`, { method: "DELETE" });
+}
+
+export async function toggleProject(id: string): Promise<Project> {
+  return request(`/projects/${id}/toggle`, { method: "POST" });
+}
+
 export function getReportUrl(runId: string): string {
   return `${BASE_URL}/runs/${runId}/report`;
 }
