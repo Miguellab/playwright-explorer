@@ -1,17 +1,18 @@
 
 
-# Fix : texte "Sentinelle" invisible dans la sidebar
+# Fix : rendre les runs cliquables dans la page Logs
 
 ## Diagnostic
 
-Le logo utilise `text-primary` qui en mode light correspond à `hsl(266 4% 20.8%)` — un gris très foncé, quasi invisible sur le fond sombre de la sidebar (`220 18% 10%`).
+Les liens existent (sur la date), mais ils sont quasi invisibles — pas de couleur distincte, juste un `hover:underline` discret. L'utilisateur ne voit pas qu'on peut cliquer.
 
 ## Correction
 
-**`src/components/AppSidebar.tsx`** (lignes 35 et 37) — remplacer `text-primary` par `text-sidebar-foreground` pour que le texte et l'icône héritent de la couleur claire de la sidebar :
+**`src/pages/Logs.tsx`** — Rendre toute la ligne cliquable en wrappant le `<TableRow>` dans un comportement de navigation, et ajouter un style visuel clair :
 
-- Icône Shield : `text-sidebar-foreground`
-- Texte "Sentinelle" : `text-sidebar-foreground`
+1. Ajouter `onClick` + `cursor-pointer` + `hover:bg-muted/50` sur chaque `<TableRow>` pour naviguer vers `/project/{projectId}/run/{runId}`
+2. Utiliser `useNavigate` de react-router-dom
+3. Garder le lien sur la date mais le rendre plus visible avec `text-primary font-medium`
 
-2 classes à changer, 1 fichier.
+1 fichier, ~10 lignes modifiées.
 
