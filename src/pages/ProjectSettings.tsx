@@ -77,21 +77,6 @@ export default function ProjectSettings() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      await deleteProject(id);
-      toast({ title: "Projet supprime", description: "Le projet et toutes ses donnees ont ete supprimes." });
-      navigate("/");
-    } catch (e: unknown) {
-      const err = e as Error;
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
