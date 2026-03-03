@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AppLayout from "./components/AppLayout";
 import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
+import DiscoverFlows from "./pages/DiscoverFlows";
 import ProjectDashboard from "./pages/ProjectDashboard";
 import RunReport from "./pages/RunReport";
 import ProjectSettings from "./pages/ProjectSettings";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Dashboard />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/project/:id" element={<ProjectDashboard />} />
+            <Route path="/project/:id/discover" element={<DiscoverFlows />} />
             <Route path="/project/:id/run/:runId" element={<RunReport />} />
             <Route path="/project/:id/settings" element={<ProjectSettings />} />
             <Route path="/logs" element={<Logs />} />

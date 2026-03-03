@@ -11,13 +11,24 @@ export interface Goal {
   label: string;
 }
 
+export interface SuggestedFlow {
+  id: string;
+  goal: string;
+  labelFr: string;
+  descriptionFr: string;
+  confidence: number;
+  evidence: string[];
+  ctaText?: string;
+  pagePath?: string;
+}
+
 // ── Project ──
 
 export interface Project {
   id: string;
   name: string;
   siteUrl: string;
-  goal: string;
+  goal?: string;
   enabled: boolean;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
@@ -33,7 +44,7 @@ export interface Project {
 export interface CreateProjectBody {
   name: string;
   siteUrl: string;
-  goal: string;
+  goal?: string;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
   runnerBaseUrl: string;
@@ -143,7 +154,6 @@ export interface Run {
 export interface OnboardingData {
   siteUrl: string;
   name: string;
-  goal: string;
   checkFrequencyMin: number;
   maxRunsPerDay: number;
   autoTest: boolean;

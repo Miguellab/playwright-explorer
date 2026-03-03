@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,16 +7,14 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  listGoals,
   createProject,
   healthCheck,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
-import type { Goal, OnboardingData } from "@/lib/sentinelle-types";
+import type { OnboardingData } from "@/lib/sentinelle-types";
 import {
   Globe,
-  Target,
   Eye,
   ArrowRight,
   ArrowLeft,
@@ -27,16 +24,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const GOAL_META: Record<string, { emoji: string; labelFr: string; descFr: string }> = {
-  SIGNUP: { emoji: "📝", labelFr: "Inscription", descFr: "Vos utilisateurs doivent pouvoir s'inscrire" },
-  BOOK: { emoji: "📅", labelFr: "Réservation", descFr: "Vos utilisateurs doivent pouvoir réserver" },
-  BUY: { emoji: "🛒", labelFr: "Achat", descFr: "Vos utilisateurs doivent pouvoir acheter" },
-  CONTACT: { emoji: "💬", labelFr: "Contact", descFr: "Vos utilisateurs doivent pouvoir vous contacter" },
-};
-
 const STEPS = [
   { icon: Globe, label: "Application" },
-  { icon: Target, label: "Objectif" },
   { icon: Eye, label: "Surveillance" },
 ];
 
@@ -46,27 +35,19 @@ export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  // Step 1
   const [siteUrl, setSiteUrl] = useState("");
   const [projectName, setProjectName] = useState("");
   const [apiConnected, setApiConnected] = useState<boolean | null>(null);
   const [checkingApi, setCheckingApi] = useState(false);
 
-  // Step 2
-  const [goals, setGoals] = useState<Goal[]>([]);
-  const [selectedGoal, setSelectedGoal] = useState("");
-
-  // Step 3
   const [data, setData] = useState<OnboardingData>({
     siteUrl: "",
     name: "",
-    goal: "",
     checkFrequencyMin: 5,
     maxRunsPerDay: 10,
     autoTest: true,
   });
 
-  // Check service connectivity on mount (Supabase + runner configured)
   useEffect(() => {
     setCheckingApi(true);
     healthCheck()
@@ -75,38 +56,15 @@ export default function Onboarding() {
       .finally(() => setCheckingApi(false));
   }, []);
 
-  // Load goals when entering step 2
-  useEffect(() => {
-    if (step === 1 && goals.length === 0) {
-      listGoals()
-        .then(setGoals)
-        .catch(() => {
-          // Fallback goals
-          setGoals([
-            { id: "SIGNUP", label: "Sign Up" },
-            { id: "BOOK", label: "Book / Schedule" },
-            { id: "BUY", label: "Buy / Checkout" },
-            { id: "CONTACT", label: "Contact" },
-          ]);
-        });
-    }
-  }, [step, goals.length]);
-
   const canNext = () => {
     if (step === 0) return siteUrl.startsWith("https://") && projectName.trim().length > 0;
-    if (step === 1) return selectedGoal !== "";
     return true;
   };
 
   const handleNext = () => {
-    if (step < 2) {
-      if (step === 0) {
-        setData(prev => ({ ...prev, siteUrl, name: projectName }));
-      }
-      if (step === 1) {
-        setData(prev => ({ ...prev, goal: selectedGoal }));
-      }
-      setStep(step + 1);
+    if (step === 0) {
+      setData(prev => ({ ...prev, siteUrl, name: projectName }));
+      setStep(1);
     }
   };
 
@@ -116,14 +74,13 @@ export default function Onboarding() {
       const project = await createProject({
         name: projectName.trim(),
         siteUrl: siteUrl.trim(),
-        goal: selectedGoal,
         checkFrequencyMin: data.checkFrequencyMin,
         maxRunsPerDay: data.maxRunsPerDay,
         runnerBaseUrl: DEFAULT_RUNNER_URL,
         runnerApiKey: DEFAULT_RUNNER_KEY,
       });
-      toast({ title: "Projet cree", description: `${project.name} est maintenant surveille.` });
-      navigate(`/project/${project.id}`);
+      toast({ title: "Projet créé", description: "Analyse des parcours en cours…" });
+      navigate(`/project/${project.id}/discover`);
     } catch (e: unknown) {
       const err = e as Error;
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -203,7 +160,6 @@ export default function Onboarding() {
                     )}
                   </div>
 
-                  {/* API status */}
                   <div className="flex items-center gap-2 text-xs font-mono">
                     {checkingApi ? (
                       <>
@@ -213,7 +169,7 @@ export default function Onboarding() {
                     ) : apiConnected ? (
                       <>
                         <CheckCircle2 className="h-3 w-3 text-status-pass" />
-                        <span className="text-status-pass">Service Sentinelle connecte</span>
+                        <span className="text-status-pass">Service Sentinelle connecté</span>
                       </>
                     ) : (
                       <>
@@ -224,79 +180,21 @@ export default function Onboarding() {
                   </div>
                 </div>
 
-                <Button
-                  onClick={handleNext}
-                  disabled={!canNext()}
-                  className="w-full font-mono"
-                >
+                <Button onClick={handleNext} disabled={!canNext()} className="w-full font-mono">
                   Continuer <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* Step 2: Choose goal */}
+          {/* Step 2: Surveillance */}
           {step === 1 && (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <h2 className="font-mono text-xl font-bold">Quel est l'objectif principal ?</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Pas de selecteurs. Pas de configuration. Choisissez juste votre objectif.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {goals.map((goal) => {
-                    const meta = GOAL_META[goal.id] || {
-                      emoji: "🎯",
-                      labelFr: goal.label,
-                      descFr: goal.label,
-                    };
-                    const selected = selectedGoal === goal.id;
-                    return (
-                      <button
-                        key={goal.id}
-                        type="button"
-                        onClick={() => setSelectedGoal(goal.id)}
-                        className={`rounded-lg border p-4 text-left transition-all hover:bg-secondary/50 ${
-                          selected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                            : "border-border"
-                        }`}
-                      >
-                        <span className="text-2xl">{meta.emoji}</span>
-                        <p className="mt-2 font-mono text-sm font-semibold">{meta.labelFr}</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">{meta.descFr}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(0)} className="font-mono">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Retour
-                  </Button>
-                  <Button
-                    onClick={handleNext}
-                    disabled={!canNext()}
-                    className="flex-1 font-mono"
-                  >
-                    Continuer <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Step 3: Surveillance */}
-          {step === 2 && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-mono text-xl font-bold">Surveillance</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Apres chaque publication, Sentinelle verifie votre parcours principal automatiquement.
+                    Après création, Sentinelle analysera automatiquement les parcours possibles de votre site.
                   </p>
                 </div>
 
@@ -305,7 +203,7 @@ export default function Onboarding() {
                     <div>
                       <p className="font-mono text-sm font-semibold">Test automatique</p>
                       <p className="text-xs text-muted-foreground">
-                        Sentinelle detecte les changements automatiquement
+                        Sentinelle détecte les changements automatiquement
                       </p>
                     </div>
                     <Switch
@@ -315,7 +213,7 @@ export default function Onboarding() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="font-mono text-xs">Frequence de verification</Label>
+                    <Label className="font-mono text-xs">Fréquence de vérification</Label>
                     <Select
                       value={String(data.checkFrequencyMin)}
                       onValueChange={(v) => setData(prev => ({ ...prev, checkFrequencyMin: Number(v) }))}
@@ -339,31 +237,25 @@ export default function Onboarding() {
                       className="font-mono text-sm w-24"
                     />
                   </div>
-
                 </div>
 
                 <div className="rounded-lg border border-dashed p-3 space-y-1.5">
                   <p className="text-xs text-muted-foreground">• Sentinelle vérifie votre site à la fréquence choisie</p>
-                  <p className="text-xs text-muted-foreground">• Un test est lancé automatiquement si un changement est détecté (nouveau déploiement, contenu modifié)</p>
+                  <p className="text-xs text-muted-foreground">• Un test est lancé automatiquement si un changement est détecté</p>
                   <p className="text-xs text-muted-foreground">• Le maximum de tests par jour évite de surcharger le système</p>
-                  <p className="text-xs text-muted-foreground">• Les tests manuels (bouton "Tester maintenant") comptent aussi dans le quota quotidien</p>
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
+                  <Button variant="outline" onClick={() => setStep(0)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour
                   </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={submitting}
-                    className="flex-1 font-mono"
-                  >
+                  <Button onClick={handleSubmit} disabled={submitting} className="flex-1 font-mono">
                     {submitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Eye className="mr-2 h-4 w-4" />
                     )}
-                    Demarrer la surveillance
+                    Créer et analyser les parcours
                   </Button>
                 </div>
               </CardContent>

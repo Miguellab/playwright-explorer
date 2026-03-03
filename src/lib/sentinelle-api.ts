@@ -4,6 +4,7 @@ import type {
   CreateProjectBody,
   UpdateProjectBody,
   Run,
+  SuggestedFlow,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
@@ -91,6 +92,14 @@ export async function listRuns(projectId: string, limit = 20): Promise<Run[]> {
 
 export async function getRun(runId: string): Promise<Run> {
   return request(`/runs/${runId}`);
+}
+
+export async function discoverFlows(projectId: string): Promise<SuggestedFlow[]> {
+  const data = await request<{ flows: SuggestedFlow[] } | SuggestedFlow[]>(
+    `/projects/${projectId}/discover`,
+    { method: "POST" }
+  );
+  return Array.isArray(data) ? data : data.flows ?? [];
 }
 
 export async function deleteProject(id: string): Promise<void> {
