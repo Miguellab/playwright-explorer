@@ -1,56 +1,33 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Analyse
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+La suppression de projet est déjà implémentée dans `ProjectSettings.tsx` (zone de danger en bas de page). Le chemin pour y accéder :
 
-## Ce qui reste à faire
+1. Dashboard → cliquer sur la carte projet → **ProjectDashboard**
+2. En haut à droite, bouton **"Paramètres"** → **ProjectSettings**
+3. Scroller jusqu'à la **Zone de danger** → bouton rouge **"Supprimer"**
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+Le flow existe mais il est enfoui (3 clics + scroll). 
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+## Proposition : accès direct à la suppression depuis le Dashboard
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+Ajouter un **menu contextuel** (dropdown "⋯") sur chaque carte projet dans `Dashboard.tsx` avec les options :
+- **Paramètres** → lien vers `/project/:id/settings`
+- **Supprimer** → AlertDialog de confirmation directement inline
 
-### 2. Refonte affichage verdict dans RunReport.tsx
-
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
-
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
+### Fichiers modifiés
 
 | Fichier | Changement |
 |---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+| `Dashboard.tsx` | Ajouter un `DropdownMenu` avec icône `MoreVertical` sur chaque carte, contenant "Paramètres" et "Supprimer" avec AlertDialog de confirmation |
 
-4 fichiers, ~80 lignes modifiées.
+### Détail technique
+
+- Importer `DropdownMenu`, `AlertDialog`, `deleteProject` et icônes `MoreVertical`, `Settings`, `Trash2`
+- Le dropdown se place à droite de la carte, à côté du Switch existant
+- L'option "Supprimer" ouvre un `AlertDialog` identique à celui de `ProjectSettings.tsx`
+- Après suppression : retirer le projet de la liste locale + toast "Projet supprimé"
+
+~40 lignes ajoutées dans `Dashboard.tsx`.
 
