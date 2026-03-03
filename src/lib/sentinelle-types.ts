@@ -1,6 +1,6 @@
 // ── Sentinelle MVP Types ──
 
-export type Verdict = "SAFE" | "RISKY" | "FAILED";
+export type Verdict = "OK" | "ALERTE" | "ERREUR";
 export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled";
@@ -101,6 +101,7 @@ export interface Findings {
 export interface VerdictIssue {
   severity: IssueSeverity;
   message: string;
+  action?: string;
   details?: string[];
   humanQA?: boolean;
 }

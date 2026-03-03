@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge } from "@/components/VerdictBadge";
@@ -110,30 +111,34 @@ export default function RunReport() {
           <ArrowLeft className="h-3 w-3" /> Retour au projet
         </Link>
 
-        {/* Header */}
-        <div className="flex items-start gap-4">
-          <div className="flex-1 space-y-1">
-            {vs ? (
-              <>
-                <div className="flex items-center gap-3">
-                  <VerdictBadge verdict={vs.verdict} size="lg" />
-                </div>
-                <p className="mt-2 font-mono text-sm">{vs.headline}</p>
-              </>
-            ) : (
-              <div className="flex items-center gap-3">
-                <StatusBadge status={run.status} />
-                {isRunActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-              </div>
-            )}
+        {/* Verdict banner */}
+        {vs ? (
+          <div className={cn(
+            "rounded-lg p-6 space-y-3",
+            vs.verdict === "OK" && "bg-status-pass/10 border border-status-pass/30",
+            vs.verdict === "ALERTE" && "bg-status-skipped/10 border border-status-skipped/30",
+            vs.verdict === "ERREUR" && "bg-status-fail/10 border border-status-fail/30",
+          )}>
+            <div className="flex items-center gap-3">
+              <VerdictBadge verdict={vs.verdict} size="lg" />
+            </div>
+            <p className="font-mono text-base font-bold">{vs.headline}</p>
             <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-              <span>Duree : {formatDuration(run.durationMs)}</span>
+              <span>Durée : {formatDuration(run.durationMs)}</span>
               {run.startedAt && (
                 <span>{new Date(run.startedAt).toLocaleString("fr-FR")}</span>
               )}
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <StatusBadge status={run.status} />
+            {isRunActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+            <span className="font-mono text-xs text-muted-foreground">
+              Durée : {formatDuration(run.durationMs)}
+            </span>
+          </div>
+        )}
 
         {/* Error banner */}
         {run.status === "failed" && run.error && (
@@ -150,7 +155,7 @@ export default function RunReport() {
           <Card className="mt-6">
             <CardHeader className="pb-3">
               <CardTitle className="font-mono text-sm uppercase tracking-wider">
-                Resume pour vous
+                Résumé pour vous
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -161,6 +166,24 @@ export default function RunReport() {
                 <Button variant="outline" size="sm" className="font-mono text-xs">
                   <UserCheck className="h-3 w-3 mr-1" /> Demander un QA manuel
                 </Button>
+              )}
+
+              {/* Collapsible CTO details */}
+              {vs.forCTO && (
+                <Collapsible open={ctoOpen} onOpenChange={setCtoOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="font-mono text-xs gap-1.5">
+                      <Terminal className="h-3 w-3" />
+                      Détails techniques
+                      <ChevronDown className={cn("h-3 w-3 transition-transform", ctoOpen && "rotate-180")} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <pre className="mt-3 rounded border bg-secondary/30 p-4 font-mono text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                      {vs.forCTO}
+                    </pre>
+                  </CollapsibleContent>
+                </Collapsible>
               )}
             </CardContent>
           </Card>
@@ -297,7 +320,7 @@ export default function RunReport() {
                         : "border-status-skipped/30 bg-status-skipped/5"
                     }`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge
                         variant="outline"
                         className={`font-mono text-[10px] ${
@@ -311,10 +334,15 @@ export default function RunReport() {
                       <span className="font-mono text-xs">{issue.message}</span>
                       {issue.humanQA && (
                         <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
-                          QA Manuel recommande
+                          QA Manuel recommandé
                         </Badge>
                       )}
                     </div>
+                    {issue.action && (
+                      <p className="font-mono text-xs italic text-muted-foreground pl-1">
+                        → {issue.action}
+                      </p>
+                    )}
                     {issue.details && issue.details.length > 0 && (
                       <ul className="pl-4 space-y-0.5">
                         {issue.details.map((d, di) => (
