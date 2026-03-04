@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
@@ -14,6 +14,7 @@ import {
   testNow,
   getRun,
   toggleProject,
+  deleteProject,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
@@ -30,8 +31,20 @@ import {
   ChevronRight,
   Rocket,
   Search,
+  Trash2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const TRIGGER_LABELS: Record<string, { icon: typeof RotateCcw; label: string }> = {
   release_detected: { icon: RotateCcw, label: "Changement detecte" },
@@ -61,11 +74,13 @@ function formatDuration(ms: number | null): string {
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [activeRun, setActiveRun] = useState<Run | null>(null);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -127,6 +142,20 @@ export default function ProjectDashboard() {
     }
   }, [id, toast]);
 
+  const handleDelete = useCallback(async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deleteProject(id);
+      toast({ title: "Projet supprimé" });
+      navigate("/");
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de supprimer le projet.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  }, [id, toast, navigate]);
+
   const toggleStep = (index: number) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);
@@ -167,26 +196,31 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              {project.goal && (
-                <Badge variant="outline" className="font-mono text-xs">
-                  {project.goal}
-                </Badge>
-              )}
+              {latestRun?.verdict && <VerdictBadge verdict={latestRun.verdict} />}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
                 </Badge>
               )}
             </div>
-            <a
-              href={project.siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {project.siteUrl}
-            </a>
+            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+              <a
+                href={project.siteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {project.siteUrl}
+              </a>
+              {project.lastCheckedAt && (
+                <>
+                  <span>·</span>
+                  <Clock className="h-3 w-3" />
+                  {timeAgo(project.lastCheckedAt)}
+                </>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Switch
@@ -203,6 +237,32 @@ export default function ProjectDashboard() {
                 <Settings className="h-3 w-3" /> Parametres
               </Button>
             </Link>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-mono">Supprimer le projet ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible. Toutes les données et l'historique des tests seront supprimés.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
+                  >
+                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -217,14 +277,6 @@ export default function ProjectDashboard() {
             ))}
           </div>
         )}
-
-        {/* Last check info */}
-        <div className="mt-2 flex items-center gap-2 text-xs font-mono text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          {project.lastCheckedAt
-            ? `Derniere verification ${timeAgo(project.lastCheckedAt)}`
-            : "En attente de la premiere verification..."}
-        </div>
 
         {/* Verdict + Summary + Test button */}
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
