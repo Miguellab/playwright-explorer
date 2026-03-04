@@ -196,26 +196,31 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              {project.goal && (
-                <Badge variant="outline" className="font-mono text-xs">
-                  {project.goal}
-                </Badge>
-              )}
+              {latestRun?.verdict && <VerdictBadge verdict={latestRun.verdict} />}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
                 </Badge>
               )}
             </div>
-            <a
-              href={project.siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" />
-              {project.siteUrl}
-            </a>
+            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+              <a
+                href={project.siteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 hover:text-foreground"
+              >
+                <ExternalLink className="h-3 w-3" />
+                {project.siteUrl}
+              </a>
+              {project.lastCheckedAt && (
+                <>
+                  <span>·</span>
+                  <Clock className="h-3 w-3" />
+                  {timeAgo(project.lastCheckedAt)}
+                </>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <Switch
@@ -232,6 +237,32 @@ export default function ProjectDashboard() {
                 <Settings className="h-3 w-3" /> Parametres
               </Button>
             </Link>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="font-mono">Supprimer le projet ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible. Toutes les données et l'historique des tests seront supprimés.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
+                  >
+                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -246,14 +277,6 @@ export default function ProjectDashboard() {
             ))}
           </div>
         )}
-
-        {/* Last check info */}
-        <div className="mt-2 flex items-center gap-2 text-xs font-mono text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          {project.lastCheckedAt
-            ? `Derniere verification ${timeAgo(project.lastCheckedAt)}`
-            : "En attente de la premiere verification..."}
-        </div>
 
         {/* Verdict + Summary + Test button */}
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
