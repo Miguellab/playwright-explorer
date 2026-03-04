@@ -159,6 +159,11 @@ export interface Run {
 
 // ── Onboarding state ──
 
+export interface TestNowResponse {
+  runs: { runId: string; flow: string; flowId: string; status: string }[];
+  message: string;
+}
+
 export interface OnboardingData {
   siteUrl: string;
   name: string;
