@@ -141,6 +141,8 @@ export interface Run {
   projectId: string;
   trigger: Trigger;
   releaseSignature?: string;
+  flowId?: string;
+  flowLabel?: string;
   status: RunStatus;
   verdict?: Verdict;
   verdictSummary?: VerdictSummary;
