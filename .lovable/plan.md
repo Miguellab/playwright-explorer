@@ -1,56 +1,31 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Réorganisation des cards projets
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Le problème : le `goal` ("SIGNUP") et les `monitoredFlows` ("Inscription", "Connexion") font doublon et la hiérarchie d'information n'est pas claire.
 
-## Ce qui reste à faire
+### Nouvelle structure de chaque card
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+```text
+┌──────────────────────────────────────────────────────┐
+│ ● fit2                              ✓ OK         🔘  │
+│   ↗ sweatsession-start.lovable.app  ⏱ à l'instant    │
+│   [Inscription]  [Connexion]                          │
+└──────────────────────────────────────────────────────┘
+```
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+**Ligne 1** : dot + nom projet + verdict badge + toggle (à droite)
+**Ligne 2** : URL + dernière surveillance
+**Ligne 3** : badges des parcours surveillés (monitoredFlows)
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### Changements dans `src/pages/Dashboard.tsx`
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+Supprimer le badge `goal` et le badge "En attente" de la ligne du nom. Ne garder que :
+- Nom du projet + `VerdictBadge` (ou "En attente" si pas de verdict) + "En pause" si désactivé
+- Supprimer le headline du verdict (`verdictSummary.headline`) — info trop détaillée pour la liste
+- Garder les `monitoredFlows` en dernière ligne
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+Cela élimine la redondance goal/flows et rend la lecture immédiate.
 
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+1 fichier modifié.
 
