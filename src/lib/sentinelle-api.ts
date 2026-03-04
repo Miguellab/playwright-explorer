@@ -5,6 +5,7 @@ import type {
   UpdateProjectBody,
   Run,
   SuggestedFlow,
+  TestNowResponse,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
@@ -81,7 +82,7 @@ export async function updateProject(id: string, body: UpdateProjectBody): Promis
 
 // ── Runs ──
 
-export async function testNow(projectId: string): Promise<{ runId: string; status: string }> {
+export async function testNow(projectId: string): Promise<TestNowResponse> {
   return request(`/projects/${projectId}/test-now`, { method: "POST" });
 }
 

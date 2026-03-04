@@ -4,6 +4,7 @@ import { listProjects, listRuns } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import {
   Table,
@@ -75,6 +76,7 @@ export default function Logs() {
               <TableRow>
                 <TableHead className="font-mono">Date</TableHead>
                 <TableHead className="font-mono">Projet</TableHead>
+                <TableHead className="font-mono">Parcours</TableHead>
                 <TableHead className="font-mono">Statut</TableHead>
                 <TableHead className="font-mono">Verdict</TableHead>
                 <TableHead className="font-mono text-right">Durée</TableHead>
@@ -96,6 +98,15 @@ export default function Logs() {
                     {run.projectName}
                   </TableCell>
                   <TableCell>
+                    {run.flowLabel ? (
+                      <Badge variant="outline" className="font-mono text-[10px]">
+                        {run.flowLabel}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <StatusBadge status={run.status} />
                   </TableCell>
                   <TableCell>
@@ -108,6 +119,11 @@ export default function Logs() {
               ))}
             </TableBody>
           </Table>
+
+          {/* Legend */}
+          <p className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
+            Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
+          </p>
         </div>
       )}
     </div>

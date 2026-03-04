@@ -71,6 +71,26 @@ function formatDuration(ms: number | null): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
+/** Group runs whose startedAt is within 2s of each other */
+function groupRuns(runs: Run[]): Run[][] {
+  if (runs.length === 0) return [];
+  const groups: Run[][] = [];
+  let currentGroup: Run[] = [runs[0]];
+
+  for (let i = 1; i < runs.length; i++) {
+    const prevTime = currentGroup[0].startedAt ? new Date(currentGroup[0].startedAt).getTime() : 0;
+    const currTime = runs[i].startedAt ? new Date(runs[i].startedAt).getTime() : 0;
+    if (prevTime && currTime && Math.abs(prevTime - currTime) <= 2000) {
+      currentGroup.push(runs[i]);
+    } else {
+      groups.push(currentGroup);
+      currentGroup = [runs[i]];
+    }
+  }
+  groups.push(currentGroup);
+  return groups;
+}
+
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -81,12 +101,13 @@ export default function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  const [activeRun, setActiveRun] = useState<Run | null>(null);
+  const [activeRunIds, setActiveRunIds] = useState<string[]>([]);
+  const [activeRuns, setActiveRuns] = useState<Run[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
 
-  const latestRun = activeRun || (runs.length > 0 ? runs[0] : null);
-  const isRunActive = activeRun && (activeRun.status === "queued" || activeRun.status === "running");
+  const latestActiveRun = activeRuns.length > 0 ? activeRuns[0] : null;
+  const latestRun = latestActiveRun || (runs.length > 0 ? runs[0] : null);
+  const hasActiveRuns = activeRuns.some((r) => r.status === "queued" || r.status === "running");
 
   // Load project + runs
   useEffect(() => {
@@ -100,16 +121,18 @@ export default function ProjectDashboard() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Poll active run
+  // Poll active runs
   useEffect(() => {
-    if (!activeRunId || !isRunActive) return;
+    if (activeRunIds.length === 0 || !hasActiveRuns) return;
     const interval = setInterval(async () => {
       try {
-        const updated = await getRun(activeRunId);
-        setActiveRun(updated);
-        if (updated.status === "passed" || updated.status === "failed" || updated.status === "error") {
+        const updated = await Promise.all(activeRunIds.map((rid) => getRun(rid)));
+        setActiveRuns(updated);
+        const allDone = updated.every(
+          (r) => r.status === "passed" || r.status === "failed" || r.status === "error"
+        );
+        if (allDone) {
           clearInterval(interval);
-          // Refresh runs list
           if (id) listRuns(id).then((r) => setRuns(Array.isArray(r) ? r : []));
         }
       } catch {
@@ -117,17 +140,22 @@ export default function ProjectDashboard() {
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [activeRunId, isRunActive, id]);
+  }, [activeRunIds, hasActiveRuns, id]);
 
   const handleTestNow = useCallback(async () => {
     if (!id) return;
     setTesting(true);
     setExpandedSteps(new Set());
     try {
-      const { runId } = await testNow(id);
-      setActiveRunId(runId);
-      const run = await getRun(runId);
-      setActiveRun(run);
+      const response = await testNow(id);
+      const runIds = response.runs.map((r) => r.runId);
+      setActiveRunIds(runIds);
+      const fetchedRuns = await Promise.all(runIds.map((rid) => getRun(rid)));
+      setActiveRuns(fetchedRuns);
+      toast({
+        title: `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} lancé${response.runs.length > 1 ? "s" : ""}`,
+        description: response.message || response.runs.map((r) => r.flow).join(", "),
+      });
     } catch (e: unknown) {
       const err = e as Error & { status?: number };
       if (err.status === 429) {
@@ -180,6 +208,8 @@ export default function ProjectDashboard() {
       </div>
     );
   }
+
+  const runGroups = groupRuns(runs);
 
   return (
     <div className="container max-w-4xl py-10">
@@ -320,11 +350,11 @@ export default function ProjectDashboard() {
             <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
               <Button
                 onClick={handleTestNow}
-                disabled={testing || !!isRunActive}
+                disabled={testing || hasActiveRuns}
                 className="w-full font-mono"
                 size="lg"
               >
-                {testing || isRunActive ? (
+                {testing || hasActiveRuns ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Play className="mr-2 h-4 w-4" />
@@ -340,58 +370,70 @@ export default function ProjectDashboard() {
           </Card>
         </div>
 
-        {/* Live steps during active run */}
-        {activeRun && activeRun.steps && activeRun.steps.length > 0 && (
+        {/* Live steps during active runs */}
+        {activeRuns.length > 0 && activeRuns.some((r) => r.steps && r.steps.length > 0) && (
           <Card className="mt-6">
             <CardHeader className="pb-3">
               <CardTitle className="font-mono text-sm uppercase tracking-wider">
                 Etapes du test
-                {isRunActive && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
+                {hasActiveRuns && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1.5">
-              {activeRun.steps.map((step, i) => {
-                const isExpanded = expandedSteps.has(i);
-                const hasDetail = !!step.detail;
-                return (
-                  <div key={i} className="rounded border bg-secondary/30 overflow-hidden">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
-                      onClick={() => hasDetail && toggleStep(i)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        {hasDetail ? (
-                          isExpanded ? (
-                            <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                          )
-                        ) : (
-                          <span className="w-3 shrink-0" />
-                        )}
-                        <StepActionIcon action={step.action} className="h-3 w-3" />
-                        <span className="font-mono text-xs truncate">{step.label}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
-                        {step.durationMs && step.durationMs > 0 && (
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            {formatDuration(step.durationMs)}
-                          </span>
-                        )}
-                        <StatusBadge status={step.status === "passed" ? "pass" : step.status === "failed" ? "fail" : step.status} />
-                      </div>
-                    </button>
-                    {isExpanded && step.detail && (
-                      <div className="border-t bg-secondary/10 px-3 py-2">
-                        <pre className="font-mono text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
-                          {step.detail}
-                        </pre>
-                      </div>
+            <CardContent className="space-y-3">
+              {activeRuns.map((activeRun) => (
+                activeRun.steps && activeRun.steps.length > 0 && (
+                  <div key={activeRun.id} className="space-y-1.5">
+                    {activeRun.flowLabel && (
+                      <Badge variant="outline" className="font-mono text-[10px] mb-1">
+                        {activeRun.flowLabel}
+                      </Badge>
                     )}
+                    {activeRun.steps.map((step, i) => {
+                      const stepKey = `${activeRun.id}-${i}`;
+                      const isExpanded = expandedSteps.has(i);
+                      const hasDetail = !!step.detail;
+                      return (
+                        <div key={stepKey} className="rounded border bg-secondary/30 overflow-hidden">
+                          <button
+                            type="button"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
+                            onClick={() => hasDetail && toggleStep(i)}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {hasDetail ? (
+                                isExpanded ? (
+                                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                )
+                              ) : (
+                                <span className="w-3 shrink-0" />
+                              )}
+                              <StepActionIcon action={step.action} className="h-3 w-3" />
+                              <span className="font-mono text-xs truncate">{step.label}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              {step.durationMs && step.durationMs > 0 && (
+                                <span className="font-mono text-[10px] text-muted-foreground">
+                                  {formatDuration(step.durationMs)}
+                                </span>
+                              )}
+                              <StatusBadge status={step.status === "passed" ? "pass" : step.status === "failed" ? "fail" : step.status} />
+                            </div>
+                          </button>
+                          {isExpanded && step.detail && (
+                            <div className="border-t bg-secondary/10 px-3 py-2">
+                              <pre className="font-mono text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
+                                {step.detail}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                )
+              ))}
             </CardContent>
           </Card>
         )}
@@ -410,41 +452,58 @@ export default function ProjectDashboard() {
               </p>
             ) : (
               <div className="space-y-2">
-                {runs.map((run) => {
-                  const trigger = TRIGGER_LABELS[run.trigger] || TRIGGER_LABELS.manual;
-                  const TriggerIcon = trigger.icon;
-                  return (
-                    <Link
-                      key={run.id}
-                      to={`/project/${project.id}/run/${run.id}`}
-                      className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3 hover:bg-secondary/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono shrink-0">
-                          <TriggerIcon className="h-3 w-3" />
-                          {trigger.label}
-                        </div>
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {run.startedAt ? new Date(run.startedAt).toLocaleString("fr-FR") : "—"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0 ml-2">
-                        {run.durationMs && (
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {formatDuration(run.durationMs)}
-                          </span>
-                        )}
-                        {run.verdict ? (
-                          <VerdictBadge verdict={run.verdict} />
-                        ) : (
-                          <StatusBadge status={run.status} />
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
+                {runGroups.map((group, gi) => (
+                  <div
+                    key={gi}
+                    className={group.length > 1 ? "border-l-2 border-primary/30 pl-3 space-y-2" : "space-y-2"}
+                  >
+                    {group.map((run) => {
+                      const trigger = TRIGGER_LABELS[run.trigger] || TRIGGER_LABELS.manual;
+                      const TriggerIcon = trigger.icon;
+                      return (
+                        <Link
+                          key={run.id}
+                          to={`/project/${project.id}/run/${run.id}`}
+                          className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3 hover:bg-secondary/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono shrink-0">
+                              <TriggerIcon className="h-3 w-3" />
+                              {trigger.label}
+                            </div>
+                            {run.flowLabel && (
+                              <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                                {run.flowLabel}
+                              </Badge>
+                            )}
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {run.startedAt ? new Date(run.startedAt).toLocaleString("fr-FR") : "—"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 ml-2">
+                            {run.durationMs && (
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {formatDuration(run.durationMs)}
+                              </span>
+                            )}
+                            {run.verdict ? (
+                              <VerdictBadge verdict={run.verdict} />
+                            ) : (
+                              <StatusBadge status={run.status} />
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             )}
+
+            {/* Legend */}
+            <p className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
+              Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
+            </p>
           </CardContent>
         </Card>
     </div>

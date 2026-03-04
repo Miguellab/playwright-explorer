@@ -1,52 +1,56 @@
 
 
-## Plan : Adapter le frontend aux changements backend multi-flow
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### 1. Types (`src/lib/sentinelle-types.ts`)
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-- Ajouter `flowId?: string` et `flowLabel?: string` a l'interface `Run`
-- Ajouter `statusExplanation?: string` et `verdictExplanation?: string` a `VerdictSummary`
-- Creer `TestNowResponse` : `{ runs: { runId: string; flow: string; flowId: string; status: string }[]; message: string }`
+## Ce qui reste à faire
 
-### 2. API (`src/lib/sentinelle-api.ts`)
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-- Modifier le retour de `testNow()` pour renvoyer `TestNowResponse` au lieu de `{ runId, status }`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-### 3. ProjectDashboard (`src/pages/ProjectDashboard.tsx`)
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-- **handleTestNow** : adapter pour recevoir `{ runs: [...] }`, stocker tous les runIds actifs, poll chacun, toast "N tests lances"
-- **Historique des runs** : ajouter un `Badge` avec `run.flowLabel` a cote du verdict/status dans chaque ligne
-- **Groupement visuel** : regrouper les runs dont `startedAt` est dans un intervalle de 2s (bordure gauche coloree ou separateur de groupe)
-- **Legende** : ajouter en bas de la section runs un texte explicatif "Statut = le test s'est-il execute ? | Verdict = votre parcours fonctionne-t-il ?"
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-### 4. Logs (`src/pages/Logs.tsx`)
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-- Ajouter une colonne "Parcours" dans le tableau, affichant `run.flowLabel` en Badge
-- Meme legende en bas du tableau
+### 3. Badge verdict sur les cartes Dashboard
 
-### 5. Badges — distinction Statut vs Verdict
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-- **StatusBadge** (`src/components/StatusBadge.tsx`) : pas de renommage du label (PASS/FAIL reste clair), mais ajouter un support pour un tooltip optionnel (`statusExplanation`)
-- **VerdictBadge** (`src/components/VerdictBadge.tsx`) : idem, support tooltip optionnel (`verdictExplanation`)
-- Dans **RunReport.tsx** : passer `vs.statusExplanation` et `vs.verdictExplanation` en tooltips sur les badges correspondants
+### 4. Collapsible CTO dans RunReport
 
-### 6. Report in-app (`src/pages/RunReport.tsx`)
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-- Remplacer le lien externe `<a href={reportUrl} target="_blank">` (lignes 532-544) par un bouton qui ouvre un `Dialog` plein ecran contenant une `<iframe>` pointant vers `${VITE_SENTINELLE_API_URL}/runs/${runId}/report`
-- Ajouter un bouton "Fermer" dans le Dialog
-- L'iframe charge directement l'URL (le proxy accepte le meme auth)
+---
 
-### 7. Polling multi-runs
+## Fichiers modifiés
 
-Changer le state `activeRunId: string | null` en `activeRunIds: string[]`. Poller tous les runs actifs en parallele. Quand tous sont termines, rafraichir la liste.
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
 
-### Fichiers modifies
-
-1. `src/lib/sentinelle-types.ts`
-2. `src/lib/sentinelle-api.ts`
-3. `src/pages/ProjectDashboard.tsx`
-4. `src/pages/RunReport.tsx`
-5. `src/pages/Logs.tsx`
-6. `src/components/StatusBadge.tsx`
-7. `src/components/VerdictBadge.tsx`
+4 fichiers, ~80 lignes modifiées.
 

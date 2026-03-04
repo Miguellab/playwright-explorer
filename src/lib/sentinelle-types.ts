@@ -127,6 +127,8 @@ export interface VerdictSummary {
   forUser: string;
   forCTO: string;
   issues: VerdictIssue[];
+  statusExplanation?: string;
+  verdictExplanation?: string;
 }
 
 export interface RunAssets {
@@ -139,6 +141,8 @@ export interface Run {
   projectId: string;
   trigger: Trigger;
   releaseSignature?: string;
+  flowId?: string;
+  flowLabel?: string;
   status: RunStatus;
   verdict?: Verdict;
   verdictSummary?: VerdictSummary;
@@ -154,6 +158,11 @@ export interface Run {
 }
 
 // ── Onboarding state ──
+
+export interface TestNowResponse {
+  runs: { runId: string; flow: string; flowId: string; status: string }[];
+  message: string;
+}
 
 export interface OnboardingData {
   siteUrl: string;
