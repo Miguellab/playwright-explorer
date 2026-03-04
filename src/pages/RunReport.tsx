@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
+import { AuthImage } from "@/components/AuthImage";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
