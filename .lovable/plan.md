@@ -1,18 +1,56 @@
 
 
-## Rétablir la configuration du Runner dans les Parametres
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-Remplacer le message info ("La configuration du runner...") par une card editable avec les champs Runner URL et Runner API Key, pré-remplis depuis les variables d'environnement (`DEFAULT_RUNNER_URL`, `DEFAULT_RUNNER_KEY`).
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Changement dans `src/pages/SettingsPage.tsx`
+## Ce qui reste à faire
 
-Remplacer le bloc info (lignes 56-63) par une nouvelle Card "Configuration du Runner" :
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-- **Runner URL** : champ `Input` pré-rempli avec `DEFAULT_RUNNER_URL` depuis `sentinelle-api.ts` (lecture seule pour l'instant, car c'est une variable d'env)
-- **Runner API Key** : champ `Input` type password, pré-rempli avec `DEFAULT_RUNNER_KEY`, masqué par défaut
-- Un texte explicatif : "Ces valeurs par defaut sont utilisees lors de la creation de nouveaux projets."
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Les valeurs proviennent des exports `DEFAULT_RUNNER_URL` et `DEFAULT_RUNNER_KEY` déjà disponibles dans `sentinelle-api.ts`. Ces champs seront en lecture seule (affichage de la config actuelle) car ce sont des variables d'environnement non modifiables depuis le frontend.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-1 fichier modifié : `src/pages/SettingsPage.tsx`.
+### 2. Refonte affichage verdict dans RunReport.tsx
+
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+
+### 3. Badge verdict sur les cartes Dashboard
+
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

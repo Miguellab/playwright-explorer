@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { healthCheck } from "@/lib/sentinelle-api";
+import { healthCheck, DEFAULT_RUNNER_URL, DEFAULT_RUNNER_KEY } from "@/lib/sentinelle-api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, CheckCircle, XCircle } from "lucide-react";
 
@@ -53,14 +53,24 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex items-start gap-3 rounded-lg border border-muted p-4">
-          <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="text-sm text-muted-foreground space-y-2">
-            <p>
-              La configuration du runner et des cles API se fait desormais au niveau de chaque projet dans ses parametres.
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="font-mono text-sm uppercase tracking-wider">Configuration du Runner</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="runner-url" className="font-mono text-xs">Runner URL</Label>
+              <Input id="runner-url" value={DEFAULT_RUNNER_URL} readOnly className="font-mono text-sm bg-muted" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="runner-key" className="font-mono text-xs">Runner API Key</Label>
+              <Input id="runner-key" type="password" value={DEFAULT_RUNNER_KEY} readOnly className="font-mono text-sm bg-muted" />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Ces valeurs par defaut sont utilisees lors de la creation de nouveaux projets.
             </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
     </div>
   );
 }
