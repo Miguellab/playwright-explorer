@@ -130,6 +130,7 @@ export default function RunReport() {
           <div className={cn(
             "rounded-lg p-6 space-y-3",
             vs.verdict === "OK" && "bg-status-pass/10 border border-status-pass/30",
+            vs.verdict === "EN ATTENTE" && "bg-status-pending/10 border border-status-pending/30",
             vs.verdict === "ALERTE" && "bg-status-skipped/10 border border-status-skipped/30",
             vs.verdict === "ERREUR" && "bg-status-fail/10 border border-status-fail/30",
           )}>

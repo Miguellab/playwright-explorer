@@ -44,6 +44,7 @@
     --status-skipped: 45 93% 47%;
     --status-running: 217 91% 60%;
     --status-queued: 215 15% 55%;
+    --status-pending: 25 95% 53%;
 
     --sidebar-background: 220 18% 10%;
     --sidebar-foreground: 248 0.3% 98.4%;

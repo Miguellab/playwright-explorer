@@ -82,13 +82,14 @@ export default {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
-  			status: {
-  				pass: 'hsl(var(--status-pass))',
-  				fail: 'hsl(var(--status-fail))',
-  				skipped: 'hsl(var(--status-skipped))',
-  				running: 'hsl(var(--status-running))',
-  				queued: 'hsl(var(--status-queued))'
-  			},
+   			status: {
+   				pass: 'hsl(var(--status-pass))',
+   				fail: 'hsl(var(--status-fail))',
+   				skipped: 'hsl(var(--status-skipped))',
+   				running: 'hsl(var(--status-running))',
+   				queued: 'hsl(var(--status-queued))',
+   				pending: 'hsl(var(--status-pending))'
+   			},
   			sidebar: {
   				DEFAULT: 'hsl(var(--sidebar-background))',
   				foreground: 'hsl(var(--sidebar-foreground))',
