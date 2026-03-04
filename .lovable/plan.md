@@ -1,32 +1,56 @@
 
 
-## Fix: Images use wrong API key
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-The `useAuthenticatedImage` hook always sends the Sentinelle API key. But screenshots are hosted on the Playwright Runner which requires its own separate key (`VITE_DEFAULT_RUNNER_KEY`).
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Root cause
+## Ce qui reste à faire
 
-- Screenshot URLs point to `playwrightrunner-production.up.railway.app`
-- The hook sends `Authorization: Bearer s#!/nelle2026` (Sentinelle key)
-- The runner expects `Authorization: Bearer super_secret_key_123` (runner key)
-- Result: 401 error, "Image non disponible"
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-### Fix in `src/hooks/use-authenticated-image.ts`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Import the runner base URL and key from env vars. Detect if the URL starts with the runner base URL, and if so, use the runner key instead of the Sentinelle key.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-```ts
-const RUNNER_URL = import.meta.env.VITE_DEFAULT_RUNNER_URL || "";
-const RUNNER_KEY = import.meta.env.VITE_DEFAULT_RUNNER_KEY || "";
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-// In the fetch:
-const isRunnerUrl = RUNNER_URL && url.startsWith(RUNNER_URL);
-const token = isRunnerUrl ? RUNNER_KEY : API_KEY;
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-fetch(url, {
-  headers: token ? { Authorization: `Bearer ${token}` } : {},
-})
-```
+### 3. Badge verdict sur les cartes Dashboard
 
-No other files need to change. Just reload the page after the fix to test.
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
