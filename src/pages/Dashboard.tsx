@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { listProjects, toggleProject, listRuns } from "@/lib/sentinelle-api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { listProjects, toggleProject, listRuns, deleteProject } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
-import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck, MoreVertical, Settings, Trash2 } from "lucide-react";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -23,11 +40,14 @@ function timeAgo(date: string): string {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<Project[]>([]);
   const [lastRuns, setLastRuns] = useState<Record<string, Run>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchProjects = () => {
     setLoading(true);
@@ -56,6 +76,20 @@ export default function Dashboard() {
         setError(err?.message || "Impossible de charger les projets.");
       })
       .finally(() => setLoading(false));
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteProject(deleteTarget.id);
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+      /* ignore */
+    } finally {
+      setDeleting(false);
+    }
   };
 
   useEffect(() => {
@@ -208,12 +242,30 @@ export default function Dashboard() {
                       )}
                     </div>
 
-                    {/* Toggle */}
-                    <div onClick={(e) => handleToggle(e, project.id)}>
-                      <Switch
-                        checked={project.enabled}
-                        disabled={togglingIds.has(project.id)}
-                      />
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div onClick={(e) => handleToggle(e, project.id)}>
+                        <Switch
+                          checked={project.enabled}
+                          disabled={togglingIds.has(project.id)}
+                        />
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                          <DropdownMenuItem onClick={() => navigate(`/project/${project.id}/settings`)} className="font-mono text-xs">
+                            <Settings className="h-3.5 w-3.5 mr-2" /> Paramètres
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => setDeleteTarget(project)} className="font-mono text-xs text-destructive focus:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
@@ -221,6 +273,25 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+
+        {/* Delete confirmation */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-mono">Supprimer {deleteTarget?.name} ?</AlertDialogTitle>
+              <AlertDialogDescription className="font-mono text-sm">
+                Cette action est irréversible. Tous les runs et données associés seront supprimés.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="font-mono" disabled={deleting}>Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono">
+                {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Supprimer
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
