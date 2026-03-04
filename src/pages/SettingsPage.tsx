@@ -124,14 +124,23 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="runner-key" className="font-mono text-xs">Runner API Key</Label>
-              <Input
-                id="runner-key"
-                type="password"
-                value={runnerKey}
-                onChange={(e) => setRunnerKey(e.target.value)}
-                className="font-mono text-sm"
-                placeholder="Clé API du runner"
-              />
+              <div className="relative">
+                <Input
+                  id="runner-key"
+                  type={showRunnerKey ? "text" : "password"}
+                  value={runnerKey}
+                  onChange={(e) => setRunnerKey(e.target.value)}
+                  className="font-mono text-sm pr-10"
+                  placeholder="Clé API du runner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRunnerKey((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showRunnerKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <Button onClick={handleSave} disabled={saving} className="mt-2">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
