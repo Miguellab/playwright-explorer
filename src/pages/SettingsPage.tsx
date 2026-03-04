@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { healthCheck } from "@/lib/sentinelle-api";
+import { healthCheck, DEFAULT_RUNNER_URL, DEFAULT_RUNNER_KEY } from "@/lib/sentinelle-api";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Info, CheckCircle, XCircle } from "lucide-react";
 
