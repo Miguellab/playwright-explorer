@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 
-import { getProject, updateProject, getSettings, updateSettings } from "@/lib/sentinelle-api";
+import { getProject, updateProject } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
 import { ArrowLeft, Loader2, Save, ShieldAlert, Sparkles, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
