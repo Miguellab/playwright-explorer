@@ -78,6 +78,20 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await deleteProject(deleteTarget.id);
+      setProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch {
+      /* ignore */
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   useEffect(() => {
     fetchProjects();
   }, []);
