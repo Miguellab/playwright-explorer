@@ -156,7 +156,7 @@ export default function RunReport() {
         )}
 
         {/* Summary for user */}
-        {vs && (
+        {vs && vs.forUser && (
           <Card className="mt-6">
             <CardHeader className="pb-3">
               <CardTitle className="font-mono text-sm uppercase tracking-wider">
