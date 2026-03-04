@@ -1,56 +1,37 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Plan : Section "Configuration IA" + badge analyse dans ProjectSettings
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### 1. Types (`src/lib/sentinelle-types.ts`)
 
-## Ce qui reste à faire
+- Ajouter `discoveryMeta?: { analysisMode?: string }` a l'interface `Project`
+- Ajouter interface `SentinelleSettings` : `{ hasAnthropicApiKey: boolean; anthropicApiKey?: string }`
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### 2. API (`src/lib/sentinelle-api.ts`)
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+- `getSettings()` : GET `/settings` → `SentinelleSettings`
+- `updateSettings(body)` : PATCH `/settings` → `SentinelleSettings`
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### 3. ProjectSettings.tsx — Section "Intelligence Artificielle"
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+Nouvelle Card apres la card projet existante :
+- Titre avec icone `Sparkles` + badge "Configuree" (vert) ou "Non configuree" (gris) selon `hasAnthropicApiKey`
+- Champ Input type password pour la cle Anthropic, avec bouton toggle oeil pour visibilite
+- Au chargement : appel `getSettings()`, si `hasAnthropicApiKey` afficher la cle masquee retournee
+- Texte d'aide sous le champ
+- Bouton "Sauvegarder la cle" qui appelle `updateSettings({ anthropicApiKey })`
+- State separe : `anthropicKey`, `hasAnthropicKey`, `showKey`, `savingKey`
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+### 4. ProjectSettings.tsx — Badge analyse sur parcours decouverts
 
-### 3. Badge verdict sur les cartes Dashboard
+Dans le label "Parcours surveilles" :
+- Si `project.discoveryMeta?.analysisMode === "dom+vision"` → Badge violet "Analyse par IA"
+- Si `"dom-only"` → Badge gris "Analyse basique"
+- Sinon rien
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+### Fichiers modifies
 
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+1. `src/lib/sentinelle-types.ts`
+2. `src/lib/sentinelle-api.ts`
+3. `src/pages/ProjectSettings.tsx`
 
