@@ -20,6 +20,7 @@ export interface SuggestedFlow {
   evidence: string[];
   ctaText: string | null;
   pagePath: string | null;
+  requiresCredentials?: boolean;
 }
 
 // ── Project ──
