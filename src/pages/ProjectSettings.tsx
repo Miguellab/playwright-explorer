@@ -43,6 +43,11 @@ export default function ProjectSettings() {
         setMaxRunsPerDay(p.maxRunsPerDay);
         const monitoredIds = new Set((p.monitoredFlows ?? []).map((f) => f.id));
         setSelectedFlowIds(monitoredIds);
+        const creds: Record<string, { email: string; password: string }> = {};
+        (p.monitoredFlows ?? []).forEach((f) => {
+          if (f.credentials) creds[f.id] = { ...f.credentials };
+        });
+        setFlowCredentials(creds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
