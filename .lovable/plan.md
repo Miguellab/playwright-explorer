@@ -1,56 +1,48 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Plan : Verdict "EN ATTENTE" + formulaire credentials par parcours
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Ce plan couvre 5 changements : le nouveau verdict, les types, le badge, le formulaire de credentials sur le dashboard projet, et les credentials dans les settings projet.
 
-## Ce qui reste à faire
+### 1. Types (`src/lib/sentinelle-types.ts`)
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+- Ajouter `"EN ATTENTE"` au type `Verdict`
+- Ajouter `credentials?: { email: string; password: string }` a `SuggestedFlow`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+### 2. Couleur CSS (`src/index.css`)
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+- Ajouter `--status-pending: 25 95% 53%` (amber/orange) dans `:root` et le theme dark
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+### 3. VerdictBadge (`src/components/VerdictBadge.tsx`)
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+- Importer `Clock` depuis lucide-react
+- Ajouter l'entree `"EN ATTENTE"` dans `config` : icone Clock, couleur `status-pending`, label "EN ATTENTE"
+- Ajouter le texte correspondant dans `VerdictText` : "Ce parcours necessite des identifiants pour un test complet."
 
-### 3. Badge verdict sur les cartes Dashboard
+### 4. RunReport verdict banner (`src/pages/RunReport.tsx`)
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+- Ajouter le cas `"EN ATTENTE"` dans le `cn()` du verdict banner (ligne 131-134) : `bg-amber-500/10 border-amber-500/30`
 
-### 4. Collapsible CTO dans RunReport
+### 5. ProjectDashboard — Credentials inline (`src/pages/ProjectDashboard.tsx`)
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+Apres le bloc "Monitored flows summary" (ligne 300-309), transformer la liste des flows monitores pour afficher pour chaque flow :
+- Si `requiresCredentials && !credentials` : bandeau orange avec message + formulaire inline (email + password + bouton "Enregistrer les identifiants"). Au submit : `PATCH /projects/:id` avec `monitoredFlows` mis a jour incluant les credentials. Apres succes : check vert "Identifiants enregistres" + bouton "Relancer le test"
+- Si `requiresCredentials && credentials` : indication discrete "Identifiants configures" (cadenas vert) + bouton "Modifier"
+- State local : `credentialsForms: Record<flowId, { email, password, editing, saving }>` 
 
----
+### 6. ProjectSettings — Credentials par parcours (`src/pages/ProjectSettings.tsx`)
 
-## Fichiers modifiés
+Dans la liste des `suggestedFlows` (lignes 163-185), pour les flows avec `requiresCredentials: true` et qui sont selectionnes :
+- Ajouter sous le label du flow deux champs email/password pre-remplis depuis `flow.credentials`
+- State : `flowCredentials: Record<flowId, { email, password }>`
+- Initialiser depuis `monitoredFlows` au chargement
+- Dans `handleSave`, merger les credentials dans les `monitoredFlows` envoyees au PATCH
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichiers modifies
+1. `src/lib/sentinelle-types.ts`
+2. `src/index.css`
+3. `src/components/VerdictBadge.tsx`
+4. `src/pages/RunReport.tsx`
+5. `src/pages/ProjectDashboard.tsx`
+6. `src/pages/ProjectSettings.tsx`
 
