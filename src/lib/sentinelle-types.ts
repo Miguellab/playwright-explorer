@@ -127,6 +127,8 @@ export interface VerdictSummary {
   forUser: string;
   forCTO: string;
   issues: VerdictIssue[];
+  statusExplanation?: string;
+  verdictExplanation?: string;
 }
 
 export interface RunAssets {
