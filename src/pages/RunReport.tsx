@@ -298,7 +298,7 @@ export default function RunReport() {
         <Dialog open={!!lightboxSrc} onOpenChange={() => setLightboxSrc(null)}>
           <DialogContent className="max-w-4xl p-2">
             {lightboxSrc && (
-              <img src={lightboxSrc} alt="Screenshot" className="w-full h-auto rounded" />
+              <AuthImage url={lightboxSrc} alt="Screenshot" className="rounded" />
             )}
           </DialogContent>
         </Dialog>
