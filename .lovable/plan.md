@@ -1,47 +1,56 @@
 
 
-## Probleme
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-Les screenshots sont servis par l'API Sentinelle qui requiert un header `Authorization: Bearer ...`. Un `<img src="...">` ne peut pas envoyer de headers custom, donc l'image echoue systematiquement.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-## Solution
+## Ce qui reste à faire
 
-Creer un hook `useAuthenticatedImage` qui :
-1. Fait un `fetch` avec le header Authorization vers l'URL du screenshot
-2. Convertit la reponse en blob URL (`URL.createObjectURL`)
-3. Utilise ce blob URL comme `src` de l'image
-4. Nettoie le blob URL au unmount (`URL.revokeObjectURL`)
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-### Fichiers modifies
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**`src/hooks/use-authenticated-image.ts`** (nouveau)
-- Hook qui prend une URL, fait le fetch avec API key, retourne `{ src, loading, error }`
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**`src/pages/RunReport.tsx`**
-- Remplacer les `<img src={getScreenshotUrl(shot.path)}>` par un composant `AuthImage` qui utilise le hook
-- Creer un petit composant `AuthImage` inline ou separe qui affiche un skeleton pendant le chargement et le placeholder "Image non disponible" en cas d'erreur
-- Meme chose pour le lightbox
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-### Detail du hook
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-```ts
-function useAuthenticatedImage(url: string) {
-  const [src, setSrc] = useState<string | null>(null);
-  const [error, setError] = useState(false);
+### 3. Badge verdict sur les cartes Dashboard
 
-  useEffect(() => {
-    let revoke: string | null = null;
-    fetch(url, { headers: { Authorization: `Bearer ${API_KEY}` } })
-      .then(r => r.ok ? r.blob() : Promise.reject())
-      .then(blob => {
-        revoke = URL.createObjectURL(blob);
-        setSrc(revoke);
-      })
-      .catch(() => setError(true));
-    return () => { if (revoke) URL.revokeObjectURL(revoke); };
-  }, [url]);
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-  return { src, loading: !src && !error, error };
-}
-```
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
