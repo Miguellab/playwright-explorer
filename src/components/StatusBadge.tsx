@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { RunStatus, StepStatus } from "@/lib/sentinelle-types";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   pass: { label: "PASS", className: "bg-status-pass/15 text-status-pass border-status-pass/30" },
@@ -12,12 +12,23 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   error: { label: "ERROR", className: "bg-status-fail/15 text-status-fail border-status-fail/30" },
 };
 
-export function StatusBadge({ status }: { status: string }) {
+export function StatusBadge({ status, explanation }: { status: string; explanation?: string }) {
   const config = statusConfig[status] || statusConfig.queued;
-  return (
+  const badge = (
     <span className={cn("inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-wider", config.className)}>
       {status === "running" && <span className="h-1.5 w-1.5 rounded-full bg-status-running animate-pulse-dot" />}
       {config.label}
     </span>
+  );
+
+  if (!explanation) return badge;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent className="max-w-xs font-mono text-xs">{explanation}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

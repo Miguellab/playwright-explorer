@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { Verdict } from "@/lib/sentinelle-types";
 
 const config: Record<Verdict, { label: string; icon: typeof CheckCircle; className: string }> = {
@@ -23,15 +24,17 @@ const config: Record<Verdict, { label: string; icon: typeof CheckCircle; classNa
 export function VerdictBadge({
   verdict,
   size = "sm",
+  explanation,
 }: {
   verdict: Verdict;
   size?: "sm" | "lg";
+  explanation?: string;
 }) {
   const c = config[verdict] || config.OK;
   const Icon = c.icon;
   const isLg = size === "lg";
 
-  return (
+  const badge = (
     <span
       className={cn(
         "inline-flex items-center gap-1.5 rounded border font-mono font-semibold uppercase tracking-wider",
@@ -42,6 +45,17 @@ export function VerdictBadge({
       <Icon className={isLg ? "h-5 w-5" : "h-3.5 w-3.5"} />
       {c.label}
     </span>
+  );
+
+  if (!explanation) return badge;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>{badge}</TooltipTrigger>
+        <TooltipContent className="max-w-xs font-mono text-xs">{explanation}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 

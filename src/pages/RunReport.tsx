@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getRun, getReportUrl, getScreenshotUrl } from "@/lib/sentinelle-api";
+import { getRun, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
@@ -25,7 +25,10 @@ import {
   UserCheck,
   Terminal,
   Camera,
+  X,
 } from "lucide-react";
+
+const REPORT_BASE = import.meta.env.VITE_SENTINELLE_API_URL || "";
 
 function formatDuration(ms: number | null): string {
   if (!ms) return "—";
@@ -45,6 +48,7 @@ export default function RunReport() {
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [ctoOpen, setCtoOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const isRunActive = run && (run.status === "queued" || run.status === "running");
 
@@ -112,6 +116,15 @@ export default function RunReport() {
           <ArrowLeft className="h-3 w-3" /> Retour au projet
         </Link>
 
+        {/* Flow label */}
+        {run.flowLabel && (
+          <div className="mb-3">
+            <Badge variant="outline" className="font-mono text-xs">
+              Parcours : {run.flowLabel}
+            </Badge>
+          </div>
+        )}
+
         {/* Verdict banner */}
         {vs ? (
           <div className={cn(
@@ -121,7 +134,8 @@ export default function RunReport() {
             vs.verdict === "ERREUR" && "bg-status-fail/10 border border-status-fail/30",
           )}>
             <div className="flex items-center gap-3">
-              <VerdictBadge verdict={vs.verdict} size="lg" />
+              <VerdictBadge verdict={vs.verdict} size="lg" explanation={vs.verdictExplanation} />
+              <StatusBadge status={run.status} explanation={vs.statusExplanation} />
             </div>
             <p className="font-mono text-base font-bold">{vs.headline}</p>
             {run.status !== "passed" && vs.verdict === "OK" && run.error && (
@@ -529,20 +543,36 @@ export default function RunReport() {
           </Card>
         )}
 
-        {/* Report link */}
+        {/* Report in-app */}
         {runId && (
           <div className="mt-6 flex gap-3">
-            <Button variant="outline" className="font-mono" asChild>
-              <a
-                href={getReportUrl(runId)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="h-4 w-4 mr-2" /> Voir le rapport complet
-              </a>
+            <Button variant="outline" className="font-mono" onClick={() => setReportOpen(true)}>
+              <ExternalLink className="h-4 w-4 mr-2" /> Voir le rapport complet
             </Button>
           </div>
         )}
+
+        {/* Report iframe dialog */}
+        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-0 gap-0">
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <span className="font-mono text-sm font-semibold">Rapport complet</span>
+              <Button variant="ghost" size="sm" onClick={() => setReportOpen(false)}>
+                <X className="h-4 w-4 mr-1" /> Fermer
+              </Button>
+            </div>
+            <iframe
+              src={`${REPORT_BASE}/runs/${runId}/report`}
+              className="w-full flex-1 border-0"
+              title="Rapport de test"
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Legend */}
+        <p className="mt-6 font-mono text-[10px] text-muted-foreground text-center">
+          Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
+        </p>
     </div>
   );
 }
