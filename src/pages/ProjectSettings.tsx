@@ -170,29 +170,84 @@ export default function ProjectSettings() {
               </p>
             ) : (
               <div className="space-y-2">
-                {suggestedFlows.map((flow) => (
-                  <label
-                    key={flow.id}
-                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
-                  >
-                    <Checkbox
-                      checked={selectedFlowIds.has(flow.id)}
-                      onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
-                    />
-                    <div className="flex flex-1 items-center gap-2 min-w-0">
-                      <span className="font-mono text-sm truncate">{flow.labelFr}</span>
-                      <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-                        {flow.confidence}%
-                      </Badge>
-                      {flow.requiresCredentials && (
-                        <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
-                          <ShieldAlert className="h-3 w-3" />
-                          Identifiants requis
-                        </Badge>
+                {suggestedFlows.map((flow) => {
+                  const isSelected = selectedFlowIds.has(flow.id);
+                  const creds = flowCredentials[flow.id];
+                  const showPwd = showPasswords[flow.id] ?? false;
+                  return (
+                    <div key={flow.id} className="rounded-lg border p-3 space-y-2">
+                      <label className="flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors rounded p-1 -m-1">
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
+                        />
+                        <div className="flex flex-1 items-center gap-2 min-w-0">
+                          <span className="font-mono text-sm truncate">{flow.labelFr}</span>
+                          <Badge variant="secondary" className="shrink-0 font-mono text-xs">
+                            {flow.confidence}%
+                          </Badge>
+                          {flow.requiresCredentials && (
+                            <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
+                              <ShieldAlert className="h-3 w-3" />
+                              Identifiants requis
+                            </Badge>
+                          )}
+                        </div>
+                      </label>
+                      {/* Credential fields for selected flows requiring credentials */}
+                      {isSelected && flow.requiresCredentials && (
+                        <div className="ml-8 space-y-2">
+                          {creds ? (
+                            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
+                              <Lock className="h-3.5 w-3.5" /> Identifiants configurés
+                            </span>
+                          ) : null}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="font-mono text-[10px]">Email de test</Label>
+                              <Input
+                                type="email"
+                                placeholder="email@test.com"
+                                value={creds?.email ?? ""}
+                                onChange={(e) =>
+                                  setFlowCredentials((prev) => ({
+                                    ...prev,
+                                    [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
+                                  }))
+                                }
+                                className="font-mono text-xs h-8"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="font-mono text-[10px]">Mot de passe de test</Label>
+                              <div className="relative">
+                                <Input
+                                  type={showPwd ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  value={creds?.password ?? ""}
+                                  onChange={(e) =>
+                                    setFlowCredentials((prev) => ({
+                                      ...prev,
+                                      [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
+                                    }))
+                                  }
+                                  className="font-mono text-xs h-8 pr-8"
+                                />
+                                <button
+                                  type="button"
+                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                  onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
+                                >
+                                  {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
