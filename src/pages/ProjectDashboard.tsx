@@ -142,6 +142,20 @@ export default function ProjectDashboard() {
     }
   }, [id, toast]);
 
+  const handleDelete = useCallback(async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deleteProject(id);
+      toast({ title: "Projet supprimé" });
+      navigate("/");
+    } catch {
+      toast({ title: "Erreur", description: "Impossible de supprimer le projet.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  }, [id, toast, navigate]);
+
   const toggleStep = (index: number) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);
