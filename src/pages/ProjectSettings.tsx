@@ -80,22 +80,6 @@ export default function ProjectSettings() {
     }
   };
 
-  const handleSaveKey = async () => {
-    if (!anthropicKey.trim()) return;
-    setSavingKey(true);
-    try {
-      const result = await updateSettings({ anthropicApiKey: anthropicKey.trim() });
-      setHasAnthropicKey(result.hasAnthropicApiKey);
-      if (result.anthropicApiKey) setAnthropicKey(result.anthropicApiKey);
-      setShowKey(false);
-      toast({ title: "Clé sauvegardée", description: "La clé API Anthropic a été mise à jour." });
-    } catch (e: unknown) {
-      const err = e as Error;
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
-    } finally {
-      setSavingKey(false);
-    }
-  };
 
   if (loading) {
     return (
