@@ -66,9 +66,12 @@ export default function ProjectSettings() {
     if (!id || !project) return;
     setSaving(true);
     try {
-      const monitoredFlows = (project.suggestedFlows ?? []).filter((f) =>
-        selectedFlowIds.has(f.id),
-      );
+      const monitoredFlows = (project.suggestedFlows ?? [])
+        .filter((f) => selectedFlowIds.has(f.id))
+        .map((f) => {
+          const creds = flowCredentials[f.id];
+          return creds && creds.email && creds.password ? { ...f, credentials: creds } : f;
+        });
       const updated = await updateProject(id, {
         name: name.trim(),
         siteUrl: siteUrl.trim(),
