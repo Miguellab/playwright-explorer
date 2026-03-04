@@ -138,6 +138,83 @@ export default function SettingsPage() {
             </Button>
           </CardContent>
         </Card>
+        {/* AI Settings card */}
+        <Card className="mt-8">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-500" />
+              <CardTitle className="font-mono text-sm uppercase tracking-wider">
+                Intelligence Artificielle
+              </CardTitle>
+              {hasAnthropicKey ? (
+                <Badge variant="outline" className="border-green-500/50 text-green-600 dark:text-green-400 text-[10px]">
+                  Configurée
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px]">
+                  Non configurée
+                </Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="anthropic-key" className="font-mono text-xs">Clé API Anthropic</Label>
+              <div className="relative">
+                <Input
+                  id="anthropic-key"
+                  type={showKey ? "text" : "password"}
+                  value={anthropicKey}
+                  onChange={(e) => setAnthropicKey(e.target.value)}
+                  placeholder="sk-ant-api03-..."
+                  className="font-mono text-sm pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKey((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Nécessaire pour l'analyse visuelle des pages lors de la découverte. Utilise Claude Haiku
+                pour des scores de confiance plus précis.{" "}
+                <a
+                  href="https://console.anthropic.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  Obtenez votre clé sur console.anthropic.com
+                </a>
+              </p>
+            </div>
+            <Button
+              onClick={async () => {
+                if (!anthropicKey.trim()) return;
+                setSavingKey(true);
+                try {
+                  const result = await updateSettings({ anthropicApiKey: anthropicKey.trim() });
+                  setHasAnthropicKey(result.hasAnthropicApiKey);
+                  if (result.anthropicApiKey) setAnthropicKey(result.anthropicApiKey);
+                  setShowKey(false);
+                  toast({ title: "Clé sauvegardée" });
+                } catch {
+                  toast({ title: "Erreur lors de la sauvegarde", variant: "destructive" });
+                } finally {
+                  setSavingKey(false);
+                }
+              }}
+              disabled={savingKey || !anthropicKey.trim()}
+              variant="secondary"
+              className="font-mono"
+            >
+              {savingKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Sauvegarder la clé
+            </Button>
+          </CardContent>
+        </Card>
     </div>
   );
 }
