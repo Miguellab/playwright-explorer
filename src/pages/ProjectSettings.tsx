@@ -28,6 +28,8 @@ export default function ProjectSettings() {
   const [checkFrequencyMin, setCheckFrequencyMin] = useState(5);
   const [maxRunsPerDay, setMaxRunsPerDay] = useState(10);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
+  const [flowCredentials, setFlowCredentials] = useState<Record<string, { email: string; password: string }>>({});
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!id) return;
