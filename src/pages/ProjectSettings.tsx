@@ -29,19 +29,10 @@ export default function ProjectSettings() {
   const [maxRunsPerDay, setMaxRunsPerDay] = useState(10);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
 
-  // AI settings state
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [savingKey, setSavingKey] = useState(false);
-
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      getProject(id),
-      getSettings().catch(() => null),
-    ])
-      .then(([p, settings]) => {
+    getProject(id)
+      .then((p) => {
         setProject(p);
         setName(p.name);
         setSiteUrl(p.siteUrl);
@@ -50,13 +41,6 @@ export default function ProjectSettings() {
         setMaxRunsPerDay(p.maxRunsPerDay);
         const monitoredIds = new Set((p.monitoredFlows ?? []).map((f) => f.id));
         setSelectedFlowIds(monitoredIds);
-
-        if (settings) {
-          setHasAnthropicKey(settings.hasAnthropicApiKey);
-          if (settings.hasAnthropicApiKey && settings.anthropicApiKey) {
-            setAnthropicKey(settings.anthropicApiKey);
-          }
-        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
