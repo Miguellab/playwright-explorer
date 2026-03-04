@@ -5,6 +5,7 @@ import type {
   UpdateProjectBody,
   Run,
   SuggestedFlow,
+  TestNowResponse,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
