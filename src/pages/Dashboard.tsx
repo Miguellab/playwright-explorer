@@ -208,6 +208,15 @@ export default function Dashboard() {
                           {lastRuns[project.id].verdictSummary!.headline}
                         </p>
                       )}
+                      {project.monitoredFlows && project.monitoredFlows.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {project.monitoredFlows.map((flow) => (
+                            <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
+                              {flow.labelFr}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Toggle */}
