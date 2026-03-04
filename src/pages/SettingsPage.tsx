@@ -18,6 +18,11 @@ export default function SettingsPage() {
   const [runnerKey, setRunnerKey] = useState(DEFAULT_RUNNER_KEY);
   const [saving, setSaving] = useState(false);
 
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+  const [savingKey, setSavingKey] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       // Health check
