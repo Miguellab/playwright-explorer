@@ -40,8 +40,14 @@ export interface Project {
   lastSeenAt: string | null;
   lastCheckedAt: string | null;
   hasRunnerApiKey: boolean;
+  discoveryMeta?: { analysisMode?: string };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SentinelleSettings {
+  hasAnthropicApiKey: boolean;
+  anthropicApiKey?: string;
 }
 
 export interface CreateProjectBody {

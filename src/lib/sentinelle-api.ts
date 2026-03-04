@@ -123,3 +123,16 @@ export function getScreenshotUrl(path: string): string {
   const separator = path.startsWith("/") ? "" : "/";
   return `${BASE_URL}${separator}${path}`;
 }
+
+// ── Settings ──
+
+export async function getSettings(): Promise<SentinelleSettings> {
+  return request("/settings");
+}
+
+export async function updateSettings(body: Partial<SentinelleSettings>): Promise<SentinelleSettings> {
+  return request("/settings", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
