@@ -14,6 +14,7 @@ import {
   testNow,
   getRun,
   toggleProject,
+  deleteProject,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
