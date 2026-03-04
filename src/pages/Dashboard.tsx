@@ -170,27 +170,20 @@ export default function Dashboard() {
                     />
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Ligne 1 : Nom + verdict + pause */}
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
-                        {project.goal && (
-                          <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                            {project.goal}
-                          </Badge>
-                        )}
                         {lastRuns[project.id]?.verdict ? (
                           <VerdictBadge verdict={lastRuns[project.id].verdict!} />
-                        ) : (
-                          <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
-                            En attente
-                          </Badge>
-                        )}
+                        ) : null}
                         {!project.enabled && (
                           <Badge variant="secondary" className="font-mono text-[10px] shrink-0">
                             En pause
                           </Badge>
                         )}
                       </div>
+                      {/* Ligne 2 : URL + dernière surveillance */}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
                         <span className="flex items-center gap-1 truncate">
                           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -203,11 +196,7 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                      {lastRuns[project.id]?.verdictSummary?.headline && (
-                        <p className="font-mono text-xs text-muted-foreground truncate">
-                          {lastRuns[project.id].verdictSummary!.headline}
-                        </p>
-                      )}
+                      {/* Ligne 3 : Parcours surveillés */}
                       {project.monitoredFlows && project.monitoredFlows.length > 0 && (
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {project.monitoredFlows.map((flow) => (
