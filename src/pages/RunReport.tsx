@@ -123,7 +123,7 @@ export default function RunReport() {
               <VerdictBadge verdict={vs.verdict} size="lg" />
             </div>
             <p className="font-mono text-base font-bold">{vs.headline}</p>
-            {run.status !== "passed" && vs.verdict === "OK" && (
+            {run.status !== "passed" && vs.verdict === "OK" && run.error && (
               <p className="font-mono text-xs text-muted-foreground italic">
                 Le test s'est terminé avec une erreur technique, mais l'analyse IA n'a détecté aucun problème fonctionnel.
               </p>
