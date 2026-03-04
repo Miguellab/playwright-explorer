@@ -25,10 +25,16 @@ export default function SettingsPage() {
 
   useEffect(() => {
     const init = async () => {
-      // Health check
       healthCheck()
         .then(() => setApiStatus("ok"))
         .catch(() => setApiStatus("error"));
+
+      getSettings()
+        .then((s) => {
+          setHasAnthropicKey(s.hasAnthropicApiKey);
+          if (s.anthropicApiKey) setAnthropicKey(s.anthropicApiKey);
+        })
+        .catch(() => {});
 
       // Load runner settings from DB
       const { data } = await supabase
