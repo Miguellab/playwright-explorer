@@ -1,15 +1,32 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { listProjects, toggleProject, listRuns } from "@/lib/sentinelle-api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { listProjects, toggleProject, listRuns, deleteProject } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
-import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck } from "lucide-react";
+import { Plus, Loader2, ExternalLink, Clock, AlertCircle, RefreshCw, ShieldCheck, MoreVertical, Settings, Trash2 } from "lucide-react";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
