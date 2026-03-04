@@ -1,56 +1,30 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Plan : Deplacer la section "Intelligence Artificielle" vers /settings
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+La configuration de la cle Anthropic est globale (pas liee a un projet). Elle doit etre dans `SettingsPage.tsx` (/settings), pas dans `ProjectSettings.tsx`.
 
-## Ce qui reste à faire
+### Modifications
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+**1. `src/pages/SettingsPage.tsx`** — Ajouter la section IA :
+- Importer `getSettings`, `updateSettings` depuis sentinelle-api
+- Ajouter les states : `anthropicKey`, `hasAnthropicKey`, `showKey`, `savingKey`
+- Appeler `getSettings()` dans le useEffect existant
+- Ajouter une Card "Intelligence Artificielle" (apres la card Runner) avec le meme contenu que celui actuellement dans ProjectSettings : icone Sparkles, badge Configuree/Non configuree, champ password avec toggle, texte d'aide, bouton sauvegarder
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+**2. `src/pages/ProjectSettings.tsx`** — Retirer la section IA :
+- Supprimer les states `anthropicKey`, `hasAnthropicKey`, `showKey`, `savingKey`
+- Supprimer `getSettings`/`updateSettings` des imports
+- Supprimer l'appel `getSettings()` du useEffect (garder seulement `getProject`)
+- Supprimer `handleSaveKey`
+- Supprimer la Card "Intelligence Artificielle" (lignes 263-325)
+- Supprimer les imports `Eye`, `EyeOff`, `Sparkles` si plus utilises (Sparkles reste pour le badge analyse)
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### Autocritique
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+L'erreur venait du fait que le plan precedent n'a pas distingue "configuration globale de l'instance Sentinelle" vs "configuration specifique a un projet". La cle Anthropic est utilisee par le backend pour toutes les decouvertes, pas pour un projet en particulier. La regle a appliquer : si une config est dans `GET/PATCH /settings` (endpoint sans projectId), elle va dans la page globale /settings. Si elle est dans `GET/PATCH /projects/:id`, elle va dans les settings projet.
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
-
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichiers modifies
+1. `src/pages/SettingsPage.tsx`
+2. `src/pages/ProjectSettings.tsx`
 
