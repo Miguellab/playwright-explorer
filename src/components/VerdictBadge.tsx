@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { CheckCircle, AlertTriangle, XCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Clock } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import type { Verdict } from "@/lib/sentinelle-types";
 
@@ -8,6 +8,11 @@ const config: Record<Verdict, { label: string; icon: typeof CheckCircle; classNa
     label: "OK",
     icon: CheckCircle,
     className: "bg-status-pass/15 text-status-pass border-status-pass/30",
+  },
+  "EN ATTENTE": {
+    label: "EN ATTENTE",
+    icon: Clock,
+    className: "bg-status-pending/15 text-status-pending border-status-pending/30",
   },
   ALERTE: {
     label: "ALERTE",
@@ -62,11 +67,13 @@ export function VerdictBadge({
 export function VerdictText({ verdict }: { verdict: Verdict }) {
   const texts: Record<string, string> = {
     OK: "Tout est bon, vous pouvez publier en confiance.",
+    "EN ATTENTE": "Ce parcours nécessite des identifiants pour un test complet.",
     ALERTE: "Attention, quelque chose pourrait gêner vos utilisateurs.",
     ERREUR: "Votre application n'a pas pu être validée.",
   };
   const colors: Record<string, string> = {
     OK: "text-status-pass",
+    "EN ATTENTE": "text-status-pending",
     ALERTE: "text-status-skipped",
     ERREUR: "text-status-fail",
   };

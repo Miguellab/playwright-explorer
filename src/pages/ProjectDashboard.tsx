@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
+import { FlowCredentialsForm } from "@/components/FlowCredentialsForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import {
   getRun,
   toggleProject,
   deleteProject,
+  updateProject,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
@@ -298,13 +300,33 @@ export default function ProjectDashboard() {
 
         {/* Monitored flows summary */}
         {project.monitoredFlows && project.monitoredFlows.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
-            {project.monitoredFlows.map((flow) => (
-              <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
-                {flow.labelFr}
-              </Badge>
-            ))}
+          <div className="mt-3 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
+              {project.monitoredFlows.map((flow) => (
+                <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
+                  {flow.labelFr}
+                </Badge>
+              ))}
+            </div>
+            {project.monitoredFlows
+              .filter((f) => f.requiresCredentials)
+              .map((flow) => (
+                <div key={flow.id} className="rounded-lg border bg-secondary/20 p-3">
+                  <p className="font-mono text-xs font-semibold">{flow.labelFr}</p>
+                  <FlowCredentialsForm
+                    flow={flow}
+                    onSave={async (flowId, credentials) => {
+                      const updatedFlows = (project.monitoredFlows ?? []).map((f) =>
+                        f.id === flowId ? { ...f, credentials } : f
+                      );
+                      const updated = await updateProject(project.id, { monitoredFlows: updatedFlows });
+                      setProject(updated);
+                    }}
+                    onRetest={handleTestNow}
+                  />
+                </div>
+              ))}
           </div>
         )}
 
