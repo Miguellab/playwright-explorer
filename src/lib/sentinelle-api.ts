@@ -118,5 +118,6 @@ export function getReportUrl(runId: string): string {
 
 export function getScreenshotUrl(path: string): string {
   if (path.startsWith("http")) return path;
-  return `${BASE_URL}${path}`;
+  const separator = path.startsWith("/") ? "" : "/";
+  return `${BASE_URL}${separator}${path}`;
 }

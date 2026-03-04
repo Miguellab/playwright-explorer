@@ -287,6 +287,14 @@ export default function RunReport() {
                       alt={shot.label}
                       className="w-full h-auto object-contain"
                       loading="lazy"
+                      onError={(e) => {
+                        console.warn("Screenshot failed to load:", getScreenshotUrl(shot.path));
+                        (e.target as HTMLImageElement).style.display = "none";
+                        const placeholder = document.createElement("div");
+                        placeholder.className = "flex items-center justify-center h-32 text-muted-foreground font-mono text-xs";
+                        placeholder.textContent = "Image non disponible";
+                        (e.target as HTMLImageElement).parentElement?.insertBefore(placeholder, e.target as HTMLImageElement);
+                      }}
                     />
                     <p className="px-3 py-2 font-mono text-xs text-muted-foreground">{shot.label}</p>
                   </button>
