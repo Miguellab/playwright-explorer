@@ -6,6 +6,7 @@ import type {
   Run,
   SuggestedFlow,
   TestNowResponse,
+  SentinelleSettings,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
@@ -121,4 +122,17 @@ export function getScreenshotUrl(path: string): string {
   if (path.startsWith("http")) return path;
   const separator = path.startsWith("/") ? "" : "/";
   return `${BASE_URL}${separator}${path}`;
+}
+
+// ── Settings ──
+
+export async function getSettings(): Promise<SentinelleSettings> {
+  return request("/settings");
+}
+
+export async function updateSettings(body: Partial<SentinelleSettings>): Promise<SentinelleSettings> {
+  return request("/settings", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }
