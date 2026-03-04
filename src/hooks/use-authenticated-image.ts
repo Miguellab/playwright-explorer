@@ -18,8 +18,11 @@ export function useAuthenticatedImage(url: string) {
     let objectUrl: string | null = null;
     let cancelled = false;
 
+    const isRunnerUrl = RUNNER_URL && url.startsWith(RUNNER_URL);
+    const token = isRunnerUrl ? RUNNER_KEY : API_KEY;
+
     fetch(url, {
-      headers: API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {},
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`${r.status}`))))
       .then((blob) => {
