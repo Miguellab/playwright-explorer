@@ -74,6 +74,7 @@ function formatDuration(ms: number | null): string {
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
