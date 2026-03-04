@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [runnerUrl, setRunnerUrl] = useState(DEFAULT_RUNNER_URL);
   const [runnerKey, setRunnerKey] = useState(DEFAULT_RUNNER_KEY);
   const [saving, setSaving] = useState(false);
+  const [showRunnerKey, setShowRunnerKey] = useState(false);
 
   const [anthropicKey, setAnthropicKey] = useState("");
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
