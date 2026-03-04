@@ -1,6 +1,6 @@
 // ── Sentinelle MVP Types ──
 
-export type Verdict = "OK" | "ALERTE" | "ERREUR";
+export type Verdict = "OK" | "EN ATTENTE" | "ALERTE" | "ERREUR";
 export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery";
