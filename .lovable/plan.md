@@ -1,34 +1,56 @@
 
 
-## 3 corrections sur le rapport de run
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Probleme 1 : OK + FAILED -- information confuse
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Le verdict IA (OK) et le statut technique (FAILED) coexistent sans explication. L'utilisateur ne comprend pas la difference.
+## Ce qui reste à faire
 
-**Solution** : Fusionner en une seule banniere claire. Le verdict IA prime (c'est l'info utile). Le statut technique "FAILED" est relégué en detail secondaire avec une explication courte :
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-- Afficher le verdict IA en gros (VerdictBadge)
-- Sous le headline, si `run.status !== "passed"`, afficher un petit texte explicatif : "Le test s'est terminé avec une erreur technique, mais l'analyse IA n'a détecté aucun problème fonctionnel." au lieu d'un badge FAILED brut sans contexte.
-- Supprimer le `StatusBadge` isolé dans la bannière verdict -- il crée la confusion.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-### Probleme 2 : "Résumé pour vous" vide
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-La section s'affiche même quand `vs.forUser` est une chaine vide ou undefined. Le `<p>` est rendu avec un contenu vide.
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Solution** : Ne pas afficher la card "Résumé pour vous" si `vs.forUser` est falsy (vide/null/undefined). Condition : `{vs && vs.forUser && (...)}`.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-### Probleme 3 : Captures d'écran cassées
+### 3. Badge verdict sur les cartes Dashboard
 
-L'image affiche l'icone broken-image. L'URL construite par `getScreenshotUrl(shot.path)` est probablement incorrecte (path relatif mal prefixé ou CORS).
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**Solution** : 
-- Ajouter un handler `onError` sur le `<img>` pour afficher un placeholder au lieu de l'icône cassée.
-- Logger l'URL en console pour debug.
-- Verifier que `getScreenshotUrl` construit bien l'URL (path commence par `/` ou non). Ajouter un `/` si le path ne commence pas par `/` et n'est pas une URL absolue.
+### 4. Collapsible CTO dans RunReport
 
-### Fichiers modifies
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-1. **`src/pages/RunReport.tsx`** : les 3 corrections ci-dessus
-2. **`src/lib/sentinelle-api.ts`** : fix potentiel sur `getScreenshotUrl` (ajout du `/` manquant)
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

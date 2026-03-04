@@ -123,8 +123,12 @@ export default function RunReport() {
               <VerdictBadge verdict={vs.verdict} size="lg" />
             </div>
             <p className="font-mono text-base font-bold">{vs.headline}</p>
+            {run.status !== "passed" && vs.verdict === "OK" && (
+              <p className="font-mono text-xs text-muted-foreground italic">
+                Le test s'est terminé avec une erreur technique, mais l'analyse IA n'a détecté aucun problème fonctionnel.
+              </p>
+            )}
             <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-              {run.status !== "passed" && <StatusBadge status={run.status} />}
               <span>Durée : {formatDuration(run.durationMs)}</span>
               {run.startedAt && (
                 <span>{new Date(run.startedAt).toLocaleString("fr-FR")}</span>
@@ -152,7 +156,7 @@ export default function RunReport() {
         )}
 
         {/* Summary for user */}
-        {vs && (
+        {vs && vs.forUser && (
           <Card className="mt-6">
             <CardHeader className="pb-3">
               <CardTitle className="font-mono text-sm uppercase tracking-wider">
@@ -283,6 +287,14 @@ export default function RunReport() {
                       alt={shot.label}
                       className="w-full h-auto object-contain"
                       loading="lazy"
+                      onError={(e) => {
+                        console.warn("Screenshot failed to load:", getScreenshotUrl(shot.path));
+                        (e.target as HTMLImageElement).style.display = "none";
+                        const placeholder = document.createElement("div");
+                        placeholder.className = "flex items-center justify-center h-32 text-muted-foreground font-mono text-xs";
+                        placeholder.textContent = "Image non disponible";
+                        (e.target as HTMLImageElement).parentElement?.insertBefore(placeholder, e.target as HTMLImageElement);
+                      }}
                     />
                     <p className="px-3 py-2 font-mono text-xs text-muted-foreground">{shot.label}</p>
                   </button>
