@@ -246,22 +246,6 @@ export default function ProjectDashboard() {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!project) {
-    return (
-      <div className="container py-10 text-center font-mono text-muted-foreground">
-        Projet introuvable.
-      </div>
-    );
-  }
-
   const filteredRuns = useMemo(() => {
     const q = historySearch.toLowerCase();
     return runs.filter((run) => {
@@ -280,8 +264,23 @@ export default function ProjectDashboard() {
   }, [runs, historySearch, historyStatus, historyDateStart, historyDateEnd]);
 
   const filteredRunGroups = groupRuns(filteredRuns);
-
   const runGroups = groupRuns(runs);
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="container py-10 text-center font-mono text-muted-foreground">
+        Projet introuvable.
+      </div>
+    );
+  }
 
   return (
     <div className="container max-w-4xl py-10">
