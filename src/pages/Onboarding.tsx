@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE_STEPS = [
+const STEPS = [
   { icon: Globe, label: "Application" },
   { icon: Target, label: "Objectifs" },
   { icon: Eye, label: "Surveillance" },
