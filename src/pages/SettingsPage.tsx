@@ -171,6 +171,37 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="font-mono text-xs">Utiliser l'analyse IA pour la découverte des parcours</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Quand activé, Claude analyse visuellement les pages pour des scores de confiance plus précis. Nécessite une clé API Anthropic valide.
+                  </p>
+                </div>
+                <Switch
+                  checked={useVisionAnalysis}
+                  onCheckedChange={async (checked) => {
+                    setUseVisionAnalysis(checked);
+                    try {
+                      await updateSettings({ useVisionAnalysis: checked });
+                      toast({ title: checked ? "Analyse IA activée" : "Analyse IA désactivée" });
+                    } catch {
+                      setUseVisionAnalysis(!checked);
+                      toast({ title: "Erreur", variant: "destructive" });
+                    }
+                  }}
+                />
+              </div>
+              {useVisionAnalysis && !hasAnthropicKey && (
+                <div className="flex items-center gap-2 rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-status-pending shrink-0" />
+                  <p className="font-mono text-xs text-status-pending">
+                    Clé API Anthropic requise pour activer l'analyse IA
+                  </p>
+                </div>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="anthropic-key" className="font-mono text-xs">Clé API Anthropic</Label>
               <div className="relative">

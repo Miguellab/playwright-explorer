@@ -100,6 +100,7 @@ export interface DiscoverResult {
   runId: string;
   flows: SuggestedFlow[];
   screenshots: { label: string; filename: string; path: string }[];
+  visionError?: string;
 }
 
 export async function discoverFlows(projectId: string): Promise<DiscoverResult> {

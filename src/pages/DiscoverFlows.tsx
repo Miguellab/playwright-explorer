@@ -179,13 +179,24 @@ export default function DiscoverFlows() {
           {/* Results */}
           {phase === "results" && (
             <div className="space-y-6">
-              <div className="text-center space-y-1">
+              <div className="text-center space-y-2">
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-status-pass" />
                   <h2 className="font-mono text-xl font-bold">
                     {flows.length} parcours détecté{flows.length > 1 ? "s" : ""}
                   </h2>
+                  {!visionError && flows.length > 0 && (
+                    <Badge className="bg-status-pass/15 text-status-pass border-status-pass/30 font-mono text-[10px]">
+                      <Sparkles className="mr-1 h-3 w-3" /> Analyse IA
+                    </Badge>
+                  )}
                 </div>
+                {visionError && (
+                  <div className="flex items-center gap-2 rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2 mx-auto max-w-md">
+                    <AlertTriangle className="h-3.5 w-3.5 text-status-pending shrink-0" />
+                    <p className="font-mono text-xs text-status-pending text-left">{visionError}</p>
+                  </div>
+                )}
                 <p className="text-sm text-muted-foreground">
                   Sélectionnez les parcours que vous souhaitez surveiller.
                 </p>

@@ -51,6 +51,7 @@ export interface Project {
 export interface SentinelleSettings {
   hasAnthropicApiKey: boolean;
   anthropicApiKey?: string;
+  useVisionAnalysis?: boolean;
 }
 
 export interface CreateProjectBody {

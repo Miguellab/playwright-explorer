@@ -165,10 +165,13 @@ export default function ProjectDashboard() {
         description: response.message || response.runs.map((r) => r.flow).join(", "),
       });
     } catch (e: unknown) {
-      const err = e as Error & { status?: number };
-      if (err.status === 429) {
+      const err = e as Error & { status?: number; code?: string };
+      if (err.status === 400 && (err.message?.includes("NO_MONITORED_FLOWS") || err.message?.includes("parcours"))) {
+        toast({ title: "Aucun parcours surveillé", description: err.message, variant: "destructive" });
+        if (id) getProject(id).then(setProject).catch(() => {});
+      } else if (err.status === 429) {
         toast({ title: "Limite atteinte", description: "Limite quotidienne atteinte. Reessayez demain.", variant: "destructive" });
-      } else if (err.message.includes("inaccessible") || err.message.includes("unreachable")) {
+      } else if (err.message?.includes("inaccessible") || err.message?.includes("unreachable")) {
         toast({ title: "Service inaccessible", description: "Le service de test est inaccessible. Verifiez votre configuration.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
