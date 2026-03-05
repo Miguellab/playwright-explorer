@@ -32,6 +32,7 @@ export default function ProjectSettings() {
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
   const [editingFlowIds, setEditingFlowIds] = useState<Set<string>>(new Set());
+  const [savedCredentials, setSavedCredentials] = useState<Record<string, { email: string; password: string }>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -93,12 +94,22 @@ export default function ProjectSettings() {
         monitoredFlows,
       });
       setProject(updated);
+      // Cache credentials locally for session pre-fill
+      const cachedCreds: Record<string, { email: string; password: string }> = { ...savedCredentials };
+      (updated.monitoredFlows ?? []).forEach((f) => {
+        const creds = flowCredentials[f.id];
+        if (creds && creds.email !== "••••••••" && creds.password !== "••••••••") {
+          cachedCreds[f.id] = { ...creds };
+        }
+      });
+      setSavedCredentials(cachedCreds);
       // Update configuredFlowIds from response
       const newConfigured = new Set<string>();
       (updated.monitoredFlows ?? []).forEach((f) => {
         if (f.hasCredentials) newConfigured.add(f.id);
       });
       setConfiguredFlowIds(newConfigured);
+      setEditingFlowIds(new Set());
       toast({ title: "Sauvegarde", description: "Paramètres mis à jour." });
     } catch (e: unknown) {
       const err = e as Error;
@@ -227,9 +238,10 @@ export default function ProjectSettings() {
                                 className="font-mono text-xs h-7 px-2"
                                 onClick={() => {
                                   setEditingFlowIds((prev) => new Set(prev).add(flow.id));
+                                  const cached = savedCredentials[flow.id];
                                   setFlowCredentials((prev) => ({
                                     ...prev,
-                                    [flow.id]: { email: "", password: "" },
+                                    [flow.id]: cached ? { ...cached } : { email: "", password: "" },
                                   }));
                                 }}
                               >
