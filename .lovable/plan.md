@@ -1,56 +1,29 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Supprimer le doublon "PASSED"
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Le StatusBadge du header (ligne 312) donne déjà le statut global. La carte "Verdict" (lignes 446-500) est redondante : quand le run passe, elle affiche uniquement "PASSED" sans info supplémentaire.
 
-## Ce qui reste à faire
+### Solution
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+**Fichier : `src/pages/ProjectDashboard.tsx`**
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Supprimer la carte "Verdict" (le bloc `lg:col-span-2` Card, lignes ~446-500) et réorganiser la grille pour que le bouton "Lancer un test" prenne toute la largeur ou reste dans une grille simplifiée.
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+Le header conserve le StatusBadge à côté du nom du projet — c'est le seul endroit nécessaire.
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+Si le run est en cours (`queued`/`running`), le message "Test en cours..." et le spinner seront déplacés directement sous le header ou intégrés dans la zone du bouton test.
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+Si `run.error` existe (cas `failed`/`error`), l'erreur est déjà visible dans la section "Étapes du dernier test" ou dans le rapport. Pas besoin d'une carte dédiée.
 
-### 3. Badge verdict sur les cartes Dashboard
+### Résumé
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
+| Élément | Action |
 |---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+| Header StatusBadge (l.312) | Conservé |
+| Carte Verdict (l.446-500) | Supprimée — doublon |
+| Message "Test en cours" | Déplacé dans la zone bouton test ou sous le header |
+| `run.error` | Visible dans les étapes / rapport |
 
-4 fichiers, ~80 lignes modifiées.
+1 fichier, ~50 lignes retirées/déplacées.
 
