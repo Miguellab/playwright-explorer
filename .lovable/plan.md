@@ -1,61 +1,56 @@
 
 
-## Mise a jour backend : screenshots, decouverte authentifiee, nettoyage
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### 1. Screenshots — correction des URLs
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-**Fichier : `src/lib/sentinelle-api.ts`**
+## Ce qui reste à faire
 
-La fonction `getScreenshotUrl` fonctionne deja correctement : elle prefixe `BASE_URL` aux chemins relatifs. Le nouveau format `/runs/{runId}/screenshots/screenshot-1.png` est un chemin relatif qui sera correctement resolu.
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**Fichier : `src/hooks/use-authenticated-image.ts`**
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Le hook utilise deja `BASE_URL` + Bearer token pour les URLs Sentinelle. Le nouveau format de chemin sera automatiquement gere. Cependant, la logique `isRunnerUrl` n'est plus necessaire puisque les screenshots passent maintenant par le proxy Sentinelle. On peut simplifier en utilisant toujours le token API Sentinelle.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-### 2. Decouverte authentifiee — nouveau format de reponse
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Fichier : `src/lib/sentinelle-api.ts`**
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-Mettre a jour `AuthenticatedDiscoverResult` :
-- Supprimer `visionAnalysis` et `visionError`
-- Supprimer `allFlows`
-- Ajouter `rawNavigation: { linksCount: number; buttonsCount: number; formsCount: number; visitedPagesCount: number }`
+### 3. Badge verdict sur les cartes Dashboard
 
-**Fichier : `src/lib/sentinelle-types.ts`**
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-Ajouter le champ `source?: "nav-link" | "button" | "detected"` a l'interface `SuggestedFlow`.
+### 4. Collapsible CTO dans RunReport
 
-**Fichier : `src/pages/ProjectDashboard.tsx`**
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-Mettre a jour `handleAuthenticatedDiscovery` :
-- Afficher le nombre de parcours trouves dans le toast (deja fait)
-- Supprimer toute reference a `visionAnalysis`
+---
 
-**Fichier : `src/pages/DiscoverFlows.tsx`**
-
-- Supprimer l'affichage du `confidence` score (badge %, label confiance elevee/moyenne/faible)
-- Supprimer le `visionError` banner
-- Grouper les flows par `source` visuellement avec des icones distinctes :
-  - `nav-link` : icone Menu, couleur neutre
-  - `button` : icone MousePointerClick, couleur accent
-  - `detected` : icone Sparkles
-- Afficher `pagePath` a cote du label quand disponible (ex: "Pipeline → /admin")
-- Afficher `rawNavigation` en texte informatif si disponible (doit etre passe via le state ou re-fetche — on affichera si disponible)
-- Mettre a jour le toast de confirmation : "X parcours trouves"
-
-### 3. Nettoyage types
-
-**Fichier : `src/lib/sentinelle-types.ts`**
-- Supprimer `verdict` et `verdictSummary` s'ils existent (verification : ils n'existent pas dans les types actuels, deja nettoye)
-- Ajouter `source` a `SuggestedFlow`
-
-### Resume des fichiers modifies
+## Fichiers modifiés
 
 | Fichier | Changement |
 |---|---|
-| `src/lib/sentinelle-types.ts` | Ajouter `source` a `SuggestedFlow` |
-| `src/lib/sentinelle-api.ts` | Mettre a jour `AuthenticatedDiscoverResult` (supprimer visionAnalysis/visionError/allFlows, ajouter rawNavigation) |
-| `src/hooks/use-authenticated-image.ts` | Simplifier : toujours utiliser le token Sentinelle API |
-| `src/pages/DiscoverFlows.tsx` | Supprimer confidence scores, grouper par source, afficher pagePath, supprimer visionError |
-| `src/pages/ProjectDashboard.tsx` | Nettoyer handleAuthenticatedDiscovery (supprimer refs visionAnalysis) |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

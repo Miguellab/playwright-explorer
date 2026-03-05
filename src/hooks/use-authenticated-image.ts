@@ -2,8 +2,6 @@ import { useEffect, useState } from "react";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
 const API_KEY = import.meta.env.VITE_SENTINELLE_API_KEY || "";
-const RUNNER_URL = import.meta.env.VITE_DEFAULT_RUNNER_URL || "";
-const RUNNER_KEY = import.meta.env.VITE_DEFAULT_RUNNER_KEY || "";
 
 export function useAuthenticatedImage(url: string) {
   const [src, setSrc] = useState<string | null>(null);
@@ -18,8 +16,7 @@ export function useAuthenticatedImage(url: string) {
     let objectUrl: string | null = null;
     let cancelled = false;
 
-    const isRunnerUrl = RUNNER_URL && url.startsWith(RUNNER_URL);
-    const token = isRunnerUrl ? RUNNER_KEY : API_KEY;
+    const token = API_KEY;
 
     fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

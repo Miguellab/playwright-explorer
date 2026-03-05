@@ -19,6 +19,7 @@ export interface SuggestedFlow {
   evidence: string[];
   ctaText: string | null;
   pagePath: string | null;
+  source?: "nav-link" | "button" | "detected";
   requiresCredentials?: boolean;
   hasCredentials?: boolean;
   credentials?: { email: string; password: string };
