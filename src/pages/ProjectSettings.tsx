@@ -31,6 +31,7 @@ export default function ProjectSettings() {
   const [flowCredentials, setFlowCredentials] = useState<Record<string, { email: string; password: string }>>({});
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
+  const [editingFlowIds, setEditingFlowIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
