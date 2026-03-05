@@ -128,7 +128,6 @@ export default function ProjectSettings() {
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
   const analysisMode = project.discoveryMeta?.analysisMode;
 
-  const [editingFlowIds, setEditingFlowIds] = useState<Set<string>>(new Set());
 
   return (
     <div className="container max-w-2xl py-10">
