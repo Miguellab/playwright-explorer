@@ -77,7 +77,6 @@ export default function Logs() {
                 <TableHead className="font-mono">Projet</TableHead>
                 <TableHead className="font-mono">Parcours</TableHead>
                 <TableHead className="font-mono">Statut</TableHead>
-                <TableHead className="font-mono">Verdict</TableHead>
                 <TableHead className="font-mono text-right">Durée</TableHead>
               </TableRow>
             </TableHeader>
