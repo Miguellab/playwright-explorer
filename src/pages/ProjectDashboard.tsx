@@ -363,6 +363,15 @@ export default function ProjectDashboard() {
                     </p>
                   </div>
                 </div>
+              ) : project.configStatus === "no_flows" ? (
+                <div className="text-center py-4 space-y-2">
+                  <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-xs">
+                    Configuration requise
+                  </Badge>
+                  <p className="font-mono text-sm text-muted-foreground">
+                    {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
+                  </p>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="font-mono text-sm text-muted-foreground">
