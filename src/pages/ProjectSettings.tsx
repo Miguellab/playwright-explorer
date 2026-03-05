@@ -182,17 +182,6 @@ export default function ProjectSettings() {
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Label className="font-mono text-xs">Parcours surveillés</Label>
-              {analysisMode === "dom+vision" && (
-                <Badge variant="outline" className="gap-1 border-purple-500/50 text-purple-600 dark:text-purple-400 text-[10px]">
-                  <Sparkles className="h-3 w-3" />
-                  Analyse par IA
-                </Badge>
-              )}
-              {analysisMode === "dom-only" && (
-                <Badge variant="secondary" className="text-[10px]">
-                  Analyse basique
-                </Badge>
-              )}
             </div>
             {suggestedFlows.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">
