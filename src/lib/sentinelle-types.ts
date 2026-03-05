@@ -21,6 +21,7 @@ export interface SuggestedFlow {
   ctaText: string | null;
   pagePath: string | null;
   requiresCredentials?: boolean;
+  hasCredentials?: boolean;
   credentials?: { email: string; password: string };
 }
 

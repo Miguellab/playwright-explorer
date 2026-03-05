@@ -107,6 +107,34 @@ export async function discoverFlows(projectId: string): Promise<DiscoverResult> 
   return request<DiscoverResult>(`/projects/${projectId}/discover`, { method: "POST" });
 }
 
+export async function getFlowCredentialsStatus(projectId: string): Promise<{
+  flows: { flowId: string; goal: string; labelFr: string; hasCredentials: boolean; credentialFields: string[] }[];
+  allConfigured: boolean;
+  message: string | null;
+}> {
+  return request(`/projects/${projectId}/flows/credentials-status`);
+}
+
+export async function saveFlowCredentials(
+  projectId: string,
+  flowId: string,
+  credentials: { email: string; password: string; name?: string }
+): Promise<{ flowId: string; hasCredentials: boolean; message: string }> {
+  return request(`/projects/${projectId}/flows/${flowId}/credentials`, {
+    method: "PUT",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export async function deleteFlowCredentials(
+  projectId: string,
+  flowId: string
+): Promise<{ flowId: string; hasCredentials: boolean }> {
+  return request(`/projects/${projectId}/flows/${flowId}/credentials`, {
+    method: "DELETE",
+  });
+}
+
 export async function deleteProject(id: string): Promise<void> {
   await request(`/projects/${id}`, { method: "DELETE" });
 }
