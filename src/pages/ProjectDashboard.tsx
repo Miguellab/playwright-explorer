@@ -603,11 +603,7 @@ export default function ProjectDashboard() {
                                 {formatDuration(run.durationMs)}
                               </span>
                             )}
-                            {run.verdict ? (
-                              <VerdictBadge verdict={run.verdict} />
-                            ) : (
-                              <StatusBadge status={run.status} />
-                            )}
+                            <StatusBadge status={run.status} />
                           </div>
                         </Link>
                       );
