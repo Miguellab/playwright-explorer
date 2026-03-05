@@ -482,10 +482,18 @@ export default function Onboarding() {
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-mono text-xl font-bold">Surveillance</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                   <p className="mt-1 text-sm text-muted-foreground">
                     Configurez la fréquence de surveillance pour les {selected.size} parcours sélectionnés.
                   </p>
                 </div>
+
+                {selectedFlows.some((f) => f.requiresCredentials) && (
+                  <div className="rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2">
+                    <p className="font-mono text-xs text-status-pending">
+                      Certains parcours nécessitent des identifiants. Vous pourrez les configurer dans les paramètres du projet après la création.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-lg border p-4">
