@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,17 @@ import {
   healthCheck,
   discoverFlows,
   updateProject,
+  saveFlowCredentials,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
 import type { OnboardingData, SuggestedFlow } from "@/lib/sentinelle-types";
+import { FlowCredentialsForm } from "@/components/FlowCredentialsForm";
 import {
   Globe,
   Target,
   Eye,
+  Lock,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -33,7 +36,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const STEPS = [
+const BASE_STEPS = [
   { icon: Globe, label: "Application" },
   { icon: Target, label: "Objectifs" },
   { icon: Eye, label: "Surveillance" },
@@ -71,7 +74,7 @@ export default function Onboarding() {
   const [visionError, setVisionError] = useState<string | undefined>();
   const discoveryStarted = useRef(false);
 
-  // Step 2 — Surveillance
+  // Surveillance
   const [data, setData] = useState<OnboardingData>({
     siteUrl: "",
     name: "",
@@ -79,6 +82,23 @@ export default function Onboarding() {
     maxRunsPerDay: 10,
     autoTest: true,
   });
+
+  // Dynamic stepper
+  const selectedFlows = useMemo(() => flows.filter((f) => selected.has(f.id)), [flows, selected]);
+  const hasAuthFlows = useMemo(() => selectedFlows.some((f) => f.requiresCredentials), [selectedFlows]);
+  const STEPS = useMemo(() => {
+    if (hasAuthFlows) {
+      return [
+        { icon: Globe, label: "Application" },
+        { icon: Target, label: "Objectifs" },
+        { icon: Lock, label: "Identifiants" },
+        { icon: Eye, label: "Surveillance" },
+      ];
+    }
+    return BASE_STEPS;
+  }, [hasAuthFlows]);
+  const CREDENTIALS_STEP = 2;
+  const SURVEILLANCE_STEP = hasAuthFlows ? 3 : 2;
 
   useEffect(() => {
     setCheckingApi(true);
@@ -178,7 +198,6 @@ export default function Onboarding() {
     if (!projectId) return;
     setSubmitting(true);
     try {
-      const selectedFlows = flows.filter((f) => selected.has(f.id));
       const primaryGoal = selectedFlows[0]?.goal;
       await updateProject(projectId, {
         goal: primaryGoal || undefined,
@@ -196,6 +215,11 @@ export default function Onboarding() {
       setSubmitting(false);
     }
   };
+
+  const authFlows = useMemo(
+    () => selectedFlows.filter((f) => f.requiresCredentials),
+    [selectedFlows]
+  );
 
   return (
     <div className="flex-1 flex flex-col">
@@ -377,7 +401,7 @@ export default function Onboarding() {
                         <p className="font-mono text-sm text-muted-foreground">
                           Aucun parcours détecté. Vous pourrez configurer les objectifs manuellement.
                         </p>
-                        <Button className="font-mono" onClick={() => setStep(2)}>
+                        <Button className="font-mono" onClick={() => setStep(SURVEILLANCE_STEP)}>
                           Continuer <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </CardContent>
@@ -409,6 +433,11 @@ export default function Onboarding() {
                                     <Badge variant="outline" className="font-mono text-[10px] shrink-0">
                                       {flow.goal}
                                     </Badge>
+                                    {flow.requiresCredentials && (
+                                      <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-status-pending/50 text-status-pending">
+                                        <Lock className="mr-0.5 h-2.5 w-2.5" /> Auth
+                                      </Badge>
+                                    )}
                                   </div>
                                   <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
                                   {flow.ctaText && (
@@ -453,7 +482,7 @@ export default function Onboarding() {
                           Relancer
                         </Button>
                         <Button
-                          onClick={() => setStep(2)}
+                          onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : SURVEILLANCE_STEP)}
                           disabled={selected.size === 0}
                           className="flex-1 font-mono"
                         >
@@ -468,8 +497,65 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* ─── Step 2: Surveillance ─── */}
-          {step === 2 && (
+          {/* ─── Step 2: Identifiants (conditional) ─── */}
+          {step === CREDENTIALS_STEP && hasAuthFlows && (
+            <Card>
+              <CardContent className="p-6 space-y-6">
+                <div>
+                  <h2 className="font-mono text-xl font-bold">Identifiants de test</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Configurez les identifiants nécessaires pour tester vos parcours d'authentification.
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  {authFlows.map((flow) => (
+                    <div key={flow.id} className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
+                        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                          {flow.goal}
+                        </Badge>
+                      </div>
+                      <FlowCredentialsForm
+                        flow={flow}
+                        onSave={async (flowId, creds) => {
+                          await saveFlowCredentials(projectId!, flowId, creds);
+                          setFlows((prev) =>
+                            prev.map((f) =>
+                              f.id === flowId ? { ...f, credentials: creds, hasCredentials: true } : f
+                            )
+                          );
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-lg border border-dashed p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Vous pouvez aussi configurer les identifiants plus tard. Sans identifiants, le test vérifiera uniquement que la page de connexion se charge correctement.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
+                    <ArrowLeft className="mr-2 h-4 w-4" /> Retour
+                  </Button>
+                  <Button
+                    onClick={() => setStep(SURVEILLANCE_STEP)}
+                    className="flex-1 font-mono"
+                  >
+                    Continuer
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ─── Step: Surveillance ─── */}
+          {step === SURVEILLANCE_STEP && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div>
@@ -527,7 +613,7 @@ export default function Onboarding() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
+                  <Button variant="outline" onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : 1)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour
                   </Button>
                   <Button onClick={handleFinalSubmit} disabled={submitting} className="flex-1 font-mono">

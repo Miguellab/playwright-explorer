@@ -21,6 +21,7 @@ export interface SuggestedFlow {
   ctaText: string | null;
   pagePath: string | null;
   requiresCredentials?: boolean;
+  hasCredentials?: boolean;
   credentials?: { email: string; password: string };
 }
 
@@ -43,6 +44,11 @@ export interface Project {
   hasRunnerApiKey: boolean;
   configStatus?: "ready" | "no_flows";
   configMessage?: string | null;
+  credentialsWarning?: {
+    message: string;
+    flowIds: string[];
+    flowLabels: string[];
+  };
   discoveryMeta?: { analysisMode?: string };
   createdAt: string;
   updatedAt: string;

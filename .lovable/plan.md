@@ -1,45 +1,56 @@
 
 
-## Plan : Etape "Identifiants" conditionnelle dans l'onboarding
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### 1. API (`src/lib/sentinelle-api.ts`)
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Ajouter 3 fonctions apres `discoverFlows` :
-- `getFlowCredentialsStatus(projectId)` → `GET /projects/:id/flows/credentials-status`
-- `saveFlowCredentials(projectId, flowId, credentials)` → `PUT /projects/:id/flows/:flowId/credentials`
-- `deleteFlowCredentials(projectId, flowId)` → `DELETE /projects/:id/flows/:flowId/credentials`
+## Ce qui reste à faire
 
-### 2. Types (`src/lib/sentinelle-types.ts`)
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-- Ajouter `hasCredentials?: boolean` a `SuggestedFlow`
-- Ajouter `credentialsWarning?` a `Project`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-### 3. Onboarding (`src/pages/Onboarding.tsx`)
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Stepper dynamique :**
-- Remplacer le `STEPS` constant par `BASE_STEPS` (3 etapes)
-- Calculer `hasAuthFlows` = au moins un flow selectionne a `requiresCredentials: true`
-- Si `hasAuthFlows` : inserer une 3e etape `{ icon: Lock, label: "Identifiants" }` avant Surveillance → 4 pastilles
-- Sinon : 3 pastilles comme aujourd'hui
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Navigation :**
-- Bouton "Continuer avec X parcours" (ligne 455-462) : `setStep(hasAuthFlows ? 2 : surveillanceStep)` ou `surveillanceStep` = `hasAuthFlows ? 3 : 2`
-- Bouton "Retour" de Surveillance : `setStep(hasAuthFlows ? 2 : 1)`
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Nouvelle etape step === 2 (quand hasAuthFlows) :**
-- Card avec titre "Identifiants de test", description
-- Pour chaque flow selectionne avec `requiresCredentials`, afficher `<FlowCredentialsForm>` avec :
-  - Label du flow + badge goal
-  - `onSave` appelle `saveFlowCredentials(projectId, flowId, creds)` puis met a jour le state `flows`
-- Bouton "Retour" → step 1
-- Bouton "Continuer" → step 3 (toujours actif, pas bloquant)
-- Texte informatif : "Vous pouvez configurer les identifiants plus tard..."
+### 3. Badge verdict sur les cartes Dashboard
 
-**Step Surveillance :**
-- Passe de `step === 2` a `step === surveillanceStep` (2 ou 3 selon hasAuthFlows)
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-### Fichiers modifies
-1. `src/lib/sentinelle-api.ts` — 3 fonctions
-2. `src/lib/sentinelle-types.ts` — 2 champs
-3. `src/pages/Onboarding.tsx` — stepper dynamique + etape credentials
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
