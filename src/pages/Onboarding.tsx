@@ -476,65 +476,8 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* ─── Step 2: Identifiants (conditional) ─── */}
-          {step === CREDENTIALS_STEP && hasAuthFlows && (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <h2 className="font-mono text-xl font-bold">Identifiants de test</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Configurez les identifiants nécessaires pour tester vos parcours d'authentification.
-                  </p>
-                </div>
-
-                <div className="space-y-5">
-                  {authFlows.map((flow) => (
-                    <div key={flow.id} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
-                        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                          {flow.goal}
-                        </Badge>
-                      </div>
-                      <FlowCredentialsForm
-                        flow={flow}
-                        onSave={async (flowId, creds) => {
-                          await saveFlowCredentials(projectId!, flowId, creds);
-                          setFlows((prev) =>
-                            prev.map((f) =>
-                              f.id === flowId ? { ...f, credentials: creds, hasCredentials: true } : f
-                            )
-                          );
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="rounded-lg border border-dashed p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Vous pouvez aussi configurer les identifiants plus tard. Sans identifiants, le test vérifiera uniquement que la page de connexion se charge correctement.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Retour
-                  </Button>
-                  <Button
-                    onClick={() => setStep(SURVEILLANCE_STEP)}
-                    className="flex-1 font-mono"
-                  >
-                    Continuer
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ─── Step: Surveillance ─── */}
-          {step === SURVEILLANCE_STEP && (
+          {/* ─── Step 2: Surveillance ─── */}
+          {step === 2 && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div>
