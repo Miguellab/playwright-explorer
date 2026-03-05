@@ -323,7 +323,7 @@ export default function ProjectDashboard() {
                 </Badge>
               ))}
             </div>
-            {project.monitoredFlows.some((f) => f.requiresCredentials && !f.credentials) && (
+            {project.monitoredFlows.some((f) => f.requiresCredentials && !f.hasCredentials) && (
               <div className="flex items-center justify-between rounded-lg border border-status-pending/30 bg-status-pending/5 p-3">
                 <p className="font-mono text-xs text-status-pending">
                   Certains parcours nécessitent des identifiants de test pour un résultat fiable.
