@@ -1,6 +1,5 @@
 // ── Sentinelle MVP Types ──
 
-export type Verdict = "OK" | "EN ATTENTE" | "ALERTE" | "ERREUR";
 export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery";
@@ -131,24 +130,6 @@ export interface Findings {
   diagnostics: Diagnostic[];
 }
 
-export interface VerdictIssue {
-  severity: IssueSeverity;
-  message: string;
-  action?: string;
-  details?: string[];
-  humanQA?: boolean;
-}
-
-export interface VerdictSummary {
-  verdict: Verdict;
-  headline: string;
-  forUser: string;
-  forCTO: string;
-  issues: VerdictIssue[];
-  statusExplanation?: string;
-  verdictExplanation?: string;
-}
-
 export interface RunAssets {
   reportUrl?: string;
   screenshots?: { label: string; filename: string; path: string }[];
@@ -162,8 +143,6 @@ export interface Run {
   flowId?: string;
   flowLabel?: string;
   status: RunStatus;
-  verdict?: Verdict;
-  verdictSummary?: VerdictSummary;
   runnerRunId?: string;
   runnerStatus?: string;
   steps: RunStep[];

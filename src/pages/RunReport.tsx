@@ -4,13 +4,10 @@ import { cn } from "@/lib/utils";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
 import { AuthImage } from "@/components/AuthImage";
-import { VerdictBadge } from "@/components/VerdictBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getRun, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
@@ -22,8 +19,6 @@ import {
   AlertTriangle,
   Bug,
   Search,
-  UserCheck,
-  Terminal,
   Camera,
   X,
 } from "lucide-react";
@@ -46,7 +41,6 @@ export default function RunReport() {
   const [run, setRun] = useState<Run | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
-  const [ctoOpen, setCtoOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
 
@@ -102,10 +96,6 @@ export default function RunReport() {
     );
   }
 
-  const vs = run.verdictSummary;
-  const hasIssues = vs && vs.issues && vs.issues.length > 0;
-  const hasHumanQA = vs?.issues?.some((i) => i.humanQA);
-
   return (
     <div className="container max-w-4xl py-10">
         {/* Back */}
@@ -125,93 +115,28 @@ export default function RunReport() {
           </div>
         )}
 
-        {/* Verdict banner */}
-        {vs ? (
-          <div className={cn(
-            "rounded-lg p-6 space-y-3",
-            vs.verdict === "OK" && "bg-status-pass/10 border border-status-pass/30",
-            vs.verdict === "EN ATTENTE" && "bg-status-pending/10 border border-status-pending/30",
-            vs.verdict === "ALERTE" && "bg-status-skipped/10 border border-status-skipped/30",
-            vs.verdict === "ERREUR" && "bg-status-fail/10 border border-status-fail/30",
-          )}>
-            <div className="flex items-center gap-3">
-              <VerdictBadge verdict={vs.verdict} size="lg" explanation={vs.verdictExplanation} />
-            </div>
-            <p className="font-mono text-base font-bold">{vs.headline}</p>
-            {run.status !== "passed" && vs.verdict === "OK" && run.error && (
-              <p className="font-mono text-xs text-muted-foreground italic">
-                Le test s'est terminé avec une erreur technique, mais l'analyse IA n'a détecté aucun problème fonctionnel.
-              </p>
-            )}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground font-mono">
-              <span>Durée : {formatDuration(run.durationMs)}</span>
-              {run.startedAt && (
-                <span>{new Date(run.startedAt).toLocaleString("fr-FR")}</span>
-              )}
-              {run.status !== "passed" && vs.verdict === "OK" && (
-                <span className="text-muted-foreground/60 text-[10px]">
-                  (statut technique : {run.status})
-                </span>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <StatusBadge status={run.status} />
-            {isRunActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+        {/* Status header */}
+        <div className="flex items-center gap-3">
+          <StatusBadge status={run.status} />
+          {isRunActive && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          <span className="font-mono text-xs text-muted-foreground">
+            Durée : {formatDuration(run.durationMs)}
+          </span>
+          {run.startedAt && (
             <span className="font-mono text-xs text-muted-foreground">
-              Durée : {formatDuration(run.durationMs)}
+              {new Date(run.startedAt).toLocaleString("fr-FR")}
             </span>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Error banner */}
-        {run.status === "failed" && run.error && (
+        {(run.status === "failed" || run.status === "error") && run.error && (
           <div className="mt-6 flex items-start gap-3 rounded-lg border border-status-fail/30 bg-status-fail/5 p-4">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-status-fail" />
             <pre className="font-mono text-xs text-status-fail whitespace-pre-wrap break-words">
               {run.error}
             </pre>
           </div>
-        )}
-
-        {/* Summary for user */}
-        {vs && vs.forUser && (
-          <Card className="mt-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="font-mono text-sm uppercase tracking-wider">
-                Résumé pour vous
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="font-mono text-sm text-muted-foreground whitespace-pre-line">
-                {vs.forUser}
-              </p>
-              {hasHumanQA && (
-                <Button variant="outline" size="sm" className="font-mono text-xs">
-                  <UserCheck className="h-3 w-3 mr-1" /> Demander un QA manuel
-                </Button>
-              )}
-
-              {/* Collapsible CTO details */}
-              {vs.forCTO && (
-                <Collapsible open={ctoOpen} onOpenChange={setCtoOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="font-mono text-xs gap-1.5">
-                      <Terminal className="h-3 w-3" />
-                      Détails techniques
-                      <ChevronDown className={cn("h-3 w-3 transition-transform", ctoOpen && "rotate-180")} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <pre className="mt-3 rounded border bg-secondary/30 p-4 font-mono text-xs text-muted-foreground whitespace-pre-wrap break-words">
-                      {vs.forCTO}
-                    </pre>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
-            </CardContent>
-          </Card>
         )}
 
         {/* Steps */}
@@ -254,7 +179,7 @@ export default function RunReport() {
                         <span className="font-mono text-sm truncate">{step.label}</span>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 ml-2">
-                        {step.durationMs > 0 && (
+                        {step.durationMs && step.durationMs > 0 && (
                           <span className="font-mono text-xs text-muted-foreground">
                             {stepDuration(step.durationMs)}
                           </span>
@@ -323,64 +248,6 @@ export default function RunReport() {
           </DialogContent>
         </Dialog>
 
-        {/* Issues */}
-        {hasIssues && vs && (
-          <Card className="mt-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="font-mono text-sm uppercase tracking-wider">
-                Problemes detectes ({vs.issues.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {[...vs.issues]
-                .sort((a, b) => (a.severity === "critical" ? -1 : 1) - (b.severity === "critical" ? -1 : 1))
-                .map((issue, i) => (
-                  <div
-                    key={i}
-                    className={`rounded border p-3 space-y-1.5 ${
-                      issue.severity === "critical"
-                        ? "border-status-fail/30 bg-status-fail/5"
-                        : "border-status-skipped/30 bg-status-skipped/5"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge
-                        variant="outline"
-                        className={`font-mono text-[10px] ${
-                          issue.severity === "critical"
-                            ? "text-status-fail border-status-fail/30"
-                            : "text-status-skipped border-status-skipped/30"
-                        }`}
-                      >
-                        {issue.severity}
-                      </Badge>
-                      <span className="font-mono text-xs">{issue.message}</span>
-                      {issue.humanQA && (
-                        <Badge variant="outline" className="font-mono text-[10px] text-primary border-primary/30">
-                          QA Manuel recommandé
-                        </Badge>
-                      )}
-                    </div>
-                    {issue.action && (
-                      <p className="font-mono text-xs italic text-muted-foreground pl-1">
-                        → {issue.action}
-                      </p>
-                    )}
-                    {issue.details && issue.details.length > 0 && (
-                      <ul className="pl-4 space-y-0.5">
-                        {issue.details.map((d, di) => (
-                          <li key={di} className="font-mono text-[11px] text-muted-foreground list-disc">
-                            {d}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Console errors */}
         {run.findings?.consoleErrors && run.findings.consoleErrors.length > 0 && (
           <Card className="mt-6">
@@ -439,81 +306,18 @@ export default function RunReport() {
           <Card className="mt-6">
             <CardHeader className="pb-3">
               <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
-                <Search className="h-3.5 w-3.5" /> Diagnostics ({run.findings.diagnostics.length})
+                <Bug className="h-3.5 w-3.5" /> Diagnostics ({run.findings.diagnostics.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {run.findings.diagnostics.map((diag, i) => (
-                <div key={i} className="rounded border bg-secondary/20 p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    {diag.error ? (
-                      <Bug className="h-3.5 w-3.5 shrink-0 text-status-fail" />
-                    ) : (
-                      <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="font-mono text-xs font-semibold">{diag.step}</span>
-                    {diag.type && (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        ({diag.type})
-                      </span>
-                    )}
-                  </div>
-                  {diag.error && (
-                    <pre className="font-mono text-xs text-status-fail whitespace-pre-wrap break-words rounded bg-status-fail/5 border border-status-fail/20 p-2">
-                      {diag.error}
-                    </pre>
+                <div key={i} className="rounded border bg-secondary/20 p-3 space-y-1">
+                  <p className="font-mono text-xs font-semibold">{diag.step}</p>
+                  {diag.url && (
+                    <p className="font-mono text-[10px] text-muted-foreground truncate">{diag.url}</p>
                   )}
-                  {diag.type === "page_audit" && (
-                    <div className="space-y-1.5">
-                      {diag.url && (
-                        <p className="font-mono text-[10px] text-muted-foreground truncate">
-                          URL : {diag.url}
-                        </p>
-                      )}
-                      {diag.title && (
-                        <p className="font-mono text-[10px] text-muted-foreground">
-                          Titre : {diag.title}
-                        </p>
-                      )}
-                      {diag.frames &&
-                        diag.frames.map((frame, fi) => (
-                          <div key={fi} className="rounded border bg-secondary/30 p-2 space-y-1">
-                            <p className="font-mono text-[10px] text-muted-foreground truncate">
-                              Frame : {frame.url}
-                            </p>
-                            {frame.inputs.length > 0 && (
-                              <div>
-                                <p className="font-mono text-[10px] font-semibold text-muted-foreground">
-                                  Inputs ({frame.inputCount}) :
-                                </p>
-                                {frame.inputs.map((inp, ii) => (
-                                  <code
-                                    key={ii}
-                                    className="block font-mono text-[10px] text-muted-foreground pl-2 break-all"
-                                  >
-                                    {inp}
-                                  </code>
-                                ))}
-                              </div>
-                            )}
-                            {frame.buttons.length > 0 && (
-                              <div>
-                                <p className="font-mono text-[10px] font-semibold text-muted-foreground">
-                                  Boutons ({frame.buttonCount}) :
-                                </p>
-                                {frame.buttons.map((btn, bi) => (
-                                  <code
-                                    key={bi}
-                                    className="block font-mono text-[10px] text-muted-foreground pl-2 break-all"
-                                  >
-                                    {btn}
-                                  </code>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                    </div>
+                  {diag.error && (
+                    <p className="font-mono text-xs text-status-fail">{diag.error}</p>
                   )}
                 </div>
               ))}
@@ -521,63 +325,19 @@ export default function RunReport() {
           </Card>
         )}
 
-        {/* CTO section (collapsible) */}
-        {vs?.forCTO && (
-          <Card className="mt-6">
-            <Collapsible open={ctoOpen} onOpenChange={setCtoOpen}>
-              <CardHeader className="pb-3">
-                <CollapsibleTrigger className="flex w-full items-center justify-between">
-                  <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
-                    <Terminal className="h-3.5 w-3.5" /> Pour le CTO
-                  </CardTitle>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform ${
-                      ctoOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </CollapsibleTrigger>
-              </CardHeader>
-              <CollapsibleContent>
-                <CardContent>
-                  <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap break-words rounded bg-secondary/30 border p-4">
-                    {vs.forCTO}
-                  </pre>
-                </CardContent>
-              </CollapsibleContent>
-            </Collapsible>
-          </Card>
-        )}
-
-        {/* Report in-app */}
-        {runId && (
-          <div className="mt-6 flex gap-3">
-            <Button variant="outline" className="font-mono" onClick={() => setReportOpen(true)}>
-              <ExternalLink className="h-4 w-4 mr-2" /> Voir le rapport complet
-            </Button>
+        {/* Report link */}
+        {run.assets?.reportUrl && (
+          <div className="mt-6 text-center">
+            <a
+              href={`${REPORT_BASE}${run.assets.reportUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" /> Voir le rapport complet
+            </a>
           </div>
         )}
-
-        {/* Report iframe dialog */}
-        <Dialog open={reportOpen} onOpenChange={setReportOpen}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-[90vh] p-0 gap-0">
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <span className="font-mono text-sm font-semibold">Rapport complet</span>
-              <Button variant="ghost" size="sm" onClick={() => setReportOpen(false)}>
-                <X className="h-4 w-4 mr-1" /> Fermer
-              </Button>
-            </div>
-            <iframe
-              src={`${REPORT_BASE}/runs/${runId}/report`}
-              className="w-full flex-1 border-0"
-              title="Rapport de test"
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* Legend */}
-        <p className="mt-6 font-mono text-[10px] text-muted-foreground text-center">
-          Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
-        </p>
     </div>
   );
 }

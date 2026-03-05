@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { listProjects, listRuns } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { VerdictBadge } from "@/components/VerdictBadge";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import {
@@ -78,7 +77,6 @@ export default function Logs() {
                 <TableHead className="font-mono">Projet</TableHead>
                 <TableHead className="font-mono">Parcours</TableHead>
                 <TableHead className="font-mono">Statut</TableHead>
-                <TableHead className="font-mono">Verdict</TableHead>
                 <TableHead className="font-mono text-right">Durée</TableHead>
               </TableRow>
             </TableHeader>
@@ -109,9 +107,6 @@ export default function Logs() {
                   <TableCell>
                     <StatusBadge status={run.status} />
                   </TableCell>
-                  <TableCell>
-                    {run.verdict ? <VerdictBadge verdict={run.verdict} /> : "—"}
-                  </TableCell>
                   <TableCell className="font-mono text-xs text-right">
                     {formatDuration(run.durationMs)}
                   </TableCell>
@@ -120,10 +115,6 @@ export default function Logs() {
             </TableBody>
           </Table>
 
-          {/* Legend */}
-          <p className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
-            Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
-          </p>
         </div>
       )}
     </div>

@@ -2,8 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
-import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
-
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -273,8 +271,8 @@ export default function ProjectDashboard() {
                 <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-[10px]">
                   Configuration
                 </Badge>
-              ) : latestRun?.verdict ? (
-                <VerdictBadge verdict={latestRun.verdict} />
+              ) : latestRun ? (
+                <StatusBadge status={latestRun.status} />
               ) : null}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
@@ -411,15 +409,14 @@ export default function ProjectDashboard() {
           {/* Verdict card */}
           <Card className="lg:col-span-2">
             <CardContent className="p-6">
-              {latestRun?.verdictSummary ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <VerdictBadge verdict={latestRun.verdictSummary.verdict} size="lg" />
-                  </div>
-                  <VerdictText verdict={latestRun.verdictSummary.verdict} />
-                  <p className="font-mono text-sm text-muted-foreground whitespace-pre-line">
-                    {latestRun.verdictSummary.forUser}
-                  </p>
+              {latestRun && (latestRun.status === "passed" || latestRun.status === "failed" || latestRun.status === "error") ? (
+                <div className="space-y-3">
+                  <StatusBadge status={latestRun.status} />
+                  {latestRun.error && (
+                    <p className="font-mono text-xs text-muted-foreground whitespace-pre-line">
+                      {latestRun.error}
+                    </p>
+                  )}
                 </div>
               ) : latestRun && (latestRun.status === "queued" || latestRun.status === "running") ? (
                 <div className="flex items-center gap-3">
@@ -606,11 +603,7 @@ export default function ProjectDashboard() {
                                 {formatDuration(run.durationMs)}
                               </span>
                             )}
-                            {run.verdict ? (
-                              <VerdictBadge verdict={run.verdict} />
-                            ) : (
-                              <StatusBadge status={run.status} />
-                            )}
+                            <StatusBadge status={run.status} />
                           </div>
                         </Link>
                       );
@@ -620,10 +613,6 @@ export default function ProjectDashboard() {
               </div>
             )}
 
-            {/* Legend */}
-            <p className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
-              Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
-            </p>
           </CardContent>
         </Card>
     </div>
