@@ -262,6 +262,25 @@ export default function ProjectDashboard() {
     );
   }
 
+  const filteredRuns = useMemo(() => {
+    const q = historySearch.toLowerCase();
+    return runs.filter((run) => {
+      if (q && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q) && !(run.trigger || "").toLowerCase().includes(q)) return false;
+      if (historyStatus !== "all" && run.status !== historyStatus) return false;
+      if (historyDateStart) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d < historyDateStart) return false;
+      }
+      if (historyDateEnd) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d.slice(0, 10) > historyDateEnd) return false;
+      }
+      return true;
+    });
+  }, [runs, historySearch, historyStatus, historyDateStart, historyDateEnd]);
+
+  const filteredRunGroups = groupRuns(filteredRuns);
+
   const runGroups = groupRuns(runs);
 
   return (
