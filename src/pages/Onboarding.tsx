@@ -14,12 +14,10 @@ import {
   healthCheck,
   discoverFlows,
   updateProject,
-  saveFlowCredentials,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
 import type { OnboardingData, SuggestedFlow } from "@/lib/sentinelle-types";
-import { FlowCredentialsForm } from "@/components/FlowCredentialsForm";
 import {
   Globe,
   Target,
