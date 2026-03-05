@@ -16,6 +16,7 @@ import {
   getRun,
   toggleProject,
   deleteProject,
+  discoverAuthenticatedFlows,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
@@ -108,6 +109,7 @@ export default function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [activeRunIds, setActiveRunIds] = useState<string[]>([]);
   const [activeRuns, setActiveRuns] = useState<Run[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
@@ -193,6 +195,37 @@ export default function ProjectDashboard() {
       setDeleting(false);
     }
   }, [id, toast, navigate]);
+
+  const handleAuthenticatedDiscovery = useCallback(async () => {
+    if (!id) return;
+    setDiscovering(true);
+    try {
+      const result = await discoverAuthenticatedFlows(id);
+      if (result.loginSuccess) {
+        toast({
+          title: `${result.flows.length} parcours authentifié${result.flows.length > 1 ? "s" : ""} découvert${result.flows.length > 1 ? "s" : ""}`,
+          description: result.flows.map((f) => f.labelFr).join(", ") || "Aucun nouveau parcours détecté.",
+        });
+      } else {
+        toast({
+          title: "Connexion échouée",
+          description: "Impossible de se connecter avec les identifiants configurés. Vérifiez-les dans les paramètres.",
+          variant: "destructive",
+        });
+      }
+      const updatedProject = await getProject(id);
+      setProject(updatedProject);
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({
+        title: "Erreur de découverte",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDiscovering(false);
+    }
+  }, [id, toast]);
 
   const toggleStep = (index: number) => {
     setExpandedSteps((prev) => {
@@ -318,9 +351,16 @@ export default function ProjectDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
               {project.monitoredFlows.map((flow) => (
-                <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
-                  {flow.labelFr}
-                </Badge>
+                <span key={flow.id} className="inline-flex items-center gap-1">
+                  <Badge variant="secondary" className="font-mono text-[10px]">
+                    {flow.labelFr}
+                  </Badge>
+                  {flow.authenticatedOnly && (
+                    <Badge variant="outline" className="font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
+                      Post-login
+                    </Badge>
+                  )}
+                </span>
               ))}
             </div>
             {project.monitoredFlows.some((f) => f.requiresCredentials && !f.hasCredentials) && (
@@ -336,6 +376,34 @@ export default function ProjectDashboard() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Authenticated discovery */}
+        {project.monitoredFlows?.some((f) => f.goal === "LOGIN" && f.hasCredentials) && (
+          <Card className="mt-4">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-mono text-sm font-semibold">Zone authentifiée</p>
+                <p className="text-xs text-muted-foreground">
+                  Explorez les parcours post-connexion (dashboard, paramètres, etc.)
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                onClick={handleAuthenticatedDiscovery}
+                disabled={discovering}
+              >
+                {discovering ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Search className="mr-1 h-3 w-3" />
+                )}
+                Découvrir les parcours
+              </Button>
+            </CardContent>
+          </Card>
         )}
 
         {/* Verdict + Summary + Test button */}

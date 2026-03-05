@@ -216,6 +216,11 @@ export default function ProjectSettings() {
                           <Badge variant="secondary" className="shrink-0 font-mono text-xs">
                             {flow.confidence}%
                           </Badge>
+                          {flow.authenticatedOnly && (
+                            <Badge variant="outline" className="shrink-0 font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
+                              Post-login
+                            </Badge>
+                          )}
                           {flow.requiresCredentials && (
                             <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
                               <ShieldAlert className="h-3 w-3" />

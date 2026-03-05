@@ -1,39 +1,56 @@
 
 
-## Découverte authentifiée — Plan d'implémentation
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Résumé
-Ajouter le support de la découverte authentifiée (exploration post-login) : nouveau endpoint API, bouton sur le dashboard, badges "Post-login" sur les flows authentifiés.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Changements
+## Ce qui reste à faire
 
-**1. `src/lib/sentinelle-types.ts`**
-- Ajouter `authenticatedOnly?: boolean` à l'interface `SuggestedFlow`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**2. `src/lib/sentinelle-api.ts`**
-- Ajouter la fonction `discoverAuthenticatedFlows(projectId, opts?)` qui appelle `POST /projects/:id/discover-authenticated`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**3. `src/pages/ProjectDashboard.tsx`**
-- Ajouter state `discovering`
-- Calculer `hasLoginWithCreds` : `project.monitoredFlows?.some(f => f.goal === "LOGIN" && f.hasCredentials)`
-- Ajouter une Card "Zone authentifiée" après le bloc "Parcours surveillés" (ligne ~339) avec bouton "Découvrir les parcours" qui appelle `discoverAuthenticatedFlows`
-- Handler : appel API, toast succès/échec login/erreur, refresh project via `getProject`
-- Dans la liste des badges de parcours surveillés (ligne ~321), ajouter un badge bleu "Post-login" si `flow.authenticatedOnly`
-- Imports : `discoverAuthenticatedFlows` depuis sentinelle-api
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**4. `src/pages/ProjectSettings.tsx`**
-- Dans la boucle `suggestedFlows.map(...)` (ligne ~215), ajouter un badge bleu "Post-login" à côté des autres badges si `flow.authenticatedOnly`
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**5. `src/pages/DiscoverFlows.tsx`**
-- Ajouter badge "Post-login" sur les flows avec `authenticatedOnly: true` dans la liste des résultats (ligne ~240)
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-### Fichiers modifiés
+### 3. Badge verdict sur les cartes Dashboard
 
-| Fichier | Nature |
-|---------|--------|
-| `sentinelle-types.ts` | +1 champ optionnel |
-| `sentinelle-api.ts` | +1 fonction API |
-| `ProjectDashboard.tsx` | Card + bouton + handler + badge |
-| `ProjectSettings.tsx` | Badge "Post-login" |
-| `DiscoverFlows.tsx` | Badge "Post-login" |
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

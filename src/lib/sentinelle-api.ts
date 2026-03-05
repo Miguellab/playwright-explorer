@@ -107,6 +107,31 @@ export async function discoverFlows(projectId: string): Promise<DiscoverResult> 
   return request<DiscoverResult>(`/projects/${projectId}/discover`, { method: "POST" });
 }
 
+export interface AuthenticatedDiscoverResult {
+  runId: string;
+  flows: SuggestedFlow[];
+  allFlows: SuggestedFlow[];
+  loginSuccess: boolean;
+  screenshots: { label: string; filename: string; path: string }[];
+  visionAnalysis: {
+    pageType: string;
+    pageDescription: string;
+    navigationElements: string[];
+    authenticatedArea: boolean;
+  } | null;
+  visionError?: string;
+}
+
+export async function discoverAuthenticatedFlows(
+  projectId: string,
+  opts?: { maxPages?: number }
+): Promise<AuthenticatedDiscoverResult> {
+  return request<AuthenticatedDiscoverResult>(`/projects/${projectId}/discover-authenticated`, {
+    method: "POST",
+    body: JSON.stringify(opts || {}),
+  });
+}
+
 export async function getFlowCredentialsStatus(projectId: string): Promise<{
   flows: { flowId: string; goal: string; labelFr: string; hasCredentials: boolean; credentialFields: string[] }[];
   allConfigured: boolean;
