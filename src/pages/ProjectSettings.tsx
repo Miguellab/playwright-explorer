@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { getProject, updateProject } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
-import { ArrowLeft, Loader2, Save, ShieldAlert, Sparkles, Eye, EyeOff, Lock } from "lucide-react";
+import { ArrowLeft, Loader2, Save, ShieldAlert, Sparkles, Eye, EyeOff, Lock, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectSettings() {
@@ -30,6 +30,8 @@ export default function ProjectSettings() {
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [flowCredentials, setFlowCredentials] = useState<Record<string, { email: string; password: string }>>({});
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
+  const [editingFlowIds, setEditingFlowIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -44,10 +46,17 @@ export default function ProjectSettings() {
         const monitoredIds = new Set((p.monitoredFlows ?? []).map((f) => f.id));
         setSelectedFlowIds(monitoredIds);
         const creds: Record<string, { email: string; password: string }> = {};
+        const configured = new Set<string>();
         (p.monitoredFlows ?? []).forEach((f) => {
-          if (f.credentials) creds[f.id] = { ...f.credentials };
+          if (f.credentials) {
+            creds[f.id] = { ...f.credentials };
+          } else if (f.hasCredentials) {
+            creds[f.id] = { email: "••••••••", password: "••••••••" };
+            configured.add(f.id);
+          }
         });
         setFlowCredentials(creds);
+        setConfiguredFlowIds(configured);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -70,7 +79,10 @@ export default function ProjectSettings() {
         .filter((f) => selectedFlowIds.has(f.id))
         .map((f) => {
           const creds = flowCredentials[f.id];
-          return creds && creds.email && creds.password ? { ...f, credentials: creds } : f;
+          const hasNewCreds = creds && creds.email && creds.password
+            && creds.email !== "••••••••" && creds.password !== "••••••••";
+          if (hasNewCreds) return { ...f, credentials: creds };
+          return f;
         });
       const updated = await updateProject(id, {
         name: name.trim(),
@@ -81,6 +93,12 @@ export default function ProjectSettings() {
         monitoredFlows,
       });
       setProject(updated);
+      // Update configuredFlowIds from response
+      const newConfigured = new Set<string>();
+      (updated.monitoredFlows ?? []).forEach((f) => {
+        if (f.hasCredentials) newConfigured.add(f.id);
+      });
+      setConfiguredFlowIds(newConfigured);
       toast({ title: "Sauvegarde", description: "Paramètres mis à jour." });
     } catch (e: unknown) {
       const err = e as Error;
@@ -109,6 +127,7 @@ export default function ProjectSettings() {
 
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
   const analysisMode = project.discoveryMeta?.analysisMode;
+
 
   return (
     <div className="container max-w-2xl py-10">
@@ -197,52 +216,69 @@ export default function ProjectSettings() {
                       {/* Credential fields for selected flows requiring credentials */}
                       {isSelected && flow.requiresCredentials && (
                         <div className="ml-8 space-y-2">
-                          {creds ? (
-                            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
-                              <Lock className="h-3.5 w-3.5" /> Identifiants configurés
-                            </span>
-                          ) : null}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="font-mono text-[10px]">Email de test</Label>
-                              <Input
-                                type="email"
-                                placeholder="email@test.com"
-                                value={creds?.email ?? ""}
-                                onChange={(e) =>
+                          {configuredFlowIds.has(flow.id) && !editingFlowIds.has(flow.id) ? (
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
+                                <Lock className="h-3.5 w-3.5" /> Identifiants configurés
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="font-mono text-xs h-7 px-2"
+                                onClick={() => {
+                                  setEditingFlowIds((prev) => new Set(prev).add(flow.id));
                                   setFlowCredentials((prev) => ({
                                     ...prev,
-                                    [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
-                                  }))
-                                }
-                                className="font-mono text-xs h-8"
-                              />
+                                    [flow.id]: { email: "", password: "" },
+                                  }));
+                                }}
+                              >
+                                <Pencil className="h-3 w-3 mr-1" /> Modifier
+                              </Button>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="font-mono text-[10px]">Mot de passe de test</Label>
-                              <div className="relative">
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="font-mono text-[10px]">Email de test</Label>
                                 <Input
-                                  type={showPwd ? "text" : "password"}
-                                  placeholder="••••••••"
-                                  value={creds?.password ?? ""}
+                                  type="email"
+                                  placeholder="email@test.com"
+                                  value={creds?.email ?? ""}
                                   onChange={(e) =>
                                     setFlowCredentials((prev) => ({
                                       ...prev,
-                                      [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
+                                      [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
                                     }))
                                   }
-                                  className="font-mono text-xs h-8 pr-8"
+                                  className="font-mono text-xs h-8"
                                 />
-                                <button
-                                  type="button"
-                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                  onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
-                                >
-                                  {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                </button>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="font-mono text-[10px]">Mot de passe de test</Label>
+                                <div className="relative">
+                                  <Input
+                                    type={showPwd ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    value={creds?.password ?? ""}
+                                    onChange={(e) =>
+                                      setFlowCredentials((prev) => ({
+                                        ...prev,
+                                        [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
+                                      }))
+                                    }
+                                    className="font-mono text-xs h-8 pr-8"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
+                                  >
+                                    {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
