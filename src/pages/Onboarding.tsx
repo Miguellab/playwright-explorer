@@ -81,22 +81,7 @@ export default function Onboarding() {
     autoTest: true,
   });
 
-  // Dynamic stepper
   const selectedFlows = useMemo(() => flows.filter((f) => selected.has(f.id)), [flows, selected]);
-  const hasAuthFlows = useMemo(() => selectedFlows.some((f) => f.requiresCredentials), [selectedFlows]);
-  const STEPS = useMemo(() => {
-    if (hasAuthFlows) {
-      return [
-        { icon: Globe, label: "Application" },
-        { icon: Target, label: "Objectifs" },
-        { icon: Lock, label: "Identifiants" },
-        { icon: Eye, label: "Surveillance" },
-      ];
-    }
-    return BASE_STEPS;
-  }, [hasAuthFlows]);
-  const CREDENTIALS_STEP = 2;
-  const SURVEILLANCE_STEP = hasAuthFlows ? 3 : 2;
 
   useEffect(() => {
     setCheckingApi(true);
