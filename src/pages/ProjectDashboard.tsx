@@ -441,52 +441,33 @@ export default function ProjectDashboard() {
           </Card>
         )}
 
-        {/* Verdict + Summary + Test button */}
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          {/* Verdict card */}
-          <Card className="lg:col-span-2">
-            <CardContent className="p-6">
-              {latestRun && (latestRun.status === "passed" || latestRun.status === "failed" || latestRun.status === "error") ? (
-                <div className="space-y-3">
-                  <StatusBadge status={latestRun.status} />
-                  {latestRun.error && (
-                    <p className="font-mono text-xs text-muted-foreground whitespace-pre-line">
-                      {latestRun.error}
-                    </p>
-                  )}
-                </div>
-              ) : latestRun && (latestRun.status === "queued" || latestRun.status === "running") ? (
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  <div>
-                    <p className="font-mono text-sm font-semibold">
-                      {latestRun.status === "queued" ? "Test en file d'attente..." : "Test en cours..."}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Les resultats s'afficheront ici automatiquement.
-                    </p>
-                  </div>
-                </div>
-              ) : project.configStatus === "no_flows" ? (
-                <div className="text-center py-4 space-y-2">
-                  <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-xs">
-                    Configuration requise
-                  </Badge>
-                  <p className="font-mono text-sm text-muted-foreground">
-                    {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="font-mono text-sm text-muted-foreground">
-                    Aucun test n'a encore ete lance. Cliquez sur « Tester maintenant » pour commencer.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        {/* Active run status + Test button */}
+        {hasActiveRuns && latestRun && (
+          <div className="mt-8 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <div>
+              <p className="font-mono text-sm font-semibold">
+                {latestRun.status === "queued" ? "Test en file d'attente..." : "Test en cours..."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Les resultats s'afficheront ici automatiquement.
+              </p>
+            </div>
+          </div>
+        )}
 
-          {/* Action card */}
+        {project.configStatus === "no_flows" && !hasActiveRuns && (
+          <div className="mt-8 rounded-lg border border-status-pending/30 bg-status-pending/5 p-4 text-center space-y-2">
+            <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-xs">
+              Configuration requise
+            </Badge>
+            <p className="font-mono text-sm text-muted-foreground">
+              {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-6">
           <Card>
             <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
               <TooltipProvider>
