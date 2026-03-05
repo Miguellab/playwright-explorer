@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
@@ -7,6 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getProject,
   listRuns,
@@ -111,6 +119,10 @@ export default function ProjectDashboard() {
   const [activeRunIds, setActiveRunIds] = useState<string[]>([]);
   const [activeRuns, setActiveRuns] = useState<Run[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatus, setHistoryStatus] = useState("all");
+  const [historyDateStart, setHistoryDateStart] = useState("");
+  const [historyDateEnd, setHistoryDateEnd] = useState("");
 
   const latestActiveRun = activeRuns.length > 0 ? activeRuns[0] : null;
   const latestRun = latestActiveRun || (runs.length > 0 ? runs[0] : null);
@@ -234,6 +246,26 @@ export default function ProjectDashboard() {
     });
   };
 
+  const filteredRuns = useMemo(() => {
+    const q = historySearch.toLowerCase();
+    return runs.filter((run) => {
+      if (q && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q) && !(run.trigger || "").toLowerCase().includes(q)) return false;
+      if (historyStatus !== "all" && run.status !== historyStatus) return false;
+      if (historyDateStart) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d < historyDateStart) return false;
+      }
+      if (historyDateEnd) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d.slice(0, 10) > historyDateEnd) return false;
+      }
+      return true;
+    });
+  }, [runs, historySearch, historyStatus, historyDateStart, historyDateEnd]);
+
+  const filteredRunGroups = groupRuns(filteredRuns);
+  const runGroups = groupRuns(runs);
+
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -249,8 +281,6 @@ export default function ProjectDashboard() {
       </div>
     );
   }
-
-  const runGroups = groupRuns(runs);
 
   return (
     <div className="container max-w-4xl py-10">
@@ -568,51 +598,99 @@ export default function ProjectDashboard() {
                 Aucun test n'a encore ete lance. Cliquez sur « Tester maintenant » pour commencer.
               </p>
             ) : (
-              <div className="space-y-2">
-                {runGroups.map((group, gi) => (
-                  <div
-                    key={gi}
-                    className={group.length > 1 ? "border-l-2 border-primary/30 pl-3 space-y-2" : "space-y-2"}
-                  >
-                    {group.map((run) => {
-                      const trigger = TRIGGER_LABELS[run.trigger] || TRIGGER_LABELS.manual;
-                      const TriggerIcon = trigger.icon;
-                      return (
-                        <Link
-                          key={run.id}
-                          to={`/project/${project.id}/run/${run.id}`}
-                          className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3 hover:bg-secondary/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono shrink-0">
-                              <TriggerIcon className="h-3 w-3" />
-                              {trigger.label}
-                            </div>
-                            {run.flowLabel && (
-                              <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                {run.flowLabel}
-                              </Badge>
-                            )}
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {run.startedAt ? new Date(run.startedAt).toLocaleString("fr-FR") : "—"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0 ml-2">
-                            {run.durationMs && (
-                              <span className="font-mono text-xs text-muted-foreground">
-                                {formatDuration(run.durationMs)}
-                              </span>
-                            )}
-                            <StatusBadge status={run.status} />
-                          </div>
-                        </Link>
-                      );
-                    })}
+              <>
+                <div className="flex flex-wrap items-end gap-3 mb-4">
+                  <div className="relative flex-1 min-w-[160px]">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher…"
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      className="pl-9 font-mono text-sm h-9"
+                    />
                   </div>
-                ))}
-              </div>
+                  <Select value={historyStatus} onValueChange={setHistoryStatus}>
+                    <SelectTrigger className="w-[130px] font-mono text-sm h-9">
+                      <SelectValue placeholder="Statut" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous statuts</SelectItem>
+                      <SelectItem value="passed">Passed</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="error">Error</SelectItem>
+                      <SelectItem value="running">Running</SelectItem>
+                      <SelectItem value="queued">Queued</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="date"
+                    value={historyDateStart}
+                    onChange={(e) => setHistoryDateStart(e.target.value)}
+                    className="w-[140px] font-mono text-sm h-9"
+                  />
+                  <Input
+                    type="date"
+                    value={historyDateEnd}
+                    onChange={(e) => setHistoryDateEnd(e.target.value)}
+                    className="w-[140px] font-mono text-sm h-9"
+                  />
+                </div>
+                {filteredRuns.length !== runs.length && (
+                  <p className="mb-2 text-xs text-muted-foreground font-mono">
+                    {filteredRuns.length} résultat{filteredRuns.length !== 1 ? "s" : ""} sur {runs.length}
+                  </p>
+                )}
+                {filteredRunGroups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground font-mono py-4 text-center">
+                    Aucun run correspondant.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {filteredRunGroups.map((group, gi) => (
+                      <div
+                        key={gi}
+                        className={group.length > 1 ? "border-l-2 border-primary/30 pl-3 space-y-2" : "space-y-2"}
+                      >
+                        {group.map((run) => {
+                          const trigger = TRIGGER_LABELS[run.trigger] || TRIGGER_LABELS.manual;
+                          const TriggerIcon = trigger.icon;
+                          return (
+                            <Link
+                              key={run.id}
+                              to={`/project/${project.id}/run/${run.id}`}
+                              className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3 hover:bg-secondary/50 transition-colors"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono shrink-0">
+                                  <TriggerIcon className="h-3 w-3" />
+                                  {trigger.label}
+                                </div>
+                                {run.flowLabel && (
+                                  <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                                    {run.flowLabel}
+                                  </Badge>
+                                )}
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {run.startedAt ? new Date(run.startedAt).toLocaleString("fr-FR") : "—"}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0 ml-2">
+                                {run.durationMs && (
+                                  <span className="font-mono text-xs text-muted-foreground">
+                                    {formatDuration(run.durationMs)}
+                                  </span>
+                                )}
+                                <StatusBadge status={run.status} />
+                              </div>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
-
           </CardContent>
         </Card>
     </div>
