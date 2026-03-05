@@ -68,6 +68,7 @@ export default function Onboarding() {
   const [progress, setProgress] = useState(0);
   const [messageIdx, setMessageIdx] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
+  const [visionError, setVisionError] = useState<string | undefined>();
   const discoveryStarted = useRef(false);
 
   // Step 2 — Surveillance
