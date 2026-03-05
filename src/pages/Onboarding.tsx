@@ -543,7 +543,7 @@ export default function Onboarding() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : 1)} className="font-mono">
+                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour
                   </Button>
                   <Button onClick={handleFinalSubmit} disabled={submitting} className="flex-1 font-mono">
