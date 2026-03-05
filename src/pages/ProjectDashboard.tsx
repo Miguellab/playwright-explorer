@@ -378,6 +378,34 @@ export default function ProjectDashboard() {
           </div>
         )}
 
+        {/* Authenticated discovery */}
+        {project.monitoredFlows?.some((f) => f.goal === "LOGIN" && f.hasCredentials) && (
+          <Card className="mt-4">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="font-mono text-sm font-semibold">Zone authentifiée</p>
+                <p className="text-xs text-muted-foreground">
+                  Explorez les parcours post-connexion (dashboard, paramètres, etc.)
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="font-mono text-xs"
+                onClick={handleAuthenticatedDiscovery}
+                disabled={discovering}
+              >
+                {discovering ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Search className="mr-1 h-3 w-3" />
+                )}
+                Découvrir les parcours
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Verdict + Summary + Test button */}
         <div className="mt-8 grid gap-6 lg:grid-cols-3">
           {/* Verdict card */}

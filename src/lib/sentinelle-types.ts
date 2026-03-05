@@ -23,6 +23,7 @@ export interface SuggestedFlow {
   requiresCredentials?: boolean;
   hasCredentials?: boolean;
   credentials?: { email: string; password: string };
+  authenticatedOnly?: boolean;
 }
 
 // ── Project ──
