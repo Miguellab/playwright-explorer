@@ -31,6 +31,7 @@ export default function DiscoverFlows() {
   const [messageIdx, setMessageIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [visionError, setVisionError] = useState<string | undefined>();
   const startedRef = useRef(false);
 
   // Simulated progress
