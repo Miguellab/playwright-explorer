@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
   const [showKey, setShowKey] = useState(false);
   const [savingKey, setSavingKey] = useState(false);
+  const [useVisionAnalysis, setUseVisionAnalysis] = useState(true);
 
   useEffect(() => {
     const init = async () => {
