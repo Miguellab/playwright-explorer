@@ -200,18 +200,23 @@ export default function ProjectSettings() {
                           checked={isSelected}
                           onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
                         />
-                        <div className="flex flex-1 items-center gap-2 min-w-0">
-                          <span className="font-mono text-sm truncate">{flow.labelFr}</span>
-                          {flow.authenticatedOnly && (
-                            <Badge variant="outline" className="shrink-0 font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
-                              Post-login
-                            </Badge>
-                          )}
-                          {flow.requiresCredentials && (
-                            <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
-                              <ShieldAlert className="h-3 w-3" />
-                              Identifiants requis
-                            </Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm truncate">{flow.labelFr}</span>
+                            {flow.authenticatedOnly && (
+                              <Badge variant="outline" className="shrink-0 font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
+                                Post-login
+                              </Badge>
+                            )}
+                            {flow.requiresCredentials && (
+                              <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
+                                <ShieldAlert className="h-3 w-3" />
+                                Identifiants requis
+                              </Badge>
+                            )}
+                          </div>
+                          {flow.descriptionFr && (
+                            <p className="font-mono text-xs text-muted-foreground mt-0.5">{flow.descriptionFr}</p>
                           )}
                         </div>
                       </label>
