@@ -43,6 +43,11 @@ export interface Project {
   hasRunnerApiKey: boolean;
   configStatus?: "ready" | "no_flows";
   configMessage?: string | null;
+  credentialsWarning?: {
+    message: string;
+    flowIds: string[];
+    flowLabels: string[];
+  };
   discoveryMeta?: { analysisMode?: string };
   createdAt: string;
   updatedAt: string;
