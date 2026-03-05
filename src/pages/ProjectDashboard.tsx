@@ -123,6 +123,7 @@ export default function ProjectDashboard() {
   const [historyStatus, setHistoryStatus] = useState("all");
   const [historyDateStart, setHistoryDateStart] = useState("");
   const [historyDateEnd, setHistoryDateEnd] = useState("");
+  const [historyFlow, setHistoryFlow] = useState("all");
 
   const latestActiveRun = activeRuns.length > 0 ? activeRuns[0] : null;
   const latestRun = latestActiveRun || (runs.length > 0 ? runs[0] : null);
