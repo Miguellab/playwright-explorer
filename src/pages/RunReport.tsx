@@ -148,6 +148,11 @@ export default function RunReport() {
               {run.startedAt && (
                 <span>{new Date(run.startedAt).toLocaleString("fr-FR")}</span>
               )}
+              {run.status !== "passed" && vs.verdict === "OK" && (
+                <span className="text-muted-foreground/60 text-[10px]">
+                  (statut technique : {run.status})
+                </span>
+              )}
             </div>
           </div>
         ) : (
