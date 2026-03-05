@@ -1,56 +1,40 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Nettoyage : afficher uniquement ce qui est actionnable
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Apres audit de toutes les pages, voici les elements non-actionnables identifies :
 
-## Ce qui reste à faire
+### 1. RunReport.tsx — Diagnostics uniquement si erreurs
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+La section "Diagnostics" affiche des etapes internes du runner (Audit Connexion, Audit page cible) sans valeur pour l'utilisateur. On la conditionne a la presence d'au moins un diagnostic avec un champ `error`, et on n'affiche que ceux qui ont une erreur.
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+**Lignes 304-326** : remplacer la condition `run.findings?.diagnostics && run.findings.diagnostics.length > 0` par un filtre sur les diagnostics ayant une erreur. N'afficher que les diagnostics avec `error`.
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### 2. ProjectSettings.tsx — Retirer le score de confiance
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+Le badge `{flow.confidence}%` (ligne 216-218) n'est pas actionnable. L'utilisateur ne peut rien faire de ce pourcentage. A supprimer.
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+### 3. ProjectSettings.tsx — Retirer les badges "mode d'analyse"
 
-### 3. Badge verdict sur les cartes Dashboard
+Les badges "Analyse par IA" / "Analyse basique" (lignes 185-195) sont des details internes de la decouverte. L'utilisateur n'a pas besoin de savoir quel mode a ete utilise. A supprimer.
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+### 4. DiscoverFlows.tsx — Retirer les evidence badges
 
-### 4. Collapsible CTO dans RunReport
+Les badges `evidence` (lignes 284-292) affichent des artefacts internes de detection (ex: "has login form", "nav detected"). Pas actionnable. A supprimer.
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+### 5. DiscoverFlows.tsx — Retirer le badge goal
 
----
+Le badge `{flow.goal}` (lignes 267-269) est une classification interne (LOGIN, CHECKOUT, etc.). L'utilisateur voit deja le label FR et la description. Pas actionnable. A supprimer.
 
-## Fichiers modifiés
+### Resume
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+| Fichier | Element retire/modifie | Raison |
+|---|---|---|
+| `RunReport.tsx` | Diagnostics affiches seulement si erreur | Info debug interne |
+| `ProjectSettings.tsx` | Badge `confidence %` | Score interne |
+| `ProjectSettings.tsx` | Badges mode d'analyse | Detail technique |
+| `DiscoverFlows.tsx` | Badges `evidence` | Artefacts internes |
+| `DiscoverFlows.tsx` | Badge `goal` | Classification interne |
 
-4 fichiers, ~80 lignes modifiées.
+4 fichiers, suppressions simples (~30 lignes retirees).
 
