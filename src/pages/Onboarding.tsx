@@ -14,12 +14,10 @@ import {
   healthCheck,
   discoverFlows,
   updateProject,
-  saveFlowCredentials,
   DEFAULT_RUNNER_URL,
   DEFAULT_RUNNER_KEY,
 } from "@/lib/sentinelle-api";
 import type { OnboardingData, SuggestedFlow } from "@/lib/sentinelle-types";
-import { FlowCredentialsForm } from "@/components/FlowCredentialsForm";
 import {
   Globe,
   Target,
@@ -36,7 +34,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-const BASE_STEPS = [
+const STEPS = [
   { icon: Globe, label: "Application" },
   { icon: Target, label: "Objectifs" },
   { icon: Eye, label: "Surveillance" },
@@ -83,22 +81,7 @@ export default function Onboarding() {
     autoTest: true,
   });
 
-  // Dynamic stepper
   const selectedFlows = useMemo(() => flows.filter((f) => selected.has(f.id)), [flows, selected]);
-  const hasAuthFlows = useMemo(() => selectedFlows.some((f) => f.requiresCredentials), [selectedFlows]);
-  const STEPS = useMemo(() => {
-    if (hasAuthFlows) {
-      return [
-        { icon: Globe, label: "Application" },
-        { icon: Target, label: "Objectifs" },
-        { icon: Lock, label: "Identifiants" },
-        { icon: Eye, label: "Surveillance" },
-      ];
-    }
-    return BASE_STEPS;
-  }, [hasAuthFlows]);
-  const CREDENTIALS_STEP = 2;
-  const SURVEILLANCE_STEP = hasAuthFlows ? 3 : 2;
 
   useEffect(() => {
     setCheckingApi(true);
@@ -216,10 +199,6 @@ export default function Onboarding() {
     }
   };
 
-  const authFlows = useMemo(
-    () => selectedFlows.filter((f) => f.requiresCredentials),
-    [selectedFlows]
-  );
 
   return (
     <div className="flex-1 flex flex-col">
@@ -401,7 +380,7 @@ export default function Onboarding() {
                         <p className="font-mono text-sm text-muted-foreground">
                           Aucun parcours détecté. Vous pourrez configurer les objectifs manuellement.
                         </p>
-                        <Button className="font-mono" onClick={() => setStep(SURVEILLANCE_STEP)}>
+                        <Button className="font-mono" onClick={() => setStep(2)}>
                           Continuer <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </CardContent>
@@ -482,7 +461,7 @@ export default function Onboarding() {
                           Relancer
                         </Button>
                         <Button
-                          onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : SURVEILLANCE_STEP)}
+                          onClick={() => setStep(2)}
                           disabled={selected.size === 0}
                           className="flex-1 font-mono"
                         >
@@ -497,73 +476,24 @@ export default function Onboarding() {
             </div>
           )}
 
-          {/* ─── Step 2: Identifiants (conditional) ─── */}
-          {step === CREDENTIALS_STEP && hasAuthFlows && (
-            <Card>
-              <CardContent className="p-6 space-y-6">
-                <div>
-                  <h2 className="font-mono text-xl font-bold">Identifiants de test</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Configurez les identifiants nécessaires pour tester vos parcours d'authentification.
-                  </p>
-                </div>
-
-                <div className="space-y-5">
-                  {authFlows.map((flow) => (
-                    <div key={flow.id} className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
-                        <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                          {flow.goal}
-                        </Badge>
-                      </div>
-                      <FlowCredentialsForm
-                        flow={flow}
-                        onSave={async (flowId, creds) => {
-                          await saveFlowCredentials(projectId!, flowId, creds);
-                          setFlows((prev) =>
-                            prev.map((f) =>
-                              f.id === flowId ? { ...f, credentials: creds, hasCredentials: true } : f
-                            )
-                          );
-                        }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <div className="rounded-lg border border-dashed p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Vous pouvez aussi configurer les identifiants plus tard. Sans identifiants, le test vérifiera uniquement que la page de connexion se charge correctement.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
-                    <ArrowLeft className="mr-2 h-4 w-4" /> Retour
-                  </Button>
-                  <Button
-                    onClick={() => setStep(SURVEILLANCE_STEP)}
-                    className="flex-1 font-mono"
-                  >
-                    Continuer
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* ─── Step: Surveillance ─── */}
-          {step === SURVEILLANCE_STEP && (
+          {/* ─── Step 2: Surveillance ─── */}
+          {step === 2 && (
             <Card>
               <CardContent className="p-6 space-y-6">
                 <div>
                   <h2 className="font-mono text-xl font-bold">Surveillance</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                   <p className="mt-1 text-sm text-muted-foreground">
                     Configurez la fréquence de surveillance pour les {selected.size} parcours sélectionnés.
                   </p>
                 </div>
+
+                {selectedFlows.some((f) => f.requiresCredentials) && (
+                  <div className="rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2">
+                    <p className="font-mono text-xs text-status-pending">
+                      Certains parcours nécessitent des identifiants. Vous pourrez les configurer dans les paramètres du projet après la création.
+                    </p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between rounded-lg border p-4">
@@ -613,7 +543,7 @@ export default function Onboarding() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : 1)} className="font-mono">
+                  <Button variant="outline" onClick={() => setStep(1)} className="font-mono">
                     <ArrowLeft className="mr-2 h-4 w-4" /> Retour
                   </Button>
                   <Button onClick={handleFinalSubmit} disabled={submitting} className="flex-1 font-mono">

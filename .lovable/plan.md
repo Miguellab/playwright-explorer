@@ -1,56 +1,56 @@
 
 
-## Plan : Supprimer les doublons de credentials
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### 1. `src/pages/Onboarding.tsx`
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-**Imports** — Retirer `FlowCredentialsForm`, `saveFlowCredentials`, `Lock` (ligne 17, 22, 27).
+## Ce qui reste à faire
 
-**Stepper** — Remplacer la logique dynamique (lignes 86-101 + 219-222) par un stepper fixe 3 etapes et un simple `selectedFlows` memo. Supprimer `hasAuthFlows`, `CREDENTIALS_STEP`, `SURVEILLANCE_STEP`, `authFlows`.
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**Navigation** :
-- "Continuer avec X parcours" (ligne 485) → `setStep(2)` toujours
-- "Aucun parcours" continue (ligne 404) → `setStep(2)`
-- Bouton "Retour" surveillance (ligne 616) → `setStep(1)` toujours
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**Supprimer** le bloc entier step Identifiants (lignes 500-555).
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Step Surveillance** — Condition `step === SURVEILLANCE_STEP` (ligne 558) → `step === 2`. Ajouter un bandeau info si des flows auth sont selectionnes :
-```tsx
-{selectedFlows.some((f) => f.requiresCredentials) && (
-  <div className="rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2">
-    <p className="font-mono text-xs text-status-pending">
-      Certains parcours necessitent des identifiants. Vous pourrez les configurer dans les parametres du projet apres la creation.
-    </p>
-  </div>
-)}
-```
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-### 2. `src/pages/ProjectDashboard.tsx`
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Imports** — Retirer `FlowCredentialsForm` (ligne 6). Verifier si `updateProject` est utilise ailleurs → il ne l'est pas dans ce fichier apres suppression, donc le retirer aussi (ligne 19).
+### 3. Badge verdict sur les cartes Dashboard
 
-**Remplacer** le bloc credentials (lignes 327-345) par un simple avertissement avec lien vers les parametres :
-```tsx
-{project.monitoredFlows.some((f) => f.requiresCredentials && !f.credentials) && (
-  <div className="flex items-center justify-between rounded-lg border border-status-pending/30 bg-status-pending/5 p-3">
-    <p className="font-mono text-xs text-status-pending">
-      Certains parcours necessitent des identifiants de test.
-    </p>
-    <Link to={`/project/${project.id}/settings`}>
-      <Button variant="outline" size="sm" className="font-mono text-xs">
-        <Settings className="mr-1 h-3 w-3" /> Configurer
-      </Button>
-    </Link>
-  </div>
-)}
-```
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-### 3. Fichiers inchanges
-- `src/pages/ProjectSettings.tsx` — deja correct
-- `src/components/FlowCredentialsForm.tsx` — conserve pour usage futur
+### 4. Collapsible CTO dans RunReport
 
-### Fichiers modifies
-1. `src/pages/Onboarding.tsx`
-2. `src/pages/ProjectDashboard.tsx`
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

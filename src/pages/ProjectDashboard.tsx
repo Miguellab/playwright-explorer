@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
 import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
-import { FlowCredentialsForm } from "@/components/FlowCredentialsForm";
+
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,6 @@ import {
   getRun,
   toggleProject,
   deleteProject,
-  updateProject,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
@@ -324,24 +323,18 @@ export default function ProjectDashboard() {
                 </Badge>
               ))}
             </div>
-            {project.monitoredFlows
-              .filter((f) => f.requiresCredentials)
-              .map((flow) => (
-                <div key={flow.id} className="rounded-lg border bg-secondary/20 p-3">
-                  <p className="font-mono text-xs font-semibold">{flow.labelFr}</p>
-                  <FlowCredentialsForm
-                    flow={flow}
-                    onSave={async (flowId, credentials) => {
-                      const updatedFlows = (project.monitoredFlows ?? []).map((f) =>
-                        f.id === flowId ? { ...f, credentials } : f
-                      );
-                      const updated = await updateProject(project.id, { monitoredFlows: updatedFlows });
-                      setProject(updated);
-                    }}
-                    onRetest={handleTestNow}
-                  />
-                </div>
-              ))}
+            {project.monitoredFlows.some((f) => f.requiresCredentials && !f.credentials) && (
+              <div className="flex items-center justify-between rounded-lg border border-status-pending/30 bg-status-pending/5 p-3">
+                <p className="font-mono text-xs text-status-pending">
+                  Certains parcours nécessitent des identifiants de test pour un résultat fiable.
+                </p>
+                <Link to={`/project/${project.id}/settings`}>
+                  <Button variant="outline" size="sm" className="font-mono text-xs">
+                    <Settings className="mr-1 h-3 w-3" /> Configurer
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
