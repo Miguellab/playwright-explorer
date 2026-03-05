@@ -107,9 +107,6 @@ export default function Logs() {
                   <TableCell>
                     <StatusBadge status={run.status} />
                   </TableCell>
-                  <TableCell>
-                    {run.verdict ? <VerdictBadge verdict={run.verdict} /> : "—"}
-                  </TableCell>
                   <TableCell className="font-mono text-xs text-right">
                     {formatDuration(run.durationMs)}
                   </TableCell>
