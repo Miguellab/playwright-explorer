@@ -35,6 +35,11 @@ function formatDuration(ms: number | null): string {
 export default function Logs() {
   const [rows, setRows] = useState<RunWithProject[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [projectFilter, setProjectFilter] = useState("all");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,6 +66,29 @@ export default function Logs() {
     })();
   }, []);
 
+  const projectNames = useMemo(
+    () => [...new Set(rows.map((r) => r.projectName))].sort(),
+    [rows]
+  );
+
+  const filteredRows = useMemo(() => {
+    const q = search.toLowerCase();
+    return rows.filter((run) => {
+      if (q && !run.projectName.toLowerCase().includes(q) && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q)) return false;
+      if (statusFilter !== "all" && run.status !== statusFilter) return false;
+      if (projectFilter !== "all" && run.projectName !== projectFilter) return false;
+      if (dateStart) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d < dateStart) return false;
+      }
+      if (dateEnd) {
+        const d = run.startedAt || run.finishedAt;
+        if (!d || d.slice(0, 10) > dateEnd) return false;
+      }
+      return true;
+    });
+  }, [rows, search, statusFilter, projectFilter, dateStart, dateEnd]);
+
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
@@ -74,10 +102,67 @@ export default function Logs() {
       <h1 className="font-mono text-2xl font-bold">Logs</h1>
       <p className="mt-1 text-sm text-muted-foreground">Derniers runs sur tous les projets.</p>
 
-      {rows.length === 0 ? (
-        <p className="mt-8 text-center text-sm text-muted-foreground font-mono">Aucun run pour le moment.</p>
+      {/* Filters */}
+      <div className="mt-4 flex flex-wrap items-end gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Rechercher…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 font-mono text-sm"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px] font-mono text-sm">
+            <SelectValue placeholder="Statut" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous statuts</SelectItem>
+            <SelectItem value="passed">Passed</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
+            <SelectItem value="error">Error</SelectItem>
+            <SelectItem value="running">Running</SelectItem>
+            <SelectItem value="queued">Queued</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={projectFilter} onValueChange={setProjectFilter}>
+          <SelectTrigger className="w-[180px] font-mono text-sm">
+            <SelectValue placeholder="Projet" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les projets</SelectItem>
+            {projectNames.map((name) => (
+              <SelectItem key={name} value={name}>{name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          type="date"
+          value={dateStart}
+          onChange={(e) => setDateStart(e.target.value)}
+          className="w-[150px] font-mono text-sm"
+          placeholder="Date début"
+        />
+        <Input
+          type="date"
+          value={dateEnd}
+          onChange={(e) => setDateEnd(e.target.value)}
+          className="w-[150px] font-mono text-sm"
+          placeholder="Date fin"
+        />
+      </div>
+
+      {filteredRows.length !== rows.length && (
+        <p className="mt-2 text-xs text-muted-foreground font-mono">
+          {filteredRows.length} résultat{filteredRows.length !== 1 ? "s" : ""} sur {rows.length}
+        </p>
+      )}
+
+      {filteredRows.length === 0 ? (
+        <p className="mt-8 text-center text-sm text-muted-foreground font-mono">Aucun run correspondant.</p>
       ) : (
-        <div className="mt-6">
+        <div className="mt-4">
           <Table>
             <TableHeader>
               <TableRow>
@@ -89,7 +174,7 @@ export default function Logs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((run) => (
+              {filteredRows.map((run) => (
                 <TableRow
                   key={run.id}
                   className="cursor-pointer"
@@ -122,7 +207,6 @@ export default function Logs() {
               ))}
             </TableBody>
           </Table>
-
         </div>
       )}
     </div>
