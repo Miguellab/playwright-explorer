@@ -189,17 +189,17 @@ export default function Dashboard() {
                   !project.enabled && "opacity-60"
                 )}>
                   <CardContent className="flex items-center gap-4 p-5">
-                    {/* Verdict dot */}
+                    {/* Status dot */}
                     <div
                       className={cn(
                         "h-3 w-3 rounded-full shrink-0",
-                        !project.enabled || !lastRuns[project.id]?.verdict
+                        !project.enabled || !lastRuns[project.id]
                           ? "bg-muted-foreground/40"
-                          : lastRuns[project.id]?.verdict === "OK"
+                          : lastRuns[project.id].status === "passed"
                             ? "bg-status-pass"
-                            : lastRuns[project.id]?.verdict === "ALERTE"
-                              ? "bg-status-skipped"
-                              : "bg-status-fail"
+                            : lastRuns[project.id].status === "failed" || lastRuns[project.id].status === "error"
+                              ? "bg-status-fail"
+                              : "bg-muted-foreground/40"
                       )}
                     />
 
