@@ -1,56 +1,53 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Suppression du verdict IA — Plan
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Résumé
+Supprimer tout le système de verdict IA (OK/ALERTE/ERREUR/EN ATTENTE) et ne garder que `run.status` (passed/failed/error/running/queued) comme seul indicateur affiché.
 
-## Ce qui reste à faire
+### Changements
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+**1. `src/lib/sentinelle-types.ts`**
+- Supprimer le type `Verdict`
+- Supprimer les interfaces `VerdictIssue`, `VerdictSummary`
+- Supprimer les champs `verdict`, `verdictSummary` de l'interface `Run`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+**2. Supprimer `src/components/VerdictBadge.tsx`**
+- Fichier entier supprimé — plus utilisé nulle part
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+**3. `src/pages/RunReport.tsx`**
+- Supprimer import `VerdictBadge`
+- Supprimer `vs`, `hasIssues`, `hasHumanQA`
+- Remplacer le bloc verdict banner (lignes 128-166) par un simple header avec `StatusBadge` + durée + date
+- Supprimer la section "Résumé pour vous" (lignes 178-215) — plus de `forUser`/`forCTO`
+- Supprimer la section "Problèmes détectés" (lignes 326-382) — plus d'issues
+- Supprimer imports `Collapsible`, `Terminal`, `UserCheck`
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+**4. `src/pages/ProjectDashboard.tsx`**
+- Supprimer import `VerdictBadge`, `VerdictText`
+- Header (ligne 276) : remplacer `latestRun?.verdict ? <VerdictBadge>` par `latestRun ? <StatusBadge status={latestRun.status} />`
+- Carte verdict (lignes 411-453) : remplacer le contenu `verdictSummary` par un affichage simple du statut du dernier run avec `StatusBadge` en grand
+- Historique (lignes 609-613) : remplacer `run.verdict ? <VerdictBadge> : <StatusBadge>` par toujours `<StatusBadge status={run.status} />`
+- Supprimer la légende verdict (ligne 624-626)
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**5. `src/pages/Dashboard.tsx`**
+- Supprimer import `VerdictBadge`
+- Dot de statut (lignes 192-204) : remplacer le mapping `verdict` par un mapping `status` (`passed` → vert, `failed`/`error` → rouge, sinon gris)
+- Badge (lignes 211-213) : remplacer `VerdictBadge verdict={...}` par `StatusBadge status={lastRuns[project.id].status}`
 
-### 3. Badge verdict sur les cartes Dashboard
+**6. `src/pages/Logs.tsx`**
+- Supprimer import `VerdictBadge`
+- Supprimer la colonne "Verdict" du header et du body
+- Supprimer la légende "Statut = ... | Verdict = ..."
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
+### Fichiers modifiés
 
 | Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+|---------|-----------|
+| `sentinelle-types.ts` | Supprimer `Verdict`, `VerdictIssue`, `VerdictSummary`, champs verdict dans `Run` |
+| `VerdictBadge.tsx` | Supprimé entièrement |
+| `RunReport.tsx` | Header simplifié avec StatusBadge, suppression sections verdict/issues/résumé |
+| `ProjectDashboard.tsx` | StatusBadge partout à la place de VerdictBadge |
+| `Dashboard.tsx` | Dot + badge basés sur status au lieu de verdict |
+| `Logs.tsx` | Colonne verdict supprimée |
 
