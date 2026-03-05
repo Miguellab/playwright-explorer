@@ -301,29 +301,31 @@ export default function RunReport() {
           </Card>
         )}
 
-        {/* Diagnostics */}
-        {run.findings?.diagnostics && run.findings.diagnostics.length > 0 && (
-          <Card className="mt-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
-                <Bug className="h-3.5 w-3.5" /> Diagnostics ({run.findings.diagnostics.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {run.findings.diagnostics.map((diag, i) => (
-                <div key={i} className="rounded border bg-secondary/20 p-3 space-y-1">
-                  <p className="font-mono text-xs font-semibold">{diag.step}</p>
-                  {diag.url && (
-                    <p className="font-mono text-[10px] text-muted-foreground truncate">{diag.url}</p>
-                  )}
-                  {diag.error && (
+        {/* Diagnostics — only if errors */}
+        {(() => {
+          const errorDiags = run.findings?.diagnostics?.filter((d) => d.error) ?? [];
+          if (errorDiags.length === 0) return null;
+          return (
+            <Card className="mt-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
+                  <Bug className="h-3.5 w-3.5" /> Diagnostics ({errorDiags.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {errorDiags.map((diag, i) => (
+                  <div key={i} className="rounded border bg-secondary/20 p-3 space-y-1">
+                    <p className="font-mono text-xs font-semibold">{diag.step}</p>
+                    {diag.url && (
+                      <p className="font-mono text-[10px] text-muted-foreground truncate">{diag.url}</p>
+                    )}
                     <p className="font-mono text-xs text-status-fail">{diag.error}</p>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Report link */}
         {run.assets?.reportUrl && (

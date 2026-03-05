@@ -202,9 +202,6 @@ export default function ProjectSettings() {
                         />
                         <div className="flex flex-1 items-center gap-2 min-w-0">
                           <span className="font-mono text-sm truncate">{flow.labelFr}</span>
-                          <Badge variant="secondary" className="shrink-0 font-mono text-xs">
-                            {flow.confidence}%
-                          </Badge>
                           {flow.authenticatedOnly && (
                             <Badge variant="outline" className="shrink-0 font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
                               Post-login

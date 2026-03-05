@@ -278,15 +278,6 @@ export default function DiscoverFlows() {
                                         CTA: {flow.ctaText}
                                       </p>
                                     )}
-                                    {flow.evidence?.length > 0 && (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {flow.evidence.slice(0, 3).map((e, i) => (
-                                          <Badge key={i} variant="secondary" className="font-mono text-[10px]">
-                                            {e}
-                                          </Badge>
-                                        ))}
-                                      </div>
-                                    )}
                                   </div>
                                   <Badge variant="outline" className={`shrink-0 font-mono text-[10px] ${config.badgeClass}`}>
                                     {config.label}
