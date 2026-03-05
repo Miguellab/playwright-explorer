@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { listProjects, listRuns } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { VerdictBadge } from "@/components/VerdictBadge";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import {
