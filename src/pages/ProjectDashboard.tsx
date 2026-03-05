@@ -196,6 +196,37 @@ export default function ProjectDashboard() {
     }
   }, [id, toast, navigate]);
 
+  const handleAuthenticatedDiscovery = useCallback(async () => {
+    if (!id) return;
+    setDiscovering(true);
+    try {
+      const result = await discoverAuthenticatedFlows(id);
+      if (result.loginSuccess) {
+        toast({
+          title: `${result.flows.length} parcours authentifié${result.flows.length > 1 ? "s" : ""} découvert${result.flows.length > 1 ? "s" : ""}`,
+          description: result.flows.map((f) => f.labelFr).join(", ") || "Aucun nouveau parcours détecté.",
+        });
+      } else {
+        toast({
+          title: "Connexion échouée",
+          description: "Impossible de se connecter avec les identifiants configurés. Vérifiez-les dans les paramètres.",
+          variant: "destructive",
+        });
+      }
+      const updatedProject = await getProject(id);
+      setProject(updatedProject);
+    } catch (e: unknown) {
+      const err = e as Error;
+      toast({
+        title: "Erreur de découverte",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDiscovering(false);
+    }
+  }, [id, toast]);
+
   const toggleStep = (index: number) => {
     setExpandedSteps((prev) => {
       const next = new Set(prev);
