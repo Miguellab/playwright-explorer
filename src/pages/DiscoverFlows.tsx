@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { discoverFlows, updateProject } from "@/lib/sentinelle-api";
 import type { SuggestedFlow } from "@/lib/sentinelle-types";
-import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw, Menu, MousePointerClick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const PROGRESS_MESSAGES = [
@@ -18,6 +18,12 @@ const PROGRESS_MESSAGES = [
   "Évaluation des objectifs business…",
   "Finalisation de l'analyse…",
 ];
+
+const SOURCE_CONFIG: Record<string, { icon: typeof Menu; label: string; badgeClass: string }> = {
+  "nav-link": { icon: Menu, label: "Navigation", badgeClass: "bg-muted text-muted-foreground border-border" },
+  "button": { icon: MousePointerClick, label: "Action", badgeClass: "bg-primary/10 text-primary border-primary/30" },
+  "detected": { icon: Sparkles, label: "Détecté", badgeClass: "bg-accent text-accent-foreground border-accent" },
+};
 
 export default function DiscoverFlows() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +37,6 @@ export default function DiscoverFlows() {
   const [messageIdx, setMessageIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [visionError, setVisionError] = useState<string | undefined>();
   const startedRef = useRef(false);
 
   // Simulated progress
@@ -63,10 +68,7 @@ export default function DiscoverFlows() {
       .then((result) => {
         const flowList = result.flows;
         setFlows(flowList);
-        setVisionError(result.visionError);
-        const preSelected = new Set(
-          flowList.filter((f) => f.confidence >= 50).map((f) => f.id)
-        );
+        const preSelected = new Set(flowList.map((f) => f.id));
         setSelected(preSelected);
         setProgress(100);
         setTimeout(() => setPhase("results"), 600);
@@ -103,7 +105,7 @@ export default function DiscoverFlows() {
         suggestedFlows: flows,
         monitoredFlows: selectedFlows,
       });
-      toast({ title: "Parcours confirmés", description: "La surveillance est configurée." });
+      toast({ title: `${selectedFlows.length} parcours confirmé${selectedFlows.length > 1 ? "s" : ""}`, description: "La surveillance est configurée." });
       navigate(`/project/${id}`);
     } catch (e: unknown) {
       const err = e as Error;
@@ -113,17 +115,34 @@ export default function DiscoverFlows() {
     }
   };
 
-  const confidenceColor = (c: number) => {
-    if (c >= 70) return "text-status-pass";
-    if (c >= 40) return "text-status-skipped";
-    return "text-muted-foreground";
-  };
+  // Group flows by source
+  const groupedFlows = useMemo(() => {
+    const groups: { source: string; flows: SuggestedFlow[] }[] = [];
+    const sourceOrder = ["nav-link", "button", "detected"];
+    const bySource = new Map<string, SuggestedFlow[]>();
 
-  const confidenceLabel = (c: number) => {
-    if (c >= 70) return "Confiance élevée";
-    if (c >= 40) return "Confiance moyenne";
-    return "Confiance faible";
-  };
+    for (const flow of flows) {
+      const src = flow.source || "detected";
+      if (!bySource.has(src)) bySource.set(src, []);
+      bySource.get(src)!.push(flow);
+    }
+
+    for (const src of sourceOrder) {
+      if (bySource.has(src)) {
+        groups.push({ source: src, flows: bySource.get(src)! });
+        bySource.delete(src);
+      }
+    }
+    // Any remaining sources
+    for (const [src, srcFlows] of bySource) {
+      groups.push({ source: src, flows: srcFlows });
+    }
+
+    return groups;
+  }, [flows]);
+
+  const getSourceConfig = (source: string) =>
+    SOURCE_CONFIG[source] || SOURCE_CONFIG["detected"];
 
   return (
     <div className="flex-1 flex flex-col">
@@ -185,18 +204,7 @@ export default function DiscoverFlows() {
                   <h2 className="font-mono text-xl font-bold">
                     {flows.length} parcours détecté{flows.length > 1 ? "s" : ""}
                   </h2>
-                  {!visionError && flows.length > 0 && (
-                    <Badge className="bg-status-pass/15 text-status-pass border-status-pass/30 font-mono text-[10px]">
-                      <Sparkles className="mr-1 h-3 w-3" /> Analyse IA
-                    </Badge>
-                  )}
                 </div>
-                {visionError && (
-                  <div className="flex items-center gap-2 rounded-md bg-status-pending/10 border border-status-pending/30 px-3 py-2 mx-auto max-w-md">
-                    <AlertTriangle className="h-3.5 w-3.5 text-status-pending shrink-0" />
-                    <p className="font-mono text-xs text-status-pending text-left">{visionError}</p>
-                  </div>
-                )}
                 <p className="text-sm text-muted-foreground">
                   Sélectionnez les parcours que vous souhaitez surveiller.
                 </p>
@@ -215,66 +223,82 @@ export default function DiscoverFlows() {
                 </Card>
               ) : (
                 <>
-                  <div className="space-y-3">
-                    {flows.map((flow) => {
-                      const isSelected = selected.has(flow.id);
+                  <div className="space-y-6">
+                    {groupedFlows.map(({ source, flows: sourceFlows }) => {
+                      const config = getSourceConfig(source);
+                      const SourceIcon = config.icon;
                       return (
-                        <Card
-                          key={flow.id}
-                          className={`cursor-pointer transition-all ${
-                            isSelected
-                              ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                              : "hover:bg-secondary/30"
-                          }`}
-                          onClick={() => toggleFlow(flow.id)}
-                        >
-                          <CardContent className="flex items-start gap-4 p-5">
-                            <Checkbox
-                              checked={isSelected}
-                              onCheckedChange={() => toggleFlow(flow.id)}
-                              className="mt-1 shrink-0"
-                            />
-                            <div className="flex-1 min-w-0 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
-                                <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                  {flow.goal}
-                                </Badge>
-                                {flow.authenticatedOnly && (
-                                  <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
-                                    Post-login
+                        <div key={source} className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <SourceIcon className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              {config.label}
+                            </span>
+                            <Badge variant="outline" className="font-mono text-[10px]">
+                              {sourceFlows.length}
+                            </Badge>
+                          </div>
+                          {sourceFlows.map((flow) => {
+                            const isSelected = selected.has(flow.id);
+                            return (
+                              <Card
+                                key={flow.id}
+                                className={`cursor-pointer transition-all ${
+                                  isSelected
+                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
+                                    : "hover:bg-secondary/30"
+                                }`}
+                                onClick={() => toggleFlow(flow.id)}
+                              >
+                                <CardContent className="flex items-start gap-4 p-5">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={() => toggleFlow(flow.id)}
+                                    className="mt-1 shrink-0"
+                                  />
+                                  <div className="flex-1 min-w-0 space-y-1.5">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
+                                      {flow.pagePath && (
+                                        <span className="font-mono text-xs text-muted-foreground">
+                                          → {flow.pagePath}
+                                        </span>
+                                      )}
+                                      <Badge variant="outline" className="font-mono text-[10px] shrink-0">
+                                        {flow.goal}
+                                      </Badge>
+                                      {flow.authenticatedOnly && (
+                                        <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
+                                          Post-login
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {flow.descriptionFr && (
+                                      <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
+                                    )}
+                                    {flow.ctaText && (
+                                      <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
+                                        CTA: {flow.ctaText}
+                                      </p>
+                                    )}
+                                    {flow.evidence?.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {flow.evidence.slice(0, 3).map((e, i) => (
+                                          <Badge key={i} variant="secondary" className="font-mono text-[10px]">
+                                            {e}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Badge variant="outline" className={`shrink-0 font-mono text-[10px] ${config.badgeClass}`}>
+                                    {config.label}
                                   </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
-                              {flow.ctaText && (
-                                <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
-                                  CTA: {flow.ctaText}
-                                </p>
-                              )}
-                              {flow.evidence?.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5">
-                                  {flow.evidence.slice(0, 3).map((e, i) => (
-                                    <Badge key={i} variant="secondary" className="font-mono text-[10px]">
-                                      {e}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                              {flow.pagePath && (
-                                <p className="font-mono text-[10px] text-muted-foreground">📄 {flow.pagePath}</p>
-                              )}
-                            </div>
-                            <div className="shrink-0 text-right space-y-1">
-                              <p className={`font-mono text-sm font-bold ${confidenceColor(flow.confidence)}`}>
-                                {Math.round(flow.confidence)}%
-                              </p>
-                              <p className={`font-mono text-[10px] ${confidenceColor(flow.confidence)}`}>
-                                {confidenceLabel(flow.confidence)}
-                              </p>
-                            </div>
-                          </CardContent>
-                        </Card>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
+                        </div>
                       );
                     })}
                   </div>
