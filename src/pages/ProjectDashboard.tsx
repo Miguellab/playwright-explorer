@@ -123,6 +123,7 @@ export default function ProjectDashboard() {
   const [historyStatus, setHistoryStatus] = useState("all");
   const [historyDateStart, setHistoryDateStart] = useState("");
   const [historyDateEnd, setHistoryDateEnd] = useState("");
+  const [historyFlow, setHistoryFlow] = useState("all");
 
   const latestActiveRun = activeRuns.length > 0 ? activeRuns[0] : null;
   const latestRun = latestActiveRun || (runs.length > 0 ? runs[0] : null);
@@ -246,11 +247,17 @@ export default function ProjectDashboard() {
     });
   };
 
+  const flowLabels = useMemo(
+    () => [...new Set(runs.map((r) => r.flowLabel).filter(Boolean))].sort() as string[],
+    [runs]
+  );
+
   const filteredRuns = useMemo(() => {
     const q = historySearch.toLowerCase();
     return runs.filter((run) => {
       if (q && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q) && !(run.trigger || "").toLowerCase().includes(q)) return false;
       if (historyStatus !== "all" && run.status !== historyStatus) return false;
+      if (historyFlow !== "all" && (run.flowLabel || "") !== historyFlow) return false;
       if (historyDateStart) {
         const d = run.startedAt || run.finishedAt;
         if (!d || d < historyDateStart) return false;
@@ -261,7 +268,7 @@ export default function ProjectDashboard() {
       }
       return true;
     });
-  }, [runs, historySearch, historyStatus, historyDateStart, historyDateEnd]);
+  }, [runs, historySearch, historyStatus, historyFlow, historyDateStart, historyDateEnd]);
 
   const filteredRunGroups = groupRuns(filteredRuns);
   const runGroups = groupRuns(runs);
@@ -620,6 +627,17 @@ export default function ProjectDashboard() {
                       <SelectItem value="error">Error</SelectItem>
                       <SelectItem value="running">Running</SelectItem>
                       <SelectItem value="queued">Queued</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={historyFlow} onValueChange={setHistoryFlow}>
+                    <SelectTrigger className="w-[160px] font-mono text-sm h-9">
+                      <SelectValue placeholder="Parcours" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous parcours</SelectItem>
+                      {flowLabels.map((label) => (
+                        <SelectItem key={label} value={label}>{label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Input
