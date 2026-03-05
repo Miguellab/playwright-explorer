@@ -63,6 +63,7 @@ export default function DiscoverFlows() {
       .then((result) => {
         const flowList = result.flows;
         setFlows(flowList);
+        setVisionError(result.visionError);
         const preSelected = new Set(
           flowList.filter((f) => f.confidence >= 50).map((f) => f.id)
         );
