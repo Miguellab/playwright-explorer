@@ -264,9 +264,6 @@ export default function DiscoverFlows() {
                                           → {flow.pagePath}
                                         </span>
                                       )}
-                                      <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                        {flow.goal}
-                                      </Badge>
                                       {flow.authenticatedOnly && (
                                         <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
                                           Post-login
@@ -280,15 +277,6 @@ export default function DiscoverFlows() {
                                       <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
                                         CTA: {flow.ctaText}
                                       </p>
-                                    )}
-                                    {flow.evidence?.length > 0 && (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {flow.evidence.slice(0, 3).map((e, i) => (
-                                          <Badge key={i} variant="secondary" className="font-mono text-[10px]">
-                                            {e}
-                                          </Badge>
-                                        ))}
-                                      </div>
                                     )}
                                   </div>
                                   <Badge variant="outline" className={`shrink-0 font-mono text-[10px] ${config.badgeClass}`}>
