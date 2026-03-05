@@ -629,6 +629,17 @@ export default function ProjectDashboard() {
                       <SelectItem value="queued">Queued</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select value={historyFlow} onValueChange={setHistoryFlow}>
+                    <SelectTrigger className="w-[160px] font-mono text-sm h-9">
+                      <SelectValue placeholder="Parcours" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tous parcours</SelectItem>
+                      {flowLabels.map((label) => (
+                        <SelectItem key={label} value={label}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Input
                     type="date"
                     value={historyDateStart}
