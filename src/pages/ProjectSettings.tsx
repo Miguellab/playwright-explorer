@@ -78,7 +78,10 @@ export default function ProjectSettings() {
         .filter((f) => selectedFlowIds.has(f.id))
         .map((f) => {
           const creds = flowCredentials[f.id];
-          return creds && creds.email && creds.password ? { ...f, credentials: creds } : f;
+          const hasNewCreds = creds && creds.email && creds.password
+            && creds.email !== "••••••••" && creds.password !== "••••••••";
+          if (hasNewCreds) return { ...f, credentials: creds };
+          return f;
         });
       const updated = await updateProject(id, {
         name: name.trim(),
