@@ -109,6 +109,7 @@ export default function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
   const [activeRunIds, setActiveRunIds] = useState<string[]>([]);
   const [activeRuns, setActiveRuns] = useState<Run[]>([]);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
