@@ -351,9 +351,16 @@ export default function ProjectDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
               {project.monitoredFlows.map((flow) => (
-                <Badge key={flow.id} variant="secondary" className="font-mono text-[10px]">
-                  {flow.labelFr}
-                </Badge>
+                <span key={flow.id} className="inline-flex items-center gap-1">
+                  <Badge variant="secondary" className="font-mono text-[10px]">
+                    {flow.labelFr}
+                  </Badge>
+                  {flow.authenticatedOnly && (
+                    <Badge variant="outline" className="font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
+                      Post-login
+                    </Badge>
+                  )}
+                </span>
               ))}
             </div>
             {project.monitoredFlows.some((f) => f.requiresCredentials && !f.hasCredentials) && (
