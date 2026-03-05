@@ -391,19 +391,32 @@ export default function ProjectDashboard() {
           {/* Action card */}
           <Card>
             <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
-              <Button
-                onClick={handleTestNow}
-                disabled={testing || hasActiveRuns}
-                className="w-full font-mono"
-                size="lg"
-              >
-                {testing || hasActiveRuns ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="mr-2 h-4 w-4" />
-                )}
-                Tester maintenant
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full">
+                      <Button
+                        onClick={handleTestNow}
+                        disabled={testing || hasActiveRuns || project.configStatus === "no_flows"}
+                        className="w-full font-mono"
+                        size="lg"
+                      >
+                        {testing || hasActiveRuns ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="mr-2 h-4 w-4" />
+                        )}
+                        Tester maintenant
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {project.configStatus === "no_flows" && (
+                    <TooltipContent>
+                      <p className="font-mono text-xs">Sélectionnez d'abord des parcours à surveiller</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
               {!project.lastSeenSignature && (
                 <p className="text-[10px] text-muted-foreground text-center font-mono">
                   Nous lancerons un test automatiquement des qu'une nouvelle version sera detectee.
