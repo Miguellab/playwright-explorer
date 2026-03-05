@@ -238,9 +238,10 @@ export default function ProjectSettings() {
                                 className="font-mono text-xs h-7 px-2"
                                 onClick={() => {
                                   setEditingFlowIds((prev) => new Set(prev).add(flow.id));
+                                  const cached = savedCredentials[flow.id];
                                   setFlowCredentials((prev) => ({
                                     ...prev,
-                                    [flow.id]: { email: "", password: "" },
+                                    [flow.id]: cached ? { ...cached } : { email: "", password: "" },
                                   }));
                                 }}
                               >
