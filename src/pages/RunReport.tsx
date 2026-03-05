@@ -136,7 +136,6 @@ export default function RunReport() {
           )}>
             <div className="flex items-center gap-3">
               <VerdictBadge verdict={vs.verdict} size="lg" explanation={vs.verdictExplanation} />
-              <StatusBadge status={run.status} explanation={vs.statusExplanation} />
             </div>
             <p className="font-mono text-base font-bold">{vs.headline}</p>
             {run.status !== "passed" && vs.verdict === "OK" && run.error && (
