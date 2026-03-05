@@ -139,155 +139,138 @@ export default function RunReport() {
           </div>
         )}
 
-      {/* Steps card */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="text-base">
-            <span className="mr-2">Étapes</span>
-            <Badge variant="secondary">{run.steps.length}</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {run.steps.map((step, i) => (
-            <div key={i} className="rounded-md border">
-              <button
-                className="flex w-full items-center justify-between rounded-md p-2 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                onClick={() => toggleStep(i)}
-              >
-                <div className="flex items-center gap-2">
-                  <StepActionIcon action={step.action} />
-                  <span>
-                    {step.label}
-                  </span>
-                </div>
-                <div className="ml-2 flex items-center">
-                  <span className="mr-2 font-mono text-xs text-muted-foreground">{stepDuration(step.durationMs)}</span>
-                  {expandedSteps.has(i) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </div>
-              </button>
-              {expandedSteps.has(i) && (
-                <div className="border-t p-4 text-sm text-muted-foreground">
-                  {step.message}
-                </div>
-              )}
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Screenshots card */}
-      {run.assets?.screenshots && run.assets.screenshots.length > 0 && (
+        {/* Steps */}
         <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-base">
-              <span className="mr-2">Screenshots</span>
-              <Badge variant="secondary">{run.assets.screenshots.length}</Badge>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-mono text-sm uppercase tracking-wider">
+              Etapes du test
+              {isRunActive && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            {run.assets.screenshots.map((ss) => (
-              <button key={ss.filename} onClick={() => setLightboxSrc(getScreenshotUrl(run.id, ss.filename))}>
-                <div className="group relative aspect-video overflow-hidden rounded-md border shadow-sm transition-all hover:scale-105 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                  <AuthImage
-                    src={getScreenshotUrl(run.id, ss.filename)}
-                    alt={ss.label}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    className="object-cover transition-all"
-                  />
-                  <div className="absolute inset-0 bg-background/40 backdrop-blur-sm opacity-0 transition-opacity group-hover:opacity-100" />
-                  <div className="absolute left-2 top-2 rounded-sm bg-secondary px-1.5 py-0.5 text-xs font-medium opacity-0 transition-opacity group-hover:opacity-100">
-                    {ss.label}
+          <CardContent className="space-y-1.5">
+            {run.steps && run.steps.length > 0 ? (
+              run.steps.map((step, i) => {
+                const isExpanded = expandedSteps.has(i);
+                const hasDetail = !!step.detail;
+                const statusIcon =
+                  step.status === "passed"
+                    ? "pass"
+                    : step.status === "failed"
+                    ? "fail"
+                    : step.status;
+                return (
+                  <div key={i} className="rounded border bg-secondary/30 overflow-hidden">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-secondary/50 transition-colors"
+                      onClick={() => hasDetail && toggleStep(i)}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {hasDetail ? (
+                          isExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          )
+                        ) : (
+                          <span className="w-3.5 shrink-0" />
+                        )}
+                        <StepActionIcon action={step.action} />
+                        <span className="font-mono text-sm truncate">{step.label}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0 ml-2">
+                        {step.durationMs && step.durationMs > 0 && (
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {stepDuration(step.durationMs)}
+                          </span>
+                        )}
+                        <StatusBadge status={statusIcon} />
+                      </div>
+                    </button>
+                    {isExpanded && step.detail && (
+                      <div className="border-t bg-secondary/10 px-4 py-3">
+                        <pre className="font-mono text-xs text-muted-foreground whitespace-pre-wrap break-words">
+                          {step.detail}
+                        </pre>
+                      </div>
+                    )}
                   </div>
-                  <Search className="absolute right-2 top-2 h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                </div>
-              </button>
-            ))}
+                );
+              })
+            ) : isRunActive ? (
+              <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="font-mono text-sm">En attente des resultats...</span>
+              </div>
+            ) : (
+              <p className="font-mono text-sm text-muted-foreground py-2">
+                Aucune etape enregistree.
+              </p>
+            )}
           </CardContent>
         </Card>
-      )}
 
-      {/* Screenshot lightbox */}
-      <Dialog open={!!lightboxSrc} onOpenChange={() => setLightboxSrc(null)}>
-        <DialogContent className="fixed inset-0 z-50 flex max-h-screen w-full flex-col items-center justify-center gap-4 bg-background">
-          <div className="absolute right-4 top-4">
-            <button
-              className="rounded-md border p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-              onClick={() => setLightboxSrc(null)}
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          {lightboxSrc && (
-            <AuthImage
-              src={lightboxSrc}
-              alt="Screenshot"
-              className="max-h-[80vh] max-w-[90vw] rounded-md shadow-lg"
-              width={1280}
-              height={720}
-            />
-          )}
-          {run.assets?.screenshots && (
-            <div className="flex gap-2">
-              {run.assets.screenshots.map((ss) => (
-                <button
-                  key={ss.filename}
-                  className={cn(
-                    "rounded-md border p-2 transition-colors hover:bg-secondary hover:text-secondary-foreground",
-                    lightboxSrc === getScreenshotUrl(run.id, ss.filename) && "bg-secondary text-secondary-foreground"
-                  )}
-                  onClick={() => setLightboxSrc(getScreenshotUrl(run.id, ss.filename))}
-                >
-                  <Camera className="h-4 w-4" />
-                </button>
-              ))}
-              {run.assets.reportUrl && (
-                <Link
-                  to={run.assets.reportUrl}
-                  target="_blank"
-                  className="rounded-md border p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Link>
-              )}
-              {run.runnerRunId && (
-                <Link
-                  to={`https://app.lambdatest.com/logs/?testID=${run.runnerRunId}`}
-                  target="_blank"
-                  className="rounded-md border p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-                >
-                  <Bug className="h-4 w-4" />
-                </Link>
-              )}
-              {run.assets.reportUrl && (
-                <button
-                  className="rounded-md border p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-secondary-foreground"
-                  onClick={() => setReportOpen(true)}
-                >
-                  <Search className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+        {/* Screenshots */}
+        {run.assets?.screenshots && run.assets.screenshots.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="h-3.5 w-3.5" /> Captures d'ecran ({run.assets.screenshots.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {run.assets.screenshots.map((shot, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="rounded-lg border bg-secondary/20 overflow-hidden hover:border-primary/40 transition-colors text-left"
+                    onClick={() => setLightboxSrc(getScreenshotUrl(shot.path))}
+                  >
+                    <AuthImage
+                      url={getScreenshotUrl(shot.path)}
+                      alt={shot.label}
+                    />
+                    <p className="px-3 py-2 font-mono text-xs text-muted-foreground">{shot.label}</p>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Screenshot lightbox */}
+        <Dialog open={!!lightboxSrc} onOpenChange={() => setLightboxSrc(null)}>
+          <DialogContent className="max-w-4xl p-2">
+            {lightboxSrc && (
+              <AuthImage url={lightboxSrc} alt="Screenshot" className="rounded" />
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Console errors */}
         {run.findings?.consoleErrors && run.findings.consoleErrors.length > 0 && (
           <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-base">
-                <span className="mr-2">Console</span>
-                <Badge variant="destructive">{run.findings.consoleErrors.length}</Badge>
+            <CardHeader className="pb-3">
+              <CardTitle className="font-mono text-sm uppercase tracking-wider text-status-fail">
+                Erreurs console ({run.findings.consoleErrors.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
-              {run.findings.consoleErrors.map((e, i) => (
-                <div key={i} className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  <pre className="font-mono text-xs text-destructive whitespace-pre-wrap break-words">
-                    {e.message}
-                  </pre>
+              {run.findings.consoleErrors.map((err, i) => (
+                <div
+                  key={i}
+                  className="rounded border border-status-fail/20 bg-status-fail/5 px-3 py-2 space-y-0.5"
+                >
+                  <code className="font-mono text-xs block">{err.text}</code>
+                  {err.url && (
+                    <p className="font-mono text-[10px] text-muted-foreground">{err.url}</p>
+                  )}
+                  {err.timestamp && (
+                    <p className="font-mono text-[10px] text-muted-foreground">
+                      {new Date(err.timestamp).toLocaleString("fr-FR")}
+                    </p>
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -297,22 +280,21 @@ export default function RunReport() {
         {/* Failed requests */}
         {run.findings?.failedRequests && run.findings.failedRequests.length > 0 && (
           <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-base">
-                <span className="mr-2">Requêtes</span>
-                <Badge variant="destructive">{run.findings.failedRequests.length}</Badge>
+            <CardHeader className="pb-3">
+              <CardTitle className="font-mono text-sm uppercase tracking-wider text-status-skipped">
+                Requetes echouees ({run.findings.failedRequests.length})
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
-              {run.findings.failedRequests.map((r, i) => (
-                <div key={i} className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-2">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-                  <div className="flex flex-col">
-                    <p className="font-mono text-xs text-destructive">{r.url}</p>
-                    <p className="font-mono text-xs text-muted-foreground">
-                      Statut: {r.status}
-                    </p>
-                  </div>
+              {run.findings.failedRequests.map((req, i) => (
+                <div
+                  key={i}
+                  className="rounded border border-status-skipped/20 bg-status-skipped/5 px-3 py-2"
+                >
+                  <p className="font-mono text-xs">
+                    <span className="font-semibold">{req.status}</span>{" "}
+                    <span className="text-muted-foreground">{req.url}</span>
+                  </p>
                 </div>
               ))}
             </CardContent>
@@ -320,44 +302,42 @@ export default function RunReport() {
         )}
 
         {/* Diagnostics */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">Diagnostics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc pl-4 text-sm text-muted-foreground">
-            <li>
-              User agent:{" "}
-              <code className="font-mono">{run.findings?.userAgent || "N/A"}</code>
-            </li>
-            <li>
-              Window size:{" "}
-              <code className="font-mono">
-                {run.findings?.windowWidth}x{run.findings?.windowHeight}
-              </code>
-            </li>
-            <li>
-              Viewport size:{" "}
-              <code className="font-mono">
-                {run.findings?.viewportWidth}x{run.findings?.viewportHeight}
-              </code>
-            </li>
-          </ul>
-        </CardContent>
-      </Card>
+        {run.findings?.diagnostics && run.findings.diagnostics.length > 0 && (
+          <Card className="mt-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="font-mono text-sm uppercase tracking-wider flex items-center gap-1.5">
+                <Bug className="h-3.5 w-3.5" /> Diagnostics ({run.findings.diagnostics.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {run.findings.diagnostics.map((diag, i) => (
+                <div key={i} className="rounded border bg-secondary/20 p-3 space-y-1">
+                  <p className="font-mono text-xs font-semibold">{diag.step}</p>
+                  {diag.url && (
+                    <p className="font-mono text-[10px] text-muted-foreground truncate">{diag.url}</p>
+                  )}
+                  {diag.error && (
+                    <p className="font-mono text-xs text-status-fail">{diag.error}</p>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Report button */}
-      {run.assets?.reportUrl && (
-        <div className="mt-6 text-center">
-          <Link
-            to={run.assets.reportUrl}
-            target="_blank"
-            className="font-mono text-xs text-muted-foreground hover:underline"
-          >
-            Voir le rapport complet (LambdaTest)
-          </Link>
-        </div>
-      )}
+        {/* Report link */}
+        {run.assets?.reportUrl && (
+          <div className="mt-6 text-center">
+            <a
+              href={`${REPORT_BASE}${run.assets.reportUrl}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" /> Voir le rapport complet
+            </a>
+          </div>
+        )}
     </div>
   );
 }
