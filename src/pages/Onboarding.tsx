@@ -380,7 +380,7 @@ export default function Onboarding() {
                         <p className="font-mono text-sm text-muted-foreground">
                           Aucun parcours détecté. Vous pourrez configurer les objectifs manuellement.
                         </p>
-                        <Button className="font-mono" onClick={() => setStep(SURVEILLANCE_STEP)}>
+                        <Button className="font-mono" onClick={() => setStep(2)}>
                           Continuer <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                       </CardContent>
