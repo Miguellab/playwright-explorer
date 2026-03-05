@@ -41,6 +41,8 @@ export interface Project {
   lastSeenAt: string | null;
   lastCheckedAt: string | null;
   hasRunnerApiKey: boolean;
+  configStatus?: "ready" | "no_flows";
+  configMessage?: string | null;
   discoveryMeta?: { analysisMode?: string };
   createdAt: string;
   updatedAt: string;
