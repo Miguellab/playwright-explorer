@@ -461,7 +461,7 @@ export default function Onboarding() {
                           Relancer
                         </Button>
                         <Button
-                          onClick={() => setStep(hasAuthFlows ? CREDENTIALS_STEP : SURVEILLANCE_STEP)}
+                          onClick={() => setStep(2)}
                           disabled={selected.size === 0}
                           className="flex-1 font-mono"
                         >
