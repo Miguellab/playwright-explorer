@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { healthCheck, DEFAULT_RUNNER_URL, DEFAULT_RUNNER_KEY, getSettings, updateSettings } from "@/lib/sentinelle-api";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, XCircle, Save, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Loader2, CheckCircle, XCircle, Save, Sparkles, Eye, EyeOff, AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {
   const { toast } = useToast();
