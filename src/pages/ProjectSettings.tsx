@@ -30,6 +30,7 @@ export default function ProjectSettings() {
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [flowCredentials, setFlowCredentials] = useState<Record<string, { email: string; password: string }>>({});
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -44,10 +45,17 @@ export default function ProjectSettings() {
         const monitoredIds = new Set((p.monitoredFlows ?? []).map((f) => f.id));
         setSelectedFlowIds(monitoredIds);
         const creds: Record<string, { email: string; password: string }> = {};
+        const configured = new Set<string>();
         (p.monitoredFlows ?? []).forEach((f) => {
-          if (f.credentials) creds[f.id] = { ...f.credentials };
+          if (f.credentials) {
+            creds[f.id] = { ...f.credentials };
+          } else if (f.hasCredentials) {
+            creds[f.id] = { email: "••••••••", password: "••••••••" };
+            configured.add(f.id);
+          }
         });
         setFlowCredentials(creds);
+        setConfiguredFlowIds(configured);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
