@@ -216,52 +216,69 @@ export default function ProjectSettings() {
                       {/* Credential fields for selected flows requiring credentials */}
                       {isSelected && flow.requiresCredentials && (
                         <div className="ml-8 space-y-2">
-                          {creds ? (
-                            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
-                              <Lock className="h-3.5 w-3.5" /> Identifiants configurés
-                            </span>
-                          ) : null}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="font-mono text-[10px]">Email de test</Label>
-                              <Input
-                                type="email"
-                                placeholder="email@test.com"
-                                value={creds?.email ?? ""}
-                                onChange={(e) =>
+                          {configuredFlowIds.has(flow.id) && !editingFlowIds.has(flow.id) ? (
+                            <div className="flex items-center gap-2">
+                              <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
+                                <Lock className="h-3.5 w-3.5" /> Identifiants configurés
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="font-mono text-xs h-7 px-2"
+                                onClick={() => {
+                                  setEditingFlowIds((prev) => new Set(prev).add(flow.id));
                                   setFlowCredentials((prev) => ({
                                     ...prev,
-                                    [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
-                                  }))
-                                }
-                                className="font-mono text-xs h-8"
-                              />
+                                    [flow.id]: { email: "", password: "" },
+                                  }));
+                                }}
+                              >
+                                <Pencil className="h-3 w-3 mr-1" /> Modifier
+                              </Button>
                             </div>
-                            <div className="space-y-1">
-                              <Label className="font-mono text-[10px]">Mot de passe de test</Label>
-                              <div className="relative">
+                          ) : (
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="font-mono text-[10px]">Email de test</Label>
                                 <Input
-                                  type={showPwd ? "text" : "password"}
-                                  placeholder="••••••••"
-                                  value={creds?.password ?? ""}
+                                  type="email"
+                                  placeholder="email@test.com"
+                                  value={creds?.email ?? ""}
                                   onChange={(e) =>
                                     setFlowCredentials((prev) => ({
                                       ...prev,
-                                      [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
+                                      [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
                                     }))
                                   }
-                                  className="font-mono text-xs h-8 pr-8"
+                                  className="font-mono text-xs h-8"
                                 />
-                                <button
-                                  type="button"
-                                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                  onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
-                                >
-                                  {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                </button>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="font-mono text-[10px]">Mot de passe de test</Label>
+                                <div className="relative">
+                                  <Input
+                                    type={showPwd ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    value={creds?.password ?? ""}
+                                    onChange={(e) =>
+                                      setFlowCredentials((prev) => ({
+                                        ...prev,
+                                        [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
+                                      }))
+                                    }
+                                    className="font-mono text-xs h-8 pr-8"
+                                  />
+                                  <button
+                                    type="button"
+                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
+                                  >
+                                    {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
