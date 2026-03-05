@@ -110,16 +110,14 @@ export async function discoverFlows(projectId: string): Promise<DiscoverResult> 
 export interface AuthenticatedDiscoverResult {
   runId: string;
   flows: SuggestedFlow[];
-  allFlows: SuggestedFlow[];
   loginSuccess: boolean;
   screenshots: { label: string; filename: string; path: string }[];
-  visionAnalysis: {
-    pageType: string;
-    pageDescription: string;
-    navigationElements: string[];
-    authenticatedArea: boolean;
-  } | null;
-  visionError?: string;
+  rawNavigation?: {
+    linksCount: number;
+    buttonsCount: number;
+    formsCount: number;
+    visitedPagesCount: number;
+  };
 }
 
 export async function discoverAuthenticatedFlows(
