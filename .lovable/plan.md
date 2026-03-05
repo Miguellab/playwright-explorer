@@ -1,56 +1,26 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Analyse
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Le backend ne renvoie pas les credentials en clair (ni email ni mot de passe) pour des raisons de securite — il renvoie uniquement `hasCredentials: true`. Donc quand on clique "Modifier", on ne peut pas pre-remplir les champs avec les valeurs precedentes car elles ne sont pas disponibles cote client.
 
-## Ce qui reste à faire
+## Deux options
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### Option A — Changement backend (recommande)
+Modifier le backend pour renvoyer l'email en clair mais masquer le mot de passe (ex: `credentials: { email: "user@test.com", password: null }`). Cela permet de pre-remplir l'email quand on clique "Modifier", et le mot de passe reste a re-saisir.
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Ce n'est pas faisable cote Lovable car le backend est externe.
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### Option B — Cache local (frontend only)
+Apres une sauvegarde reussie, conserver les credentials saisis dans le state local pour la session en cours. Ainsi, si l'utilisateur clique "Modifier" sans avoir recharge la page, les champs sont pre-remplis. Apres un rechargement de page, seul le badge "Identifiants configures" apparait (sans les valeurs).
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+### Changement prevu (Option B)
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**`src/pages/ProjectSettings.tsx`**
 
-### 3. Badge verdict sur les cartes Dashboard
+1. Stocker les credentials "reels" dans un state separe `savedCredentials` apres une sauvegarde reussie
+2. Quand l'utilisateur clique "Modifier", pre-remplir les champs avec `savedCredentials[flowId]` au lieu de vider les champs
+3. Si pas de `savedCredentials` (page rechargee), les champs restent vides avec un placeholder explicatif
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+C'est la meilleure solution possible sans modification backend.
 
