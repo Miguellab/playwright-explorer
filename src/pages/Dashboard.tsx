@@ -208,8 +208,8 @@ export default function Dashboard() {
                       {/* Ligne 1 : Nom + verdict + pause */}
                       <div className="flex items-center gap-2">
                         <p className="font-mono text-sm font-semibold truncate">{project.name}</p>
-                        {lastRuns[project.id]?.verdict ? (
-                          <VerdictBadge verdict={lastRuns[project.id].verdict!} />
+                        {lastRuns[project.id] ? (
+                          <StatusBadge status={lastRuns[project.id].status} />
                         ) : null}
                         {!project.enabled && (
                           <Badge variant="secondary" className="font-mono text-[10px] shrink-0">

@@ -18,8 +18,6 @@ export interface Run {
   flowId?: string;
   flowLabel?: string;
   status: RunStatus;
-  verdict?: Verdict;
-  verdictSummary?: VerdictSummary;
   runnerRunId?: string;
   runnerStatus?: string;
   steps: RunStep[];

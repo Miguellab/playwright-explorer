@@ -115,10 +115,6 @@ export default function Logs() {
             </TableBody>
           </Table>
 
-          {/* Legend */}
-          <p className="mt-4 font-mono text-[10px] text-muted-foreground text-center">
-            Statut = le test s'est-il exécuté ? | Verdict = votre parcours fonctionne-t-il ?
-          </p>
         </div>
       )}
     </div>
