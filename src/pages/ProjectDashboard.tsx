@@ -271,8 +271,8 @@ export default function ProjectDashboard() {
                 <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-[10px]">
                   Configuration
                 </Badge>
-              ) : latestRun?.verdict ? (
-                <VerdictBadge verdict={latestRun.verdict} />
+              ) : latestRun ? (
+                <StatusBadge status={latestRun.status} />
               ) : null}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
