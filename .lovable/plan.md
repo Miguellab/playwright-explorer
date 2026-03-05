@@ -1,56 +1,62 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Diagnostic
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+Le backend ne renvoie jamais les credentials en clair dans `GET /projects/:id` (pour des raisons de securite). Les flows monitores ont `hasCredentials: true` mais pas de champ `credentials`. Or le code de chargement (ligne 47-49) cherche `f.credentials` qui est toujours `undefined` → les champs sont vides et le badge "Identifiants configures" ne s'affiche pas.
 
-## Ce qui reste à faire
+De plus, apres `handleSave`, le `setProject(updated)` ecrase le projet avec la reponse du PATCH qui elle aussi ne contient pas `credentials` → meme probleme.
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+## Plan
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+### `src/pages/ProjectSettings.tsx`
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+**1. Chargement initial (lignes 44-50)** — Utiliser `hasCredentials` pour pre-remplir l'etat :
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+```ts
+const creds: Record<string, { email: string; password: string }> = {};
+(p.monitoredFlows ?? []).forEach((f) => {
+  if (f.credentials) {
+    creds[f.id] = { ...f.credentials };
+  } else if (f.hasCredentials) {
+    // Le backend ne renvoie pas les credentials en clair,
+    // mais signale qu'ils sont configures
+    creds[f.id] = { email: "••••••••", password: "••••••••" };
+  }
+});
+```
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**2. Tracking des flows deja configures** — Ajouter un state `configuredFlowIds` (Set) pour savoir quels flows ont deja des credentials cote serveur, sans les confondre avec des credentials edites par l'utilisateur :
 
-### 3. Badge verdict sur les cartes Dashboard
+```ts
+const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
+```
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+Initialise dans le useEffect :
+```ts
+const configured = new Set<string>();
+(p.monitoredFlows ?? []).forEach((f) => {
+  if (f.hasCredentials) configured.add(f.id);
+});
+setConfiguredFlowIds(configured);
+```
 
-### 4. Collapsible CTO dans RunReport
+**3. Affichage du formulaire credentials (dans le JSX)** — Si un flow est dans `configuredFlowIds` et que l'utilisateur n'a pas edite les champs, afficher le badge "Identifiants configures" avec un bouton "Modifier" au lieu des champs vides. Quand l'utilisateur clique "Modifier", retirer le flow de `configuredFlowIds` pour afficher le formulaire.
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+**4. handleSave (ligne 69-74)** — Ne pas envoyer les credentials placeholder. Si le flow est dans `configuredFlowIds` et que les valeurs n'ont pas ete modifiees, ne pas inclure `credentials` dans le body (le backend garde les anciens) :
 
----
+```ts
+.map((f) => {
+  const isAlreadyConfigured = configuredFlowIds.has(f.id);
+  const creds = flowCredentials[f.id];
+  const hasNewCreds = creds && creds.email && creds.password 
+    && creds.email !== "••••••••" && creds.password !== "••••••••";
+  if (hasNewCreds) return { ...f, credentials: creds };
+  return f; // pas de credentials → le backend garde les existants
+});
+```
 
-## Fichiers modifiés
+**5. Apres sauvegarde** — Mettre a jour `configuredFlowIds` avec les flows qui ont `hasCredentials: true` dans la reponse.
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichier modifie
+- `src/pages/ProjectSettings.tsx`
 
