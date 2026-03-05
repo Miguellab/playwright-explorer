@@ -409,15 +409,14 @@ export default function ProjectDashboard() {
           {/* Verdict card */}
           <Card className="lg:col-span-2">
             <CardContent className="p-6">
-              {latestRun?.verdictSummary ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-4">
-                    <VerdictBadge verdict={latestRun.verdictSummary.verdict} size="lg" />
-                  </div>
-                  <VerdictText verdict={latestRun.verdictSummary.verdict} />
-                  <p className="font-mono text-sm text-muted-foreground whitespace-pre-line">
-                    {latestRun.verdictSummary.forUser}
-                  </p>
+              {latestRun && (latestRun.status === "passed" || latestRun.status === "failed" || latestRun.status === "error") ? (
+                <div className="space-y-3">
+                  <StatusBadge status={latestRun.status} />
+                  {latestRun.error && (
+                    <p className="font-mono text-xs text-muted-foreground whitespace-pre-line">
+                      {latestRun.error}
+                    </p>
+                  )}
                 </div>
               ) : latestRun && (latestRun.status === "queued" || latestRun.status === "running") ? (
                 <div className="flex items-center gap-3">
