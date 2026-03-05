@@ -35,6 +35,7 @@ export default function SettingsPage() {
         .then((s) => {
           setHasAnthropicKey(s.hasAnthropicApiKey);
           if (s.anthropicApiKey) setAnthropicKey(s.anthropicApiKey);
+          if (s.useVisionAnalysis !== undefined) setUseVisionAnalysis(s.useVisionAnalysis);
         })
         .catch(() => {});
 
