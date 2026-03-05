@@ -2,8 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 
 import { StepActionIcon } from "@/components/StepActionIcon";
-import { VerdictBadge, VerdictText } from "@/components/VerdictBadge";
-
 import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
