@@ -247,11 +247,17 @@ export default function ProjectDashboard() {
     });
   };
 
+  const flowLabels = useMemo(
+    () => [...new Set(runs.map((r) => r.flowLabel).filter(Boolean))].sort() as string[],
+    [runs]
+  );
+
   const filteredRuns = useMemo(() => {
     const q = historySearch.toLowerCase();
     return runs.filter((run) => {
       if (q && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q) && !(run.trigger || "").toLowerCase().includes(q)) return false;
       if (historyStatus !== "all" && run.status !== historyStatus) return false;
+      if (historyFlow !== "all" && (run.flowLabel || "") !== historyFlow) return false;
       if (historyDateStart) {
         const d = run.startedAt || run.finishedAt;
         if (!d || d < historyDateStart) return false;
@@ -262,7 +268,7 @@ export default function ProjectDashboard() {
       }
       return true;
     });
-  }, [runs, historySearch, historyStatus, historyDateStart, historyDateEnd]);
+  }, [runs, historySearch, historyStatus, historyFlow, historyDateStart, historyDateEnd]);
 
   const filteredRunGroups = groupRuns(filteredRuns);
   const runGroups = groupRuns(runs);
