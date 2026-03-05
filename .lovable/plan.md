@@ -1,46 +1,56 @@
 
 
-## Probleme
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-Sur la ligne 138-139 du `RunReport.tsx`, le `VerdictBadge` (verdict IA = "OK") et le `StatusBadge` (statut technique = "FAILED") sont affiches cote a cote sans distinction. C'est contradictoire et perturbant : l'utilisateur voit "OK" en vert et "FAILED" en rouge.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Le verdict IA et le statut technique sont deux choses differentes :
-- **Verdict** = analyse IA du resultat fonctionnel (ce qui compte pour l'utilisateur)
-- **Statut** = resultat technique de l'execution (interet dev/debug)
+## Ce qui reste à faire
 
-## Solution
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-Quand un verdict IA existe, **ne plus afficher le StatusBadge dans le banner principal**. Le statut technique reste visible dans la ligne "Durée / date" sous forme de texte discret, ou dans les details techniques.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-### Changement dans `src/pages/RunReport.tsx`
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Banner verdict (lignes 137-140)** : retirer `StatusBadge` du banner quand un verdict existe. Ajouter le statut technique en petit texte sous la duree uniquement si le statut differe du verdict (ex: verdict OK mais statut failed).
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-```
-Avant :
-  <VerdictBadge verdict={vs.verdict} />
-  <StatusBadge status={run.status} />
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-Apres :
-  <VerdictBadge verdict={vs.verdict} />
-  {/* StatusBadge retire du banner */}
-```
+### 3. Badge verdict sur les cartes Dashboard
 
-Dans la zone duree/date (lignes 147-152), ajouter un indicateur discret si le statut technique differe :
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-```tsx
-{run.status !== "passed" && vs.verdict === "OK" && (
-  <span className="text-muted-foreground/60 text-[10px]">
-    (statut technique : {run.status})
-  </span>
-)}
-```
+### 4. Collapsible CTO dans RunReport
 
-Cela garde l'info technique accessible sans creer de confusion visuelle.
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-### Fichier modifie
+---
+
+## Fichiers modifiés
 
 | Fichier | Changement |
-|---------|-----------|
-| `src/pages/RunReport.tsx` | Retirer StatusBadge du banner verdict, ajouter statut technique en texte discret |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
