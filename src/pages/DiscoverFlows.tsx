@@ -264,9 +264,6 @@ export default function DiscoverFlows() {
                                           → {flow.pagePath}
                                         </span>
                                       )}
-                                      <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                        {flow.goal}
-                                      </Badge>
                                       {flow.authenticatedOnly && (
                                         <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
                                           Post-login
