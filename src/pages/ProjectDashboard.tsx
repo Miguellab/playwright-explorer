@@ -20,6 +20,12 @@ import {
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   ArrowLeft,
   ExternalLink,
   Play,
@@ -159,10 +165,13 @@ export default function ProjectDashboard() {
         description: response.message || response.runs.map((r) => r.flow).join(", "),
       });
     } catch (e: unknown) {
-      const err = e as Error & { status?: number };
-      if (err.status === 429) {
+      const err = e as Error & { status?: number; code?: string };
+      if (err.status === 400 && (err.message?.includes("NO_MONITORED_FLOWS") || err.message?.includes("parcours"))) {
+        toast({ title: "Aucun parcours surveillé", description: err.message, variant: "destructive" });
+        if (id) getProject(id).then(setProject).catch(() => {});
+      } else if (err.status === 429) {
         toast({ title: "Limite atteinte", description: "Limite quotidienne atteinte. Reessayez demain.", variant: "destructive" });
-      } else if (err.message.includes("inaccessible") || err.message.includes("unreachable")) {
+      } else if (err.message?.includes("inaccessible") || err.message?.includes("unreachable")) {
         toast({ title: "Service inaccessible", description: "Le service de test est inaccessible. Verifiez votre configuration.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -228,7 +237,13 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              {latestRun?.verdict && <VerdictBadge verdict={latestRun.verdict} />}
+              {project.configStatus === "no_flows" ? (
+                <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-[10px]">
+                  Configuration
+                </Badge>
+              ) : latestRun?.verdict ? (
+                <VerdictBadge verdict={latestRun.verdict} />
+              ) : null}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
@@ -357,6 +372,15 @@ export default function ProjectDashboard() {
                     </p>
                   </div>
                 </div>
+              ) : project.configStatus === "no_flows" ? (
+                <div className="text-center py-4 space-y-2">
+                  <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-xs">
+                    Configuration requise
+                  </Badge>
+                  <p className="font-mono text-sm text-muted-foreground">
+                    {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
+                  </p>
+                </div>
               ) : (
                 <div className="text-center py-4">
                   <p className="font-mono text-sm text-muted-foreground">
@@ -370,19 +394,32 @@ export default function ProjectDashboard() {
           {/* Action card */}
           <Card>
             <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
-              <Button
-                onClick={handleTestNow}
-                disabled={testing || hasActiveRuns}
-                className="w-full font-mono"
-                size="lg"
-              >
-                {testing || hasActiveRuns ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Play className="mr-2 h-4 w-4" />
-                )}
-                Tester maintenant
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="w-full">
+                      <Button
+                        onClick={handleTestNow}
+                        disabled={testing || hasActiveRuns || project.configStatus === "no_flows"}
+                        className="w-full font-mono"
+                        size="lg"
+                      >
+                        {testing || hasActiveRuns ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Play className="mr-2 h-4 w-4" />
+                        )}
+                        Tester maintenant
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {project.configStatus === "no_flows" && (
+                    <TooltipContent>
+                      <p className="font-mono text-xs">Sélectionnez d'abord des parcours à surveiller</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
               {!project.lastSeenSignature && (
                 <p className="text-[10px] text-muted-foreground text-center font-mono">
                   Nous lancerons un test automatiquement des qu'une nouvelle version sera detectee.
