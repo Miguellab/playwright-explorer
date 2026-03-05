@@ -1,56 +1,43 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Plan : 3 modifications frontend pour les changements backend
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### 1. Types (`src/lib/sentinelle-types.ts`)
 
-## Ce qui reste à faire
+- Ajouter `configStatus?: "ready" | "no_flows"` et `configMessage?: string | null` a `Project`
+- Ajouter `useVisionAnalysis?: boolean` a `SentinelleSettings`
+- Ajouter `visionError?: string` a `DiscoverResult` dans `sentinelle-api.ts`
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### 2. ProjectDashboard — etat "no_flows" (`src/pages/ProjectDashboard.tsx`)
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+- Dans le header (ligne 231), conditionner `VerdictBadge` : si `project.configStatus === "no_flows"`, afficher un Badge orange "Configuration" au lieu du verdict
+- Dans la carte verdict (lignes 338-366), si `configStatus === "no_flows"` et pas de run actif, afficher le message `configMessage` ou le texte par defaut "Aucun parcours surveille — lancez une decouverte..."
+- Bouton "Tester maintenant" (ligne 373-385) : ajouter `project.configStatus === "no_flows"` au `disabled`. Entourer d'un Tooltip avec "Selectionnez d'abord des parcours a surveiller" quand desactive pour cette raison
+- Dans `handleTestNow` catch : detecter le code `NO_MONITORED_FLOWS` dans l'erreur et afficher un toast specifique
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### 3. Settings — toggle vision (`src/pages/SettingsPage.tsx`)
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+- Ajouter state `useVisionAnalysis` (boolean, defaut true)
+- Charger depuis `getSettings()` dans le useEffect existant
+- Dans la Card "Intelligence Artificielle", avant le champ "Cle API Anthropic", ajouter :
+  - Un Switch avec label "Utiliser l'analyse IA pour la decouverte des parcours"
+  - Description : "Quand active, Claude analyse visuellement les pages pour des scores de confiance plus precis. Necessite une cle API Anthropic valide."
+  - `onCheckedChange` envoie `updateSettings({ useVisionAnalysis: value })`
+  - Si active et `!hasAnthropicKey` : petit warning ambre "Cle API Anthropic requise pour activer l'analyse IA"
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+### 4. Decouverte — visionError et badge IA (`src/pages/Onboarding.tsx` + `src/pages/DiscoverFlows.tsx`)
 
-### 3. Badge verdict sur les cartes Dashboard
+Dans les deux pages, apres le `discoverFlows()` resolve :
+- Stocker `result.visionError` dans un nouveau state `visionError`
+- Dans la section `phase === "results"`, sous le titre "X parcours detectes" :
+  - Si `visionError` : bandeau ambre avec le texte de l'erreur (icone AlertTriangle)
+  - Si pas de `visionError` et flows.length > 0 : badge vert "Analyse IA" a cote du titre (icone Sparkles)
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichiers modifies
+1. `src/lib/sentinelle-types.ts`
+2. `src/lib/sentinelle-api.ts`
+3. `src/pages/ProjectDashboard.tsx`
+4. `src/pages/SettingsPage.tsx`
+5. `src/pages/Onboarding.tsx`
+6. `src/pages/DiscoverFlows.tsx`
 
