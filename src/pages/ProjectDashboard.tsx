@@ -228,7 +228,13 @@ export default function ProjectDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              {latestRun?.verdict && <VerdictBadge verdict={latestRun.verdict} />}
+              {project.configStatus === "no_flows" ? (
+                <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-[10px]">
+                  Configuration
+                </Badge>
+              ) : latestRun?.verdict ? (
+                <VerdictBadge verdict={latestRun.verdict} />
+              ) : null}
               {!project.enabled && (
                 <Badge variant="secondary" className="font-mono text-xs">
                   Surveillance en pause
