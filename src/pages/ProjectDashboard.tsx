@@ -16,6 +16,7 @@ import {
   getRun,
   toggleProject,
   deleteProject,
+  discoverAuthenticatedFlows,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
 import {
