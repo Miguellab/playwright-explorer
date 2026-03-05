@@ -92,6 +92,12 @@ export default function ProjectSettings() {
         monitoredFlows,
       });
       setProject(updated);
+      // Update configuredFlowIds from response
+      const newConfigured = new Set<string>();
+      (updated.monitoredFlows ?? []).forEach((f) => {
+        if (f.hasCredentials) newConfigured.add(f.id);
+      });
+      setConfiguredFlowIds(newConfigured);
       toast({ title: "Sauvegarde", description: "Paramètres mis à jour." });
     } catch (e: unknown) {
       const err = e as Error;
