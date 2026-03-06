@@ -71,6 +71,8 @@ export interface Project {
   name: string;
   siteUrl: string;
   goal?: string | null;
+  description?: string | null;
+  siteAnalysis?: SiteAnalysis | null;
   suggestedFlows?: SuggestedFlow[];
   monitoredFlows?: SuggestedFlow[];
   enabled: boolean;
