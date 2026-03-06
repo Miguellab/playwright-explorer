@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { discoverFlows, updateProject } from "@/lib/sentinelle-api";
-import type { SuggestedFlow } from "@/lib/sentinelle-types";
+import type { SuggestedFlow, SiteAnalysis } from "@/lib/sentinelle-types";
+import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
 import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw, Menu, MousePointerClick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -32,6 +33,7 @@ export default function DiscoverFlows() {
 
   const [phase, setPhase] = useState<"loading" | "results" | "error">("loading");
   const [flows, setFlows] = useState<SuggestedFlow[]>([]);
+  const [siteAnalysis, setSiteAnalysis] = useState<SiteAnalysis | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
   const [messageIdx, setMessageIdx] = useState(0);
@@ -68,6 +70,7 @@ export default function DiscoverFlows() {
       .then((result) => {
         const flowList = result.flows;
         setFlows(flowList);
+        setSiteAnalysis(result.siteAnalysis || null);
         const preSelected = new Set(flowList.map((f) => f.id));
         setSelected(preSelected);
         setProgress(100);
@@ -223,7 +226,7 @@ export default function DiscoverFlows() {
                 </Card>
               ) : (
                 <>
-                  <div className="space-y-6">
+                  <div className="max-h-[60vh] overflow-y-auto space-y-6 pr-1">
                     {groupedFlows.map(({ source, flows: sourceFlows }) => {
                       const config = getSourceConfig(source);
                       const SourceIcon = config.icon;
@@ -290,6 +293,11 @@ export default function DiscoverFlows() {
                       );
                     })}
                   </div>
+
+                  {/* Site Analysis from discovery */}
+                  {siteAnalysis && (
+                    <SiteAnalysisSection analysis={siteAnalysis} />
+                  )}
 
                   <div className="flex gap-3">
                     <Button

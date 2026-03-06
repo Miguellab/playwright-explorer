@@ -4,6 +4,44 @@ export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery";
 export type IssueSeverity = "critical" | "warning";
+export type SiteType = "saas" | "ecommerce" | "vitrine" | "blog" | "marketplace" | "webapp" | "landing" | "other";
+
+// ── Performance ──
+
+export interface PerformanceMetrics {
+  domContentLoaded?: number;
+  loaded?: number;
+  firstContentfulPaint?: number;
+  domInteractive?: number;
+  resourceCount?: number;
+  totalTransferSizeKB?: number;
+}
+
+// ── Site Analysis ──
+
+export interface SiteAnalysisPage {
+  label: string;
+  role: string;
+  interactiveElements?: string[];
+  uxIssues?: string[];
+  performance?: PerformanceMetrics;
+}
+
+export interface CrossPageAnalysis {
+  navigationConsistency: string;
+  designConsistency: string;
+  criticalPaths: string[];
+  missingPages: string[];
+}
+
+export interface SiteAnalysis {
+  sitePurpose: string;
+  siteType: SiteType;
+  targetAudience: string;
+  keyFeatures: string[];
+  crossPageAnalysis: CrossPageAnalysis;
+  pages: SiteAnalysisPage[];
+}
 
 export interface Goal {
   id: string;
@@ -33,6 +71,8 @@ export interface Project {
   name: string;
   siteUrl: string;
   goal?: string | null;
+  description?: string | null;
+  siteAnalysis?: SiteAnalysis | null;
   suggestedFlows?: SuggestedFlow[];
   monitoredFlows?: SuggestedFlow[];
   enabled: boolean;
@@ -104,6 +144,9 @@ export interface ConsoleError {
 export interface FailedRequest {
   url: string;
   status: number;
+  method?: string;
+  resourceType?: string;
+  errorText?: string;
   timestamp?: string;
 }
 
@@ -129,10 +172,12 @@ export interface Findings {
   consoleErrors: ConsoleError[];
   failedRequests: FailedRequest[];
   diagnostics: Diagnostic[];
+  performanceMetrics?: Record<string, PerformanceMetrics>;
 }
 
 export interface RunAssets {
   screenshots?: { label: string; filename: string; path: string }[];
+  tracePath?: string;
 }
 
 export interface Run {

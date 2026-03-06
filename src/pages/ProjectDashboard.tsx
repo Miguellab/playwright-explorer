@@ -25,6 +25,7 @@ import {
   discoverAuthenticatedFlows,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
+import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
 import {
   Tooltip,
   TooltipContent,
@@ -335,6 +336,9 @@ export default function ProjectDashboard() {
                 </>
               )}
             </div>
+            {project.description && (
+              <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Switch
@@ -464,6 +468,13 @@ export default function ProjectDashboard() {
             <p className="font-mono text-sm text-muted-foreground">
               {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
             </p>
+          </div>
+        )}
+
+        {/* Site Analysis */}
+        {project.siteAnalysis && (
+          <div className="mt-6">
+            <SiteAnalysisSection analysis={project.siteAnalysis} />
           </div>
         )}
 

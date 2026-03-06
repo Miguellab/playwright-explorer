@@ -7,6 +7,7 @@ import type {
   SuggestedFlow,
   TestNowResponse,
   SentinelleSettings,
+  SiteAnalysis,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
@@ -100,6 +101,7 @@ export interface DiscoverResult {
   runId: string;
   flows: SuggestedFlow[];
   screenshots: { label: string; filename: string; path: string }[];
+  siteAnalysis?: SiteAnalysis;
   visionError?: string;
 }
 
@@ -112,6 +114,7 @@ export interface AuthenticatedDiscoverResult {
   flows: SuggestedFlow[];
   loginSuccess: boolean;
   screenshots: { label: string; filename: string; path: string }[];
+  siteAnalysis?: SiteAnalysis;
   rawNavigation?: {
     linksCount: number;
     buttonsCount: number;
@@ -171,6 +174,12 @@ export function getScreenshotUrl(path: string): string {
   if (path.startsWith("http")) return path;
   const separator = path.startsWith("/") ? "" : "/";
   return `${BASE_URL}${separator}${path}`;
+}
+
+export function getTraceUrl(project: Project, tracePath: string): string {
+  const base = project.runnerBaseUrl.replace(/\/$/, "");
+  const separator = tracePath.startsWith("/") ? "" : "/";
+  return `${base}${separator}${tracePath}`;
 }
 
 // ── Settings ──
