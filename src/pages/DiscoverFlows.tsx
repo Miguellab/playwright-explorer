@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { discoverFlows, updateProject, setMainFlow } from "@/lib/sentinelle-api";
 import type { SuggestedFlow } from "@/lib/sentinelle-types";
-import { Loader2, Search, CheckCircle2, AlertTriangle, Sparkles, RotateCcw, Star } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertTriangle, Sparkles, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
