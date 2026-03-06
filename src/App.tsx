@@ -8,9 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import Onboarding from "./pages/Onboarding";
 import DiscoverFlows from "./pages/DiscoverFlows";
 import ProjectDashboard from "./pages/ProjectDashboard";
-import RunReport from "./pages/RunReport";
+import ReleaseDetail from "./pages/ReleaseDetail";
+import ReleasesTimeline from "./pages/ReleasesTimeline";
 import ProjectSettings from "./pages/ProjectSettings";
-import Logs from "./pages/Logs";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
@@ -28,9 +28,9 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/project/:id" element={<ProjectDashboard />} />
             <Route path="/project/:id/discover" element={<DiscoverFlows />} />
-            <Route path="/project/:id/run/:runId" element={<RunReport />} />
+            <Route path="/project/:id/release/:releaseId" element={<ReleaseDetail />} />
+            <Route path="/project/:id/releases" element={<ReleasesTimeline />} />
             <Route path="/project/:id/settings" element={<ProjectSettings />} />
-            <Route path="/logs" element={<Logs />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

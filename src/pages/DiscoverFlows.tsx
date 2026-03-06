@@ -1,15 +1,14 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { discoverFlows, updateProject } from "@/lib/sentinelle-api";
-import type { SuggestedFlow, SiteAnalysis } from "@/lib/sentinelle-types";
-import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
-import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw, Menu, MousePointerClick } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { discoverFlows, updateProject, setMainFlow } from "@/lib/sentinelle-api";
+import type { SuggestedFlow } from "@/lib/sentinelle-types";
+import { Loader2, Search, CheckCircle2, AlertTriangle, Sparkles, RotateCcw, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 const PROGRESS_MESSAGES = [
   "Chargement de la page d'accueil…",
@@ -20,12 +19,6 @@ const PROGRESS_MESSAGES = [
   "Finalisation de l'analyse…",
 ];
 
-const SOURCE_CONFIG: Record<string, { icon: typeof Menu; label: string; badgeClass: string }> = {
-  "nav-link": { icon: Menu, label: "Navigation", badgeClass: "bg-muted text-muted-foreground border-border" },
-  "button": { icon: MousePointerClick, label: "Action", badgeClass: "bg-primary/10 text-primary border-primary/30" },
-  "detected": { icon: Sparkles, label: "Détecté", badgeClass: "bg-accent text-accent-foreground border-accent" },
-};
-
 export default function DiscoverFlows() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -33,15 +26,14 @@ export default function DiscoverFlows() {
 
   const [phase, setPhase] = useState<"loading" | "results" | "error">("loading");
   const [flows, setFlows] = useState<SuggestedFlow[]>([]);
-  const [siteAnalysis, setSiteAnalysis] = useState<SiteAnalysis | null>(null);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
+  const [enabledFlows, setEnabledFlows] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
   const [messageIdx, setMessageIdx] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const startedRef = useRef(false);
 
-  // Simulated progress
   useEffect(() => {
     if (phase !== "loading") return;
     const interval = setInterval(() => {
@@ -50,7 +42,6 @@ export default function DiscoverFlows() {
     return () => clearInterval(interval);
   }, [phase]);
 
-  // Cycle messages
   useEffect(() => {
     if (phase !== "loading") return;
     const interval = setInterval(() => {
@@ -70,9 +61,10 @@ export default function DiscoverFlows() {
       .then((result) => {
         const flowList = result.flows;
         setFlows(flowList);
-        setSiteAnalysis(result.siteAnalysis || null);
-        const preSelected = new Set(flowList.map((f) => f.id));
-        setSelected(preSelected);
+        setEnabledFlows(new Set(flowList.map((f) => f.id)));
+        // Auto-select highest confidence as main flow
+        const sorted = [...flowList].sort((a, b) => b.confidence - a.confidence);
+        if (sorted.length > 0) setMainFlowIdState(sorted[0].id);
         setProgress(100);
         setTimeout(() => setPhase("results"), 600);
       })
@@ -82,33 +74,38 @@ export default function DiscoverFlows() {
       });
   };
 
-  // Initial API call
   useEffect(() => {
     if (!id || startedRef.current) return;
     startDiscovery();
   }, [id]);
 
   const toggleFlow = (flowId: string) => {
-    setSelected((prev) => {
+    setEnabledFlows((prev) => {
       const next = new Set(prev);
-      if (next.has(flowId)) next.delete(flowId);
-      else next.add(flowId);
+      if (next.has(flowId)) {
+        next.delete(flowId);
+        if (mainFlowId === flowId) setMainFlowIdState(null);
+      } else {
+        next.add(flowId);
+      }
       return next;
     });
   };
 
   const handleConfirm = async () => {
-    if (!id || selected.size === 0) return;
+    if (!id || !mainFlowId) return;
     setSubmitting(true);
     try {
-      const selectedFlows = flows.filter((f) => selected.has(f.id));
-      const primaryGoal = selectedFlows[0]?.goal;
+      const selectedFlows = flows.filter((f) => enabledFlows.has(f.id));
       await updateProject(id, {
-        goal: primaryGoal || undefined,
         suggestedFlows: flows,
         monitoredFlows: selectedFlows,
       });
-      toast({ title: `${selectedFlows.length} parcours confirmé${selectedFlows.length > 1 ? "s" : ""}`, description: "La surveillance est configurée." });
+      await setMainFlow(id, mainFlowId);
+      toast({
+        title: "Surveillance configurée",
+        description: `${selectedFlows.length} parcours surveillés.`,
+      });
       navigate(`/project/${id}`);
     } catch (e: unknown) {
       const err = e as Error;
@@ -118,215 +115,194 @@ export default function DiscoverFlows() {
     }
   };
 
-  // Group flows by source
-  const groupedFlows = useMemo(() => {
-    const groups: { source: string; flows: SuggestedFlow[] }[] = [];
-    const sourceOrder = ["nav-link", "button", "detected"];
-    const bySource = new Map<string, SuggestedFlow[]>();
+  const confidenceLabel = (c: number) => {
+    if (c >= 70) return "Élevée";
+    if (c >= 40) return "Moyenne";
+    return "Faible";
+  };
 
-    for (const flow of flows) {
-      const src = flow.source || "detected";
-      if (!bySource.has(src)) bySource.set(src, []);
-      bySource.get(src)!.push(flow);
-    }
-
-    for (const src of sourceOrder) {
-      if (bySource.has(src)) {
-        groups.push({ source: src, flows: bySource.get(src)! });
-        bySource.delete(src);
-      }
-    }
-    // Any remaining sources
-    for (const [src, srcFlows] of bySource) {
-      groups.push({ source: src, flows: srcFlows });
-    }
-
-    return groups;
-  }, [flows]);
-
-  const getSourceConfig = (source: string) =>
-    SOURCE_CONFIG[source] || SOURCE_CONFIG["detected"];
+  const confidenceColor = (c: number) => {
+    if (c >= 70) return "text-status-safe";
+    if (c >= 40) return "text-status-alerte";
+    return "text-muted-foreground";
+  };
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-2xl space-y-8">
-          {/* Loading */}
-          {phase === "loading" && (
-            <div className="space-y-8 text-center">
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Search className="h-8 w-8 text-primary animate-pulse" />
-                  </div>
-                  <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-primary animate-bounce" />
+    <div className="flex-1 flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-2xl space-y-8">
+        {/* Loading */}
+        {phase === "loading" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-8 text-center"
+          >
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="h-16 w-16 rounded-2xl bg-neon/10 flex items-center justify-center">
+                  <Search className="h-8 w-8 text-neon animate-pulse" />
                 </div>
-                <div>
-                  <h2 className="font-mono text-xl font-bold">Analyse en cours</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Sentinelle explore votre site pour détecter les parcours utilisateur…
+                <Sparkles className="absolute -top-1 -right-1 h-5 w-5 text-neon animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">Sentinelle identifie les parcours clés</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  de votre application…
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3 max-w-sm mx-auto">
+              <Progress value={Math.min(progress, 100)} className="h-2" />
+              <p className="text-xs text-muted-foreground animate-pulse">
+                {PROGRESS_MESSAGES[messageIdx]}
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Error */}
+        {phase === "error" && (
+          <Card className="bg-surface border-border">
+            <CardContent className="p-8 text-center space-y-4">
+              <AlertTriangle className="h-10 w-10 text-status-erreur mx-auto" />
+              <div>
+                <p className="text-sm font-semibold">Analyse impossible</p>
+                <p className="mt-1 text-xs text-muted-foreground">{errorMsg}</p>
+              </div>
+              <div className="flex gap-3 justify-center">
+                <Button variant="outline" onClick={() => navigate(-1)}>
+                  Retour
+                </Button>
+                <Button onClick={startDiscovery} className="bg-neon text-background hover:bg-neon/90">
+                  Réessayer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Results */}
+        {phase === "results" && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-6"
+          >
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-status-safe" />
+                <h2 className="text-xl font-bold">
+                  {flows.length} parcours détecté{flows.length > 1 ? "s" : ""}
+                </h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Choisissez votre <span className="text-neon font-medium">parcours principal</span> et activez ceux à surveiller.
+              </p>
+            </div>
+
+            {flows.length === 0 ? (
+              <Card className="bg-surface border-border">
+                <CardContent className="p-8 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Aucun parcours détecté.
                   </p>
-                </div>
-              </div>
-              <div className="space-y-3 max-w-sm mx-auto">
-                <Progress value={Math.min(progress, 100)} className="h-2" />
-                <p className="font-mono text-xs text-muted-foreground animate-pulse">
-                  {PROGRESS_MESSAGES[messageIdx]}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error */}
-          {phase === "error" && (
-            <Card>
-              <CardContent className="p-8 text-center space-y-4">
-                <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-                <div>
-                  <p className="font-mono text-sm font-semibold">Analyse impossible</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{errorMsg}</p>
-                </div>
-                <div className="flex gap-3 justify-center">
-                  <Button variant="outline" className="font-mono" onClick={() => navigate(-1)}>
-                    Retour
+                  <Button onClick={() => navigate(`/project/${id}`)} className="bg-neon text-background hover:bg-neon/90">
+                    Continuer
                   </Button>
-                  <Button className="font-mono" onClick={startDiscovery}>
-                    Réessayer
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+                  {flows.map((flow) => {
+                    const isEnabled = enabledFlows.has(flow.id);
+                    const isMain = mainFlowId === flow.id;
+                    return (
+                      <Card
+                        key={flow.id}
+                        className={`transition-all border ${
+                          isMain
+                            ? "border-neon/40 bg-neon/5"
+                            : isEnabled
+                            ? "border-border bg-surface"
+                            : "border-border bg-surface/50 opacity-60"
+                        }`}
+                      >
+                        <CardContent className="flex items-center gap-4 p-4">
+                          {/* Main flow radio */}
+                          <button
+                            type="button"
+                            className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
+                            }`}
+                            onClick={() => {
+                              setMainFlowIdState(flow.id);
+                              if (!isEnabled) {
+                                setEnabledFlows((prev) => new Set(prev).add(flow.id));
+                              }
+                            }}
+                            title="Définir comme parcours principal"
+                          >
+                            {isMain && <Star className="h-3 w-3 text-background" />}
+                          </button>
 
-          {/* Results */}
-          {phase === "results" && (
-            <div className="space-y-6">
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-status-pass" />
-                  <h2 className="font-mono text-xl font-bold">
-                    {flows.length} parcours détecté{flows.length > 1 ? "s" : ""}
-                  </h2>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Sélectionnez les parcours que vous souhaitez surveiller.
-                </p>
-              </div>
-
-              {flows.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center space-y-3">
-                    <p className="font-mono text-sm text-muted-foreground">
-                      Aucun parcours détecté. Vous pourrez configurer les objectifs manuellement.
-                    </p>
-                    <Button className="font-mono" onClick={() => navigate(`/project/${id}`)}>
-                      Continuer <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  <div className="max-h-[60vh] overflow-y-auto space-y-6 pr-1">
-                    {groupedFlows.map(({ source, flows: sourceFlows }) => {
-                      const config = getSourceConfig(source);
-                      const SourceIcon = config.icon;
-                      return (
-                        <div key={source} className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <SourceIcon className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-mono text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                              {config.label}
-                            </span>
-                            <Badge variant="outline" className="font-mono text-[10px]">
-                              {sourceFlows.length}
-                            </Badge>
+                          {/* Flow info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold truncate">{flow.labelFr}</p>
+                              {isMain && (
+                                <span className="text-[10px] font-medium text-neon bg-neon/10 rounded px-1.5 py-0.5">
+                                  Principal
+                                </span>
+                              )}
+                            </div>
+                            {flow.descriptionFr && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{flow.descriptionFr}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className={`text-[10px] font-medium ${confidenceColor(flow.confidence)}`}>
+                                {Math.round(flow.confidence)}% — {confidenceLabel(flow.confidence)}
+                              </span>
+                            </div>
                           </div>
-                          {sourceFlows.map((flow) => {
-                            const isSelected = selected.has(flow.id);
-                            return (
-                              <Card
-                                key={flow.id}
-                                className={`cursor-pointer transition-all ${
-                                  isSelected
-                                    ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20"
-                                    : "hover:bg-secondary/30"
-                                }`}
-                                onClick={() => toggleFlow(flow.id)}
-                              >
-                                <CardContent className="flex items-start gap-4 p-5">
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={() => toggleFlow(flow.id)}
-                                    className="mt-1 shrink-0"
-                                  />
-                                  <div className="flex-1 min-w-0 space-y-1.5">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="font-mono text-sm font-semibold">{flow.labelFr}</p>
-                                      {flow.pagePath && (
-                                        <span className="font-mono text-xs text-muted-foreground">
-                                          → {flow.pagePath}
-                                        </span>
-                                      )}
-                                      {flow.authenticatedOnly && (
-                                        <Badge variant="outline" className="font-mono text-[10px] shrink-0 border-blue-500/50 text-blue-600 dark:text-blue-400">
-                                          Post-login
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {flow.descriptionFr && (
-                                      <p className="text-xs text-muted-foreground">{flow.descriptionFr}</p>
-                                    )}
-                                    {flow.ctaText && (
-                                      <p className="font-mono text-xs bg-secondary/50 rounded px-2 py-1 inline-block">
-                                        CTA: {flow.ctaText}
-                                      </p>
-                                    )}
-                                  </div>
-                                  <Badge variant="outline" className={`shrink-0 font-mono text-[10px] ${config.badgeClass}`}>
-                                    {config.label}
-                                  </Badge>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
 
-                  {/* Site Analysis from discovery */}
-                  {siteAnalysis && (
-                    <SiteAnalysisSection analysis={siteAnalysis} />
-                  )}
+                          {/* Enable/Disable toggle */}
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={() => toggleFlow(flow.id)}
+                            className="shrink-0"
+                          />
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
 
-                  <div className="flex gap-3">
-                    <Button
-                      variant="outline"
-                      onClick={startDiscovery}
-                      className="font-mono"
-                    >
-                      <RotateCcw className="mr-2 h-4 w-4" />
-                      Relancer la découverte
-                    </Button>
-                    <Button
-                      onClick={handleConfirm}
-                      disabled={selected.size === 0 || submitting}
-                      className="flex-1 font-mono"
-                      size="lg"
-                    >
-                      {submitting ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                      )}
-                      Surveiller {selected.size} parcours sélectionné{selected.size > 1 ? "s" : ""}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={startDiscovery}>
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Relancer
+                  </Button>
+                  <Button
+                    onClick={handleConfirm}
+                    disabled={!mainFlowId || enabledFlows.size === 0 || submitting}
+                    className="flex-1 bg-neon text-background hover:bg-neon/90 font-semibold"
+                    size="lg"
+                  >
+                    {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Commencer la surveillance
+                  </Button>
+                </div>
+
+                {!mainFlowId && (
+                  <p className="text-xs text-status-alerte text-center">
+                    Sélectionnez un parcours principal pour continuer.
+                  </p>
+                )}
+              </>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );

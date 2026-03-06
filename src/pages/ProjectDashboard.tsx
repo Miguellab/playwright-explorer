@@ -1,37 +1,17 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-
-import { StepActionIcon } from "@/components/StepActionIcon";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   getProject,
-  listRuns,
+  listReleases,
   testNow,
-  getRun,
-  toggleProject,
-  deleteProject,
-  discoverAuthenticatedFlows,
+  getRelease,
+  getMainFlow,
 } from "@/lib/sentinelle-api";
-import type { Project, Run } from "@/lib/sentinelle-types";
-import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import type { Project, Release, ReleaseDetail, MainFlowInfo, RunStep } from "@/lib/sentinelle-types";
+import { VerdictBadge } from "@/components/VerdictBadge";
+import { MainFlowSteps } from "@/components/MainFlowSteps";
 import {
   ArrowLeft,
   ExternalLink,
@@ -39,71 +19,21 @@ import {
   Loader2,
   Settings,
   Clock,
-  RotateCcw,
-  Hand,
-  CalendarClock,
-  ChevronDown,
-  ChevronRight,
-  Rocket,
-  Search,
-  Trash2,
+  History,
+  Eye,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-
-const TRIGGER_LABELS: Record<string, { icon: typeof RotateCcw; label: string }> = {
-  release_detected: { icon: RotateCcw, label: "Changement detecte" },
-  manual: { icon: Hand, label: "Test manuel" },
-  scheduled: { icon: CalendarClock, label: "Verification planifiee" },
-  deploy_webhook: { icon: Rocket, label: "Deploy webhook" },
-  discovery: { icon: Search, label: "Découverte" },
-};
+import { motion } from "framer-motion";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "a l'instant";
+  if (min < 1) return "à l'instant";
   if (min < 60) return `il y a ${min} min`;
   const hrs = Math.floor(min / 60);
   if (hrs < 24) return `il y a ${hrs}h`;
   const days = Math.floor(hrs / 24);
   return `il y a ${days}j`;
-}
-
-function formatDuration(ms: number | null): string {
-  if (!ms) return "—";
-  if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
-}
-
-/** Group runs whose startedAt is within 2s of each other */
-function groupRuns(runs: Run[]): Run[][] {
-  if (runs.length === 0) return [];
-  const groups: Run[][] = [];
-  let currentGroup: Run[] = [runs[0]];
-
-  for (let i = 1; i < runs.length; i++) {
-    const prevTime = currentGroup[0].startedAt ? new Date(currentGroup[0].startedAt).getTime() : 0;
-    const currTime = runs[i].startedAt ? new Date(runs[i].startedAt).getTime() : 0;
-    if (prevTime && currTime && Math.abs(prevTime - currTime) <= 2000) {
-      currentGroup.push(runs[i]);
-    } else {
-      groups.push(currentGroup);
-      currentGroup = [runs[i]];
-    }
-  }
-  groups.push(currentGroup);
-  return groups;
 }
 
 export default function ProjectDashboard() {
@@ -112,80 +42,92 @@ export default function ProjectDashboard() {
   const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [runs, setRuns] = useState<Run[]>([]);
+  const [latestRelease, setLatestRelease] = useState<Release | null>(null);
+  const [mainFlow, setMainFlow] = useState<MainFlowInfo | null>(null);
+  const [mainFlowSteps, setMainFlowSteps] = useState<RunStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [discovering, setDiscovering] = useState(false);
-  const [activeRunIds, setActiveRunIds] = useState<string[]>([]);
-  const [activeRuns, setActiveRuns] = useState<Run[]>([]);
-  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
-  const [historySearch, setHistorySearch] = useState("");
-  const [historyStatus, setHistoryStatus] = useState("all");
-  const [historyDateStart, setHistoryDateStart] = useState("");
-  const [historyDateEnd, setHistoryDateEnd] = useState("");
-  const [historyFlow, setHistoryFlow] = useState("all");
+  const [pollingReleaseId, setPollingReleaseId] = useState<string | null>(null);
 
-  const latestActiveRun = activeRuns.length > 0 ? activeRuns[0] : null;
-  const latestRun = latestActiveRun || (runs.length > 0 ? runs[0] : null);
-  const hasActiveRuns = activeRuns.some((r) => r.status === "queued" || r.status === "running");
-
-  // Load project + runs
+  // Load project + latest release + main flow
   useEffect(() => {
     if (!id) return;
-    Promise.all([getProject(id), listRuns(id)])
-      .then(([p, r]) => {
+    Promise.all([getProject(id), listReleases(id, 1), getMainFlow(id)])
+      .then(([p, releases, mf]) => {
         setProject(p);
-        setRuns(Array.isArray(r) ? r : []);
+        setMainFlow(mf);
+        if (releases.length > 0) {
+          setLatestRelease(releases[0]);
+          // If pending, start polling
+          if (releases[0].verdict === "PENDING") {
+            setPollingReleaseId(releases[0].id);
+          }
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Poll active runs
+  // Fetch main flow steps from release detail
   useEffect(() => {
-    if (activeRunIds.length === 0 || !hasActiveRuns) return;
+    if (!latestRelease) return;
+    getRelease(latestRelease.id)
+      .then((detail: ReleaseDetail) => {
+        const mainRun = detail.runs.find((r) =>
+          latestRelease.mainFlowId ? r.flowId === latestRelease.mainFlowId : detail.runs.indexOf(r) === 0
+        );
+        if (mainRun?.steps) {
+          setMainFlowSteps(mainRun.steps);
+        }
+        // Update release with latest data
+        setLatestRelease(detail);
+        if (detail.verdict !== "PENDING") {
+          setPollingReleaseId(null);
+        }
+      })
+      .catch(() => {});
+  }, [latestRelease?.id]);
+
+  // Poll release while PENDING
+  useEffect(() => {
+    if (!pollingReleaseId) return;
     const interval = setInterval(async () => {
       try {
-        const updated = await Promise.all(activeRunIds.map((rid) => getRun(rid)));
-        setActiveRuns(updated);
-        const allDone = updated.every(
-          (r) => r.status === "passed" || r.status === "failed" || r.status === "error"
+        const detail = await getRelease(pollingReleaseId);
+        setLatestRelease(detail);
+        const mainRun = detail.runs.find((r) =>
+          detail.mainFlowId ? r.flowId === detail.mainFlowId : detail.runs.indexOf(r) === 0
         );
-        if (allDone) {
+        if (mainRun?.steps) setMainFlowSteps(mainRun.steps);
+        if (detail.verdict !== "PENDING") {
           clearInterval(interval);
-          if (id) listRuns(id).then((r) => setRuns(Array.isArray(r) ? r : []));
+          setPollingReleaseId(null);
         }
-      } catch {
-        /* ignore */
-      }
+      } catch { }
     }, 3000);
     return () => clearInterval(interval);
-  }, [activeRunIds, hasActiveRuns, id]);
+  }, [pollingReleaseId]);
 
   const handleTestNow = useCallback(async () => {
     if (!id) return;
     setTesting(true);
-    setExpandedSteps(new Set());
     try {
       const response = await testNow(id);
-      const runIds = response.runs.map((r) => r.runId);
-      setActiveRunIds(runIds);
-      const fetchedRuns = await Promise.all(runIds.map((rid) => getRun(rid)));
-      setActiveRuns(fetchedRuns);
+      setPollingReleaseId(response.releaseId);
+      // Immediately fetch the new release
+      const releases = await listReleases(id, 1);
+      if (releases.length > 0) {
+        setLatestRelease(releases[0]);
+        setMainFlowSteps([]);
+      }
       toast({
-        title: `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} lancé${response.runs.length > 1 ? "s" : ""}`,
-        description: response.message || response.runs.map((r) => r.flow).join(", "),
+        title: "Test lancé",
+        description: response.message || `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} en cours.`,
       });
     } catch (e: unknown) {
-      const err = e as Error & { status?: number; code?: string };
-      if (err.status === 400 && (err.message?.includes("NO_MONITORED_FLOWS") || err.message?.includes("parcours"))) {
-        toast({ title: "Aucun parcours surveillé", description: err.message, variant: "destructive" });
-        if (id) getProject(id).then(setProject).catch(() => {});
-      } else if (err.status === 429) {
-        toast({ title: "Limite atteinte", description: "Limite quotidienne atteinte. Reessayez demain.", variant: "destructive" });
-      } else if (err.message?.includes("inaccessible") || err.message?.includes("unreachable")) {
-        toast({ title: "Service inaccessible", description: "Le service de test est inaccessible. Verifiez votre configuration.", variant: "destructive" });
+      const err = e as Error & { status?: number };
+      if (err.status === 429) {
+        toast({ title: "Limite atteinte", description: "Réessayez demain.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
       }
@@ -193,86 +135,6 @@ export default function ProjectDashboard() {
       setTesting(false);
     }
   }, [id, toast]);
-
-  const handleDelete = useCallback(async () => {
-    if (!id) return;
-    setDeleting(true);
-    try {
-      await deleteProject(id);
-      toast({ title: "Projet supprimé" });
-      navigate("/");
-    } catch {
-      toast({ title: "Erreur", description: "Impossible de supprimer le projet.", variant: "destructive" });
-    } finally {
-      setDeleting(false);
-    }
-  }, [id, toast, navigate]);
-
-  const handleAuthenticatedDiscovery = useCallback(async () => {
-    if (!id) return;
-    setDiscovering(true);
-    try {
-      const result = await discoverAuthenticatedFlows(id);
-      if (result.loginSuccess) {
-        toast({
-          title: `${result.flows.length} parcours authentifié${result.flows.length > 1 ? "s" : ""} découvert${result.flows.length > 1 ? "s" : ""}`,
-          description: result.flows.map((f) => f.labelFr).join(", ") || "Aucun nouveau parcours détecté.",
-        });
-      } else {
-        toast({
-          title: "Connexion échouée",
-          description: "Impossible de se connecter avec les identifiants configurés. Vérifiez-les dans les paramètres.",
-          variant: "destructive",
-        });
-      }
-      const updatedProject = await getProject(id);
-      setProject(updatedProject);
-    } catch (e: unknown) {
-      const err = e as Error;
-      toast({
-        title: "Erreur de découverte",
-        description: err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setDiscovering(false);
-    }
-  }, [id, toast]);
-
-  const toggleStep = (index: number) => {
-    setExpandedSteps((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
-      return next;
-    });
-  };
-
-  const flowLabels = useMemo(
-    () => [...new Set(runs.map((r) => r.flowLabel).filter(Boolean))].sort() as string[],
-    [runs]
-  );
-
-  const filteredRuns = useMemo(() => {
-    const q = historySearch.toLowerCase();
-    return runs.filter((run) => {
-      if (q && !(run.flowLabel || "").toLowerCase().includes(q) && !run.status.toLowerCase().includes(q) && !(run.trigger || "").toLowerCase().includes(q)) return false;
-      if (historyStatus !== "all" && run.status !== historyStatus) return false;
-      if (historyFlow !== "all" && (run.flowLabel || "") !== historyFlow) return false;
-      if (historyDateStart) {
-        const d = run.startedAt || run.finishedAt;
-        if (!d || d < historyDateStart) return false;
-      }
-      if (historyDateEnd) {
-        const d = run.startedAt || run.finishedAt;
-        if (!d || d.slice(0, 10) > historyDateEnd) return false;
-      }
-      return true;
-    });
-  }, [runs, historySearch, historyStatus, historyFlow, historyDateStart, historyDateEnd]);
-
-  const filteredRunGroups = groupRuns(filteredRuns);
-  const runGroups = groupRuns(runs);
 
   if (loading) {
     return (
@@ -284,425 +146,174 @@ export default function ProjectDashboard() {
 
   if (!project) {
     return (
-      <div className="container py-10 text-center font-mono text-muted-foreground">
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
         Projet introuvable.
       </div>
     );
   }
 
+  const isPending = latestRelease?.verdict === "PENDING";
+
   return (
-    <div className="container max-w-4xl py-10">
-        {/* Back */}
-        <Link
-          to="/"
-          className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" /> Mes projets
-        </Link>
+    <div className="container max-w-3xl py-10 space-y-8">
+      {/* Back */}
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-3 w-3" /> Mes projets
+      </Link>
 
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <h1 className="font-mono text-2xl font-bold">{project.name}</h1>
-              {project.configStatus === "no_flows" ? (
-                <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-[10px]">
-                  Configuration
-                </Badge>
-              ) : latestRun ? (
-                <StatusBadge status={latestRun.status} />
-              ) : null}
-              {!project.enabled && (
-                <Badge variant="secondary" className="font-mono text-xs">
-                  Surveillance en pause
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <a
-                href={project.siteUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:text-foreground"
-              >
-                <ExternalLink className="h-3 w-3" />
-                {project.siteUrl}
-              </a>
-              {project.lastCheckedAt && (
-                <>
-                  <span>·</span>
-                  <Clock className="h-3 w-3" />
-                  {timeAgo(project.lastCheckedAt)}
-                </>
-              )}
-            </div>
-            {project.description && (
-              <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <Switch
-              checked={project.enabled}
-              onCheckedChange={async () => {
-                try {
-                  const updated = await toggleProject(project.id);
-                  setProject(updated);
-                } catch {}
-              }}
-            />
-            <Link to={`/project/${project.id}/settings`}>
-              <Button variant="outline" size="sm" className="font-mono text-xs">
-                <Settings className="h-3 w-3" /> Parametres
-              </Button>
-            </Link>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="font-mono">Supprimer le projet ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Cette action est irréversible. Toutes les données et l'historique des tests seront supprimés.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="font-mono">Annuler</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-mono"
-                  >
-                    {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Supprimer
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-
-        {/* Monitored flows summary */}
-        {project.monitoredFlows && project.monitoredFlows.length > 0 && (
-          <div className="mt-3 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-xs text-muted-foreground">Parcours surveillés :</span>
-              {project.monitoredFlows.map((flow) => (
-                <span key={flow.id} className="inline-flex items-center gap-1">
-                  <Badge variant="secondary" className="font-mono text-[10px]">
-                    {flow.labelFr}
-                  </Badge>
-                  {flow.authenticatedOnly && (
-                    <Badge variant="outline" className="font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
-                      Post-login
-                    </Badge>
-                  )}
-                </span>
-              ))}
-            </div>
-            {project.monitoredFlows.some((f) => f.requiresCredentials && !f.hasCredentials) && (
-              <div className="flex items-center justify-between rounded-lg border border-status-pending/30 bg-status-pending/5 p-3">
-                <p className="font-mono text-xs text-status-pending">
-                  Certains parcours nécessitent des identifiants de test pour un résultat fiable.
-                </p>
-                <Link to={`/project/${project.id}/settings`}>
-                  <Button variant="outline" size="sm" className="font-mono text-xs">
-                    <Settings className="mr-1 h-3 w-3" /> Configurer
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Authenticated discovery */}
-        {project.monitoredFlows?.some((f) => f.goal === "LOGIN" && f.hasCredentials) && (
-          <Card className="mt-4">
-            <CardContent className="p-4 flex items-center justify-between">
-              <div>
-                <p className="font-mono text-sm font-semibold">Zone authentifiée</p>
-                <p className="text-xs text-muted-foreground">
-                  Explorez les parcours post-connexion (dashboard, paramètres, etc.)
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="font-mono text-xs"
-                onClick={handleAuthenticatedDiscovery}
-                disabled={discovering}
-              >
-                {discovering ? (
-                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                ) : (
-                  <Search className="mr-1 h-3 w-3" />
-                )}
-                Découvrir les parcours
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Active run status + Test button */}
-        {hasActiveRuns && latestRun && (
-          <div className="mt-8 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <div>
-              <p className="font-mono text-sm font-semibold">
-                {latestRun.status === "queued" ? "Test en file d'attente..." : "Test en cours..."}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Les resultats s'afficheront ici automatiquement.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {project.configStatus === "no_flows" && !hasActiveRuns && (
-          <div className="mt-8 rounded-lg border border-status-pending/30 bg-status-pending/5 p-4 text-center space-y-2">
-            <Badge className="bg-status-pending/15 text-status-pending border-status-pending/30 font-mono text-xs">
-              Configuration requise
-            </Badge>
-            <p className="font-mono text-sm text-muted-foreground">
-              {project.configMessage || "Aucun parcours surveillé — lancez une découverte et sélectionnez les parcours à surveiller."}
-            </p>
-          </div>
-        )}
-
-        {/* Site Analysis */}
-        {project.siteAnalysis && (
-          <div className="mt-6">
-            <SiteAnalysisSection analysis={project.siteAnalysis} />
-          </div>
-        )}
-
-        <div className="mt-6">
-          <Card>
-            <CardContent className="p-6 flex flex-col items-center justify-center gap-4">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="w-full">
-                      <Button
-                        onClick={handleTestNow}
-                        disabled={testing || hasActiveRuns || project.configStatus === "no_flows"}
-                        className="w-full font-mono"
-                        size="lg"
-                      >
-                        {testing || hasActiveRuns ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Play className="mr-2 h-4 w-4" />
-                        )}
-                        Tester maintenant
-                      </Button>
-                    </span>
-                  </TooltipTrigger>
-                  {project.configStatus === "no_flows" && (
-                    <TooltipContent>
-                      <p className="font-mono text-xs">Sélectionnez d'abord des parcours à surveiller</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
-              {!project.lastSeenSignature && (
-                <p className="text-[10px] text-muted-foreground text-center font-mono">
-                  Nous lancerons un test automatiquement des qu'une nouvelle version sera detectee.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Live steps during active runs */}
-        {activeRuns.length > 0 && activeRuns.some((r) => r.steps && r.steps.length > 0) && (
-          <Card className="mt-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="font-mono text-sm uppercase tracking-wider">
-                Etapes du test
-                {hasActiveRuns && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {activeRuns.map((activeRun) => (
-                activeRun.steps && activeRun.steps.length > 0 && (
-                  <div key={activeRun.id} className="space-y-1.5">
-                    {activeRun.flowLabel && (
-                      <Badge variant="outline" className="font-mono text-[10px] mb-1">
-                        {activeRun.flowLabel}
-                      </Badge>
-                    )}
-                    {activeRun.steps.map((step, i) => {
-                      const stepKey = `${activeRun.id}-${i}`;
-                      const isExpanded = expandedSteps.has(i);
-                      const hasDetail = !!step.detail;
-                      return (
-                        <div key={stepKey} className="rounded border bg-secondary/30 overflow-hidden">
-                          <button
-                            type="button"
-                            className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-secondary/50 transition-colors"
-                            onClick={() => hasDetail && toggleStep(i)}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              {hasDetail ? (
-                                isExpanded ? (
-                                  <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                ) : (
-                                  <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-                                )
-                              ) : (
-                                <span className="w-3 shrink-0" />
-                              )}
-                              <StepActionIcon action={step.action} className="h-3 w-3" />
-                              <span className="font-mono text-xs truncate">{step.label}</span>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0 ml-2">
-                              {step.durationMs && step.durationMs > 0 && (
-                                <span className="font-mono text-[10px] text-muted-foreground">
-                                  {formatDuration(step.durationMs)}
-                                </span>
-                              )}
-                              <StatusBadge status={step.status === "passed" ? "pass" : step.status === "failed" ? "fail" : step.status} />
-                            </div>
-                          </button>
-                          {isExpanded && step.detail && (
-                            <div className="border-t bg-secondary/10 px-3 py-2">
-                              <pre className="font-mono text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
-                                {step.detail}
-                              </pre>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )
-              ))}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Run timeline */}
-        <Card className="mt-6">
-          <CardHeader className="pb-3">
-            <CardTitle className="font-mono text-sm uppercase tracking-wider">
-              Historique des tests
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {runs.length === 0 ? (
-              <p className="text-sm text-muted-foreground font-mono py-4 text-center">
-                Aucun test n'a encore ete lance. Cliquez sur « Tester maintenant » pour commencer.
-              </p>
-            ) : (
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <a
+              href={project.siteUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" />
+              {project.siteUrl.replace(/^https?:\/\//, "")}
+            </a>
+            {latestRelease && (
               <>
-                <div className="flex flex-wrap items-end gap-3 mb-4">
-                  <div className="relative flex-1 min-w-[160px]">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Rechercher…"
-                      value={historySearch}
-                      onChange={(e) => setHistorySearch(e.target.value)}
-                      className="pl-9 font-mono text-sm h-9"
-                    />
-                  </div>
-                  <Select value={historyStatus} onValueChange={setHistoryStatus}>
-                    <SelectTrigger className="w-[130px] font-mono text-sm h-9">
-                      <SelectValue placeholder="Statut" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous statuts</SelectItem>
-                      <SelectItem value="passed">Passed</SelectItem>
-                      <SelectItem value="failed">Failed</SelectItem>
-                      <SelectItem value="error">Error</SelectItem>
-                      <SelectItem value="running">Running</SelectItem>
-                      <SelectItem value="queued">Queued</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={historyFlow} onValueChange={setHistoryFlow}>
-                    <SelectTrigger className="w-[160px] font-mono text-sm h-9">
-                      <SelectValue placeholder="Parcours" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tous parcours</SelectItem>
-                      {flowLabels.map((label) => (
-                        <SelectItem key={label} value={label}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="date"
-                    value={historyDateStart}
-                    onChange={(e) => setHistoryDateStart(e.target.value)}
-                    className="w-[140px] font-mono text-sm h-9"
-                  />
-                  <Input
-                    type="date"
-                    value={historyDateEnd}
-                    onChange={(e) => setHistoryDateEnd(e.target.value)}
-                    className="w-[140px] font-mono text-sm h-9"
-                  />
-                </div>
-                {filteredRuns.length !== runs.length && (
-                  <p className="mb-2 text-xs text-muted-foreground font-mono">
-                    {filteredRuns.length} résultat{filteredRuns.length !== 1 ? "s" : ""} sur {runs.length}
-                  </p>
-                )}
-                {filteredRunGroups.length === 0 ? (
-                  <p className="text-sm text-muted-foreground font-mono py-4 text-center">
-                    Aucun run correspondant.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredRunGroups.map((group, gi) => (
-                      <div
-                        key={gi}
-                        className={group.length > 1 ? "border-l-2 border-primary/30 pl-3 space-y-2" : "space-y-2"}
-                      >
-                        {group.map((run) => {
-                          const trigger = TRIGGER_LABELS[run.trigger] || TRIGGER_LABELS.manual;
-                          const TriggerIcon = trigger.icon;
-                          return (
-                            <Link
-                              key={run.id}
-                              to={`/project/${project.id}/run/${run.id}`}
-                              className="flex items-center justify-between rounded border bg-secondary/30 px-4 py-3 hover:bg-secondary/50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono shrink-0">
-                                  <TriggerIcon className="h-3 w-3" />
-                                  {trigger.label}
-                                </div>
-                                {run.flowLabel && (
-                                  <Badge variant="outline" className="font-mono text-[10px] shrink-0">
-                                    {run.flowLabel}
-                                  </Badge>
-                                )}
-                                <span className="font-mono text-xs text-muted-foreground">
-                                  {run.startedAt ? new Date(run.startedAt).toLocaleString("fr-FR") : "—"}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 shrink-0 ml-2">
-                                {run.durationMs && (
-                                  <span className="font-mono text-xs text-muted-foreground">
-                                    {formatDuration(run.durationMs)}
-                                  </span>
-                                )}
-                                <StatusBadge status={run.status} />
-                              </div>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <span>·</span>
+                <Clock className="h-3 w-3" />
+                <span>Dernière publication {timeAgo(latestRelease.detectedAt)}</span>
               </>
             )}
+          </div>
+        </div>
+        <Link to={`/project/${project.id}/settings`}>
+          <Button variant="outline" size="sm" className="text-xs">
+            <Settings className="h-3 w-3 mr-1" /> Paramètres
+          </Button>
+        </Link>
+      </div>
+
+      {/* No flows configured */}
+      {project.configStatus === "no_flows" && (
+        <Card className="border-border bg-surface">
+          <CardContent className="p-8 text-center space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Aucun parcours configuré. Lancez une découverte pour commencer.
+            </p>
+            <Button
+              onClick={() => navigate(`/project/${project.id}/discover`)}
+              className="bg-neon text-background hover:bg-neon/90"
+            >
+              Découvrir les parcours
+            </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* Verdict Card */}
+      {project.configStatus !== "no_flows" && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+          {latestRelease ? (
+            <div className="space-y-6">
+              <VerdictBadge verdict={latestRelease.verdict} size="lg" />
+
+              {/* Main flow result */}
+              {mainFlow && latestRelease.mainFlowLabel && (
+                <Card className="border-border bg-surface">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
+                        Parcours principal
+                      </span>
+                      <span className="text-sm font-medium">{latestRelease.mainFlowLabel}</span>
+                    </div>
+                    <MainFlowSteps steps={mainFlowSteps} />
+                    {isPending && mainFlowSteps.length === 0 && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        En attente des résultats…
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Other runs summary */}
+              {latestRelease.runs.filter(r => !r.isMainFlow).length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Autres parcours</p>
+                  {latestRelease.runs.filter(r => !r.isMainFlow).map((run) => (
+                    <div key={run.id} className="flex items-center justify-between rounded-lg border border-border bg-surface p-3">
+                      <span className="text-sm">{run.flowLabel}</span>
+                      <VerdictBadge
+                        verdict={
+                          run.status === "passed" ? "OK"
+                            : run.status === "failed" ? "ERREUR"
+                              : run.status === "error" ? "ERREUR"
+                                : "PENDING"
+                        }
+                        size="sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Card className="border-border bg-surface">
+              <CardContent className="p-8 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Aucune publication détectée pour le moment.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Lancez un test pour valider votre application.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+      )}
+
+      {/* Actions */}
+      {project.configStatus !== "no_flows" && (
+        <div className="flex gap-3">
+          <Button
+            onClick={handleTestNow}
+            disabled={testing || isPending}
+            className="flex-1 bg-neon text-background hover:bg-neon/90 font-semibold"
+            size="lg"
+          >
+            {testing || isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            {isPending ? "Vérification en cours…" : "Lancer un test maintenant"}
+          </Button>
+
+          {latestRelease && (
+            <>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate(`/project/${project.id}/release/${latestRelease.id}`)}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Détails
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => navigate(`/project/${project.id}/releases`)}
+              >
+                <History className="mr-2 h-4 w-4" />
+                Historique
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

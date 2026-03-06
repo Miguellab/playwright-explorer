@@ -1,5 +1,4 @@
 import type {
-  Goal,
   Project,
   CreateProjectBody,
   UpdateProjectBody,
@@ -8,6 +7,9 @@ import type {
   TestNowResponse,
   SentinelleSettings,
   SiteAnalysis,
+  Release,
+  ReleaseDetail,
+  MainFlowInfo,
 } from "./sentinelle-types";
 
 const BASE_URL = import.meta.env.VITE_SENTINELLE_API_URL || "";
@@ -50,13 +52,6 @@ export async function healthCheck(): Promise<{ service: string; status: string }
   return request("/health");
 }
 
-// ── Goals ──
-
-export async function listGoals(): Promise<Goal[]> {
-  const data = await request<{ goals: Goal[] }>("/goals");
-  return data.goals;
-}
-
 // ── Projects ──
 
 export async function createProject(body: CreateProjectBody): Promise<Project> {
@@ -82,10 +77,46 @@ export async function updateProject(id: string, body: UpdateProjectBody): Promis
   });
 }
 
+export async function deleteProject(id: string): Promise<void> {
+  await request(`/projects/${id}`, { method: "DELETE" });
+}
+
+export async function toggleProject(id: string): Promise<Project> {
+  return request(`/projects/${id}/toggle`, { method: "POST" });
+}
+
+// ── Main Flow ──
+
+export async function setMainFlow(projectId: string, flowId: string): Promise<{ mainFlowId: string; flowLabel: string; message: string }> {
+  return request(`/projects/${projectId}/main-flow`, {
+    method: "PUT",
+    body: JSON.stringify({ flowId }),
+  });
+}
+
+export async function getMainFlow(projectId: string): Promise<MainFlowInfo> {
+  return request(`/projects/${projectId}/main-flow`);
+}
+
+// ── Releases ──
+
+export async function listReleases(projectId: string, limit = 20): Promise<Release[]> {
+  const data = await request<{ releases: Release[] }>(`/projects/${projectId}/releases?limit=${limit}`);
+  return data.releases ?? [];
+}
+
+export async function getRelease(releaseId: string): Promise<ReleaseDetail> {
+  return request(`/releases/${releaseId}`);
+}
+
 // ── Runs ──
 
 export async function testNow(projectId: string): Promise<TestNowResponse> {
   return request(`/projects/${projectId}/test-now`, { method: "POST" });
+}
+
+export async function runSingleFlow(projectId: string, flowId: string): Promise<{ releaseId: string; runId: string; flowId: string; flowLabel: string; message: string }> {
+  return request(`/projects/${projectId}/flows/${flowId}/run`, { method: "POST" });
 }
 
 export async function listRuns(projectId: string, limit = 20): Promise<Run[]> {
@@ -96,6 +127,8 @@ export async function listRuns(projectId: string, limit = 20): Promise<Run[]> {
 export async function getRun(runId: string): Promise<Run> {
   return request(`/runs/${runId}`);
 }
+
+// ── Discovery ──
 
 export interface DiscoverResult {
   runId: string;
@@ -133,6 +166,8 @@ export async function discoverAuthenticatedFlows(
   });
 }
 
+// ── Credentials ──
+
 export async function getFlowCredentialsStatus(projectId: string): Promise<{
   flows: { flowId: string; goal: string; labelFr: string; hasCredentials: boolean; credentialFields: string[] }[];
   allConfigured: boolean;
@@ -161,19 +196,16 @@ export async function deleteFlowCredentials(
   });
 }
 
-export async function deleteProject(id: string): Promise<void> {
-  await request(`/projects/${id}`, { method: "DELETE" });
-}
-
-export async function toggleProject(id: string): Promise<Project> {
-  return request(`/projects/${id}/toggle`, { method: "POST" });
-}
-
+// ── URLs ──
 
 export function getScreenshotUrl(path: string): string {
   if (path.startsWith("http")) return path;
   const separator = path.startsWith("/") ? "" : "/";
   return `${BASE_URL}${separator}${path}`;
+}
+
+export function getRunScreenshotUrl(runId: string, filename: string): string {
+  return `${BASE_URL}/runs/${runId}/screenshots/${filename}`;
 }
 
 export function getTraceUrl(project: Project, tracePath: string): string {
