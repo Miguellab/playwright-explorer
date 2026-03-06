@@ -177,6 +177,7 @@ export interface Findings {
 
 export interface RunAssets {
   screenshots?: { label: string; filename: string; path: string }[];
+  tracePath?: string;
 }
 
 export interface Run {
