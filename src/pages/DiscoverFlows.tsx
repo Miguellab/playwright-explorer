@@ -70,6 +70,7 @@ export default function DiscoverFlows() {
       .then((result) => {
         const flowList = result.flows;
         setFlows(flowList);
+        setSiteAnalysis(result.siteAnalysis || null);
         const preSelected = new Set(flowList.map((f) => f.id));
         setSelected(preSelected);
         setProgress(100);
