@@ -336,6 +336,9 @@ export default function ProjectDashboard() {
                 </>
               )}
             </div>
+            {project.description && (
+              <p className="text-sm text-muted-foreground mt-1">{project.description}</p>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Switch
