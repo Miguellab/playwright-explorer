@@ -38,6 +38,10 @@ export default function ProjectSettings() {
   const [enabled, setEnabled] = useState(true);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
+  const [credentialModalOpen, setCredentialModalOpen] = useState(false);
+  const [credentialFlowId, setCredentialFlowId] = useState("");
+  const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
+  const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!id) return;
