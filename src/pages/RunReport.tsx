@@ -300,19 +300,71 @@ export default function RunReport() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1.5">
-              {run.findings.failedRequests.map((req, i) => (
-                <div
-                  key={i}
-                  className="rounded border border-status-skipped/20 bg-status-skipped/5 px-3 py-2"
-                >
-                  <p className="font-mono text-xs">
-                    <span className="font-semibold">{req.status}</span>{" "}
-                    <span className="text-muted-foreground">{req.url}</span>
-                  </p>
-                </div>
-              ))}
+              {run.findings.failedRequests.map((req, i) => {
+                const isNetworkError = req.status === 0;
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "rounded border px-3 py-2 space-y-1",
+                      isNetworkError
+                        ? "border-destructive/20 bg-destructive/5"
+                        : "border-status-skipped/20 bg-status-skipped/5"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isNetworkError ? (
+                        <WifiOff className="h-3 w-3 shrink-0 text-destructive" />
+                      ) : (
+                        <AlertTriangle className="h-3 w-3 shrink-0 text-status-skipped" />
+                      )}
+                      {req.method && (
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          {req.method}
+                        </Badge>
+                      )}
+                      <span className="font-mono text-xs font-semibold">
+                        {isNetworkError ? "Erreur réseau" : req.status}
+                      </span>
+                      {req.resourceType && (
+                        <Badge variant="secondary" className="font-mono text-[10px]">
+                          {req.resourceType}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="font-mono text-xs text-muted-foreground truncate">{req.url}</p>
+                    {isNetworkError && req.errorText && (
+                      <p className="font-mono text-[10px] text-destructive">{req.errorText}</p>
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
+        )}
+
+        {/* Performance Metrics */}
+        {run.findings?.performanceMetrics && Object.keys(run.findings.performanceMetrics).length > 0 && (
+          <div className="mt-6">
+            <PerformanceMetricsCard metrics={run.findings.performanceMetrics} />
+          </div>
+        )}
+
+        {/* Trace download */}
+        {run.assets?.tracePath && project && (
+          <div className="mt-6">
+            <a
+              href={getTraceUrl(project, run.assets.tracePath)}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" className="font-mono text-xs w-full">
+                <Download className="mr-2 h-3.5 w-3.5" />
+                Télécharger le trace Playwright
+              </Button>
+            </a>
+          </div>
         )}
 
         {/* Diagnostics — only if errors */}

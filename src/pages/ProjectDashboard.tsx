@@ -471,6 +471,13 @@ export default function ProjectDashboard() {
           </div>
         )}
 
+        {/* Site Analysis */}
+        {project.siteAnalysis && (
+          <div className="mt-6">
+            <SiteAnalysisSection analysis={project.siteAnalysis} />
+          </div>
+        )}
+
         <div className="mt-6">
           <Card>
             <CardContent className="p-6 flex flex-col items-center justify-center gap-4">

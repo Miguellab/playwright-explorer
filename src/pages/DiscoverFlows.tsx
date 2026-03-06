@@ -226,7 +226,7 @@ export default function DiscoverFlows() {
                 </Card>
               ) : (
                 <>
-                  <div className="space-y-6">
+                  <div className="max-h-[60vh] overflow-y-auto space-y-6 pr-1">
                     {groupedFlows.map(({ source, flows: sourceFlows }) => {
                       const config = getSourceConfig(source);
                       const SourceIcon = config.icon;
@@ -293,6 +293,11 @@ export default function DiscoverFlows() {
                       );
                     })}
                   </div>
+
+                  {/* Site Analysis from discovery */}
+                  {siteAnalysis && (
+                    <SiteAnalysisSection analysis={siteAnalysis} />
+                  )}
 
                   <div className="flex gap-3">
                     <Button
