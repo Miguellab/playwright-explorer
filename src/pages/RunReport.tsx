@@ -12,7 +12,7 @@ import { getRun, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
-  ExternalLink,
+  
   Loader2,
   ChevronDown,
   ChevronRight,
