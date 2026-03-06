@@ -84,9 +84,15 @@ export default function DiscoverFlows() {
       const next = new Set(prev);
       if (next.has(flowId)) {
         next.delete(flowId);
-        if (mainFlowId === flowId) setMainFlowIdState(null);
+        if (mainFlowId === flowId) {
+          // Reassign main flow to first remaining enabled flow
+          const remaining = flows.find((f) => f.id !== flowId && next.has(f.id));
+          setMainFlowIdState(remaining?.id ?? null);
+        }
       } else {
         next.add(flowId);
+        // If no main flow yet, auto-assign
+        if (!mainFlowId) setMainFlowIdState(flowId);
       }
       return next;
     });
