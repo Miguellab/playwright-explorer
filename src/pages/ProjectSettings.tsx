@@ -229,6 +229,7 @@ export default function ProjectSettings() {
                           )}
                         </div>
                       )}
+                    </div>
                   );
                 })}
               </div>
