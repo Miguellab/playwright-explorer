@@ -8,8 +8,10 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { getRun, getScreenshotUrl } from "@/lib/sentinelle-api";
-import type { Run } from "@/lib/sentinelle-types";
+import { Button } from "@/components/ui/button";
+import { PerformanceMetricsCard } from "@/components/PerformanceMetricsCard";
+import { getRun, getScreenshotUrl, getProject, getTraceUrl } from "@/lib/sentinelle-api";
+import type { Run, Project } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
   
