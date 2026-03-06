@@ -240,10 +240,10 @@ export default function ProjectDashboard() {
               )}
 
               {/* Other runs summary */}
-              {latestRelease.runs.filter(r => !r.isMainFlow).length > 0 && (
+              {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Autres parcours</p>
-                  {latestRelease.runs.filter(r => !r.isMainFlow).map((run) => (
+                  {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).map((run) => (
                     <div key={run.id} className="flex items-center justify-between rounded-lg border border-border bg-surface p-3">
                       <span className="text-sm">{run.flowLabel}</span>
                       <VerdictBadge
