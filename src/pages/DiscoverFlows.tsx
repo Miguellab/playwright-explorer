@@ -6,7 +6,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { discoverFlows, updateProject } from "@/lib/sentinelle-api";
-import type { SuggestedFlow } from "@/lib/sentinelle-types";
+import type { SuggestedFlow, SiteAnalysis } from "@/lib/sentinelle-types";
+import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
 import { Loader2, Search, CheckCircle2, AlertTriangle, ArrowRight, Sparkles, RotateCcw, Menu, MousePointerClick } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
