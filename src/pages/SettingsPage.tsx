@@ -199,10 +199,9 @@ export default function SettingsPage() {
               }
             }}
             disabled={savingKey || !anthropicKey.trim()}
-            variant="secondary"
           >
             {savingKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Sauvegarder la clé
+            Enregistrer
           </Button>
         </CardContent>
       </Card>
