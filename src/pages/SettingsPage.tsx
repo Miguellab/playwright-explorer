@@ -137,17 +137,9 @@ export default function SettingsPage() {
 
       <Card className="bg-surface border-border">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-neon" />
-            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Intelligence Artificielle
-            </CardTitle>
-            {hasAnthropicKey ? (
-              <span className="text-[10px] font-medium text-status-safe bg-status-safe/10 rounded px-1.5 py-0.5">Configurée</span>
-            ) : (
-              <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded px-1.5 py-0.5">Non configurée</span>
-            )}
-          </div>
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Intelligence Artificielle
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
