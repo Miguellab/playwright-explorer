@@ -144,6 +144,9 @@ export interface ConsoleError {
 export interface FailedRequest {
   url: string;
   status: number;
+  method?: string;
+  resourceType?: string;
+  errorText?: string;
   timestamp?: string;
 }
 
