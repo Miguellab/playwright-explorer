@@ -286,6 +286,18 @@ export default function ProjectSettings() {
           </AlertDialog>
         </CardContent>
       </Card>
+
+      {/* Credentials Modal */}
+      {id && (
+        <CredentialsModal
+          open={credentialModalOpen}
+          onOpenChange={setCredentialModalOpen}
+          projectId={id}
+          flowId={credentialFlowId}
+          flowLabel={credentialFlowLabel}
+          onSaved={() => setFlowCredentials((prev) => ({ ...prev, [credentialFlowId]: true }))}
+        />
+      )}
     </div>
   );
 }
