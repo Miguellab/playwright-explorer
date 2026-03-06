@@ -176,6 +176,12 @@ export function getScreenshotUrl(path: string): string {
   return `${BASE_URL}${separator}${path}`;
 }
 
+export function getTraceUrl(project: Project, tracePath: string): string {
+  const base = project.runnerBaseUrl.replace(/\/$/, "");
+  const separator = tracePath.startsWith("/") ? "" : "/";
+  return `${base}${separator}${tracePath}`;
+}
+
 // ── Settings ──
 
 export async function getSettings(): Promise<SentinelleSettings> {
