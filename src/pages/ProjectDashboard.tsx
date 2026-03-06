@@ -25,6 +25,7 @@ import {
   discoverAuthenticatedFlows,
 } from "@/lib/sentinelle-api";
 import type { Project, Run } from "@/lib/sentinelle-types";
+import { SiteAnalysisSection } from "@/components/SiteAnalysisSection";
 import {
   Tooltip,
   TooltipContent,
