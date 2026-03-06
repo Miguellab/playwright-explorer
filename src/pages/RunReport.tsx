@@ -23,6 +23,9 @@ import {
   Search,
   Camera,
   X,
+  Download,
+  WifiOff,
+  Gauge,
 } from "lucide-react";
 
 
