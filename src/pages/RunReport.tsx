@@ -42,7 +42,7 @@ export default function RunReport() {
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [reportOpen, setReportOpen] = useState(false);
+  
 
   const isRunActive = run && (run.status === "queued" || run.status === "running");
 
