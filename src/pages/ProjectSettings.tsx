@@ -192,7 +192,43 @@ export default function ProjectSettings() {
                       {flow.descriptionFr && (
                         <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
                       )}
-                    </div>
+                      {/* Credential indicator */}
+                      {(flow.goal === "LOGIN" || flow.requiresCredentials) && (
+                        <div className="flex items-center gap-2 ml-8">
+                          {flowCredentials[flow.id] ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
+                                <ShieldCheck className="h-3 w-3" />
+                                Compte test configuré
+                              </span>
+                              <button
+                                type="button"
+                                className="text-[11px] text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                  setCredentialFlowId(flow.id);
+                                  setCredentialFlowLabel(flow.labelFr);
+                                  setCredentialModalOpen(true);
+                                }}
+                              >
+                                Modifier
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
+                              onClick={() => {
+                                setCredentialFlowId(flow.id);
+                                setCredentialFlowLabel(flow.labelFr);
+                                setCredentialModalOpen(true);
+                              }}
+                            >
+                              <KeyRound className="h-3 w-3" />
+                              Configurer les identifiants
+                            </button>
+                          )}
+                        </div>
+                      )}
                   );
                 })}
               </div>
