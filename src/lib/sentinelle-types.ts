@@ -4,6 +4,44 @@ export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running";
 export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery";
 export type IssueSeverity = "critical" | "warning";
+export type SiteType = "saas" | "ecommerce" | "vitrine" | "blog" | "marketplace" | "webapp" | "landing" | "other";
+
+// ── Performance ──
+
+export interface PerformanceMetrics {
+  domContentLoaded?: number;
+  loaded?: number;
+  firstContentfulPaint?: number;
+  domInteractive?: number;
+  resourceCount?: number;
+  totalTransferSizeKB?: number;
+}
+
+// ── Site Analysis ──
+
+export interface SiteAnalysisPage {
+  label: string;
+  role: string;
+  interactiveElements?: string[];
+  uxIssues?: string[];
+  performance?: PerformanceMetrics;
+}
+
+export interface CrossPageAnalysis {
+  navigationConsistency: string;
+  designConsistency: string;
+  criticalPaths: string[];
+  missingPages: string[];
+}
+
+export interface SiteAnalysis {
+  sitePurpose: string;
+  siteType: SiteType;
+  targetAudience: string;
+  keyFeatures: string[];
+  crossPageAnalysis: CrossPageAnalysis;
+  pages: SiteAnalysisPage[];
+}
 
 export interface Goal {
   id: string;
