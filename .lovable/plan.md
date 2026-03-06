@@ -1,56 +1,87 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Gestion des parcours authentifiés dans DiscoverFlows
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Vue d'ensemble
 
-## Ce qui reste à faire
+Ajouter la gestion complète des credentials et de la découverte authentifiée dans l'écran `DiscoverFlows.tsx`. Le flux devient : découverte publique → si un flow LOGIN est détecté, proposer de configurer les credentials → lancer la découverte authentifiée → fusionner les flows → confirmer.
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### Fichiers à modifier/créer
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+#### 1. Nouveau composant : `src/components/CredentialsModal.tsx`
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+Modal Dialog pour configurer un compte test :
+- Titre : "Configurer un compte test"
+- Description rassurante sur l'usage des credentials
+- Champs : Email, Mot de passe, Nom (optionnel)
+- Boutons : Annuler / Enregistrer
+- Appel `saveFlowCredentials(projectId, flowId, { email, password, name })`
+- Toast de succès, fermeture automatique
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+#### 2. Modification majeure : `src/pages/DiscoverFlows.tsx`
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+Ajouter les phases suivantes au flow existant :
 
-### 3. Badge verdict sur les cartes Dashboard
+**Nouvelles phases** : `"loading" | "results" | "auth-discovery" | "auth-results" | "error"`
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+**Dans la phase "results"** :
+- Chaque FlowCard affiche un indicateur de credentials :
+  - Si `flow.goal === "LOGIN"` ou `flow.requiresCredentials` : bouton "Configurer les identifiants" ou badge "Compte test configuré ✓" + "Modifier"
+- Quand un flow LOGIN a des credentials configurés, afficher une section "Zone authentifiée" sous les flows :
+  - Description : "Sentinelle peut explorer votre application après connexion"
+  - CTA : "Découvrir les parcours internes"
 
-### 4. Collapsible CTO dans RunReport
+**Phase "auth-discovery"** :
+- Loading state : "Sentinelle explore votre application après connexion…"
+- Appel `discoverAuthenticatedFlows(projectId)`
+- Gestion du `loginSuccess === false` → message d'erreur
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+**Phase "auth-results"** :
+- Afficher les flows authentifiés détectés avec badge "Post-login"
+- Fusionner avec les flows publics déjà sélectionnés
+- Toggle on/off pour chaque nouveau flow
+- Résumé : "X nouveaux parcours détectés"
 
----
+**Logique de confirmation mise à jour** :
+- `handleConfirm` fusionne flows publics activés + flows authentifiés activés
+- `PATCH /projects/:id` avec tous les monitoredFlows
+- `PUT /projects/:id/main-flow`
+- Redirect vers dashboard
 
-## Fichiers modifiés
+#### 3. Modification légère : `src/pages/ProjectSettings.tsx`
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+Ajouter la même gestion de credentials dans les flow cards :
+- Importer `CredentialsModal`
+- Pour chaque flow avec `requiresCredentials`, afficher le status + bouton configurer/modifier
+- Appeler `saveFlowCredentials` / `deleteFlowCredentials`
 
-4 fichiers, ~80 lignes modifiées.
+#### 4. Mise à jour types : `src/lib/sentinelle-types.ts`
+
+Ajouter `requiresCredentials` au type `SuggestedFlow` (déjà optionnel, juste s'assurer qu'il existe — il est déjà là).
+
+Aucune modification API nécessaire — tous les endpoints sont déjà dans `sentinelle-api.ts`.
+
+### Détail UX
+
+**Credential states dans les flow cards :**
+- `!hasCredentials && requiresCredentials` → warning orange "⚠ Identifiants requis" + bouton "Configurer"
+- `hasCredentials` → badge vert "✓ Compte test configuré" + bouton ghost "Modifier"
+
+**Section Zone authentifiée** (conditionnelle) :
+- Apparaît seulement si un flow LOGIN a `hasCredentials === true`
+- Carte séparée avec bordure accent, icône Lock
+- Deux boutons : "Découvrir les parcours internes" (primaire) / "Passer" (ghost)
+
+**Auth discovery loading** :
+- Réutiliser le même pattern que le loading initial (progress bar, messages rotatifs)
+- Messages spécifiques : "Connexion en cours…", "Exploration des pages internes…", etc.
+
+**Fusion des flows** :
+- Les flows publics restent tels quels
+- Les flows authentifiés s'ajoutent en dessous avec un badge "Post-login"
+- Tous sont activés par défaut
+
+### Estimation
+
+3 fichiers modifiés/créés, ~400 lignes ajoutées.
 
