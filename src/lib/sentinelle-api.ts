@@ -101,6 +101,7 @@ export interface DiscoverResult {
   runId: string;
   flows: SuggestedFlow[];
   screenshots: { label: string; filename: string; path: string }[];
+  siteAnalysis?: SiteAnalysis;
   visionError?: string;
 }
 
