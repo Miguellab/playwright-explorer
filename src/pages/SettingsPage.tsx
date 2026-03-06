@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { healthCheck, DEFAULT_RUNNER_URL, DEFAULT_RUNNER_KEY, getSettings, updateSettings } from "@/lib/sentinelle-api";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, XCircle, Save, Sparkles, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Save, Eye, EyeOff, AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {
   const { toast } = useToast();
