@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 
-const REPORT_BASE = import.meta.env.VITE_SENTINELLE_API_URL || "";
+
 
 function formatDuration(ms: number | null): string {
   if (!ms) return "—";
