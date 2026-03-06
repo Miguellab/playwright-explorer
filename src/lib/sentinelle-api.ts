@@ -114,6 +114,7 @@ export interface AuthenticatedDiscoverResult {
   flows: SuggestedFlow[];
   loginSuccess: boolean;
   screenshots: { label: string; filename: string; path: string }[];
+  siteAnalysis?: SiteAnalysis;
   rawNavigation?: {
     linksCount: number;
     buttonsCount: number;
