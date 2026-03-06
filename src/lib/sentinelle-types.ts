@@ -221,7 +221,7 @@ export interface Release {
   runs: ReleaseRunSummary[];
 }
 
-export interface ReleaseDetail extends Release {
+export interface ReleaseDetail extends Omit<Release, 'runs'> {
   runIds: string[];
   runs: Run[];
 }
