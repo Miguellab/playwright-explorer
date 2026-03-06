@@ -54,11 +54,19 @@ export default function RunReport() {
 
   useEffect(() => {
     if (!runId) return;
-    getRun(runId)
-      .then(setRun)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [runId]);
+    const load = async () => {
+      try {
+        const [r, p] = await Promise.all([
+          getRun(runId),
+          projectId ? getProject(projectId) : Promise.resolve(null),
+        ]);
+        setRun(r);
+        setProject(p);
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, [runId, projectId]);
 
   // Poll while active
   useEffect(() => {
