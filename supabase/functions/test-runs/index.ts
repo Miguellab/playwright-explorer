@@ -198,10 +198,8 @@ Deno.serve(async (req: Request) => {
                   duration_ms: result.durationMs ?? result.duration_ms ?? null,
                   steps: result.steps || [],
                   findings: result.findings || { consoleErrors: [], failedRequests: [] },
-                  report_path: result.reportUrl || result.report_url || null,
                   assets: {
                     ...(data.assets as Record<string, unknown> || {}),
-                    reportUrl: result.reportUrl || result.report_url || null,
                     screenshots: result.screenshots || [],
                   },
                 };

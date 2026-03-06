@@ -12,7 +12,7 @@ import { getRun, getScreenshotUrl } from "@/lib/sentinelle-api";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ArrowLeft,
-  ExternalLink,
+  
   Loader2,
   ChevronDown,
   ChevronRight,
@@ -23,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 
-const REPORT_BASE = import.meta.env.VITE_SENTINELLE_API_URL || "";
+
 
 function formatDuration(ms: number | null): string {
   if (!ms) return "—";
@@ -42,7 +42,7 @@ export default function RunReport() {
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [reportOpen, setReportOpen] = useState(false);
+  
 
   const isRunActive = run && (run.status === "queued" || run.status === "running");
 
@@ -327,19 +327,6 @@ export default function RunReport() {
           );
         })()}
 
-        {/* Report link */}
-        {run.assets?.reportUrl && (
-          <div className="mt-6 text-center">
-            <a
-              href={`${REPORT_BASE}${run.assets.reportUrl}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" /> Voir le rapport complet
-            </a>
-          </div>
-        )}
     </div>
   );
 }
