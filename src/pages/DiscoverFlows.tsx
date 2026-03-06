@@ -33,6 +33,7 @@ export default function DiscoverFlows() {
 
   const [phase, setPhase] = useState<"loading" | "results" | "error">("loading");
   const [flows, setFlows] = useState<SuggestedFlow[]>([]);
+  const [siteAnalysis, setSiteAnalysis] = useState<SiteAnalysis | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState(0);
   const [messageIdx, setMessageIdx] = useState(0);
