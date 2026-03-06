@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { discoverFlows, updateProject, setMainFlow } from "@/lib/sentinelle-api";
 import type { SuggestedFlow } from "@/lib/sentinelle-types";
-import { Loader2, Search, CheckCircle2, AlertTriangle, Sparkles, RotateCcw, Star } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertTriangle, Sparkles, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 
@@ -84,9 +84,15 @@ export default function DiscoverFlows() {
       const next = new Set(prev);
       if (next.has(flowId)) {
         next.delete(flowId);
-        if (mainFlowId === flowId) setMainFlowIdState(null);
+        if (mainFlowId === flowId) {
+          // Reassign main flow to first remaining enabled flow
+          const remaining = flows.find((f) => f.id !== flowId && next.has(f.id));
+          setMainFlowIdState(remaining?.id ?? null);
+        }
       } else {
         next.add(flowId);
+        // If no main flow yet, auto-assign
+        if (!mainFlowId) setMainFlowIdState(flowId);
       }
       return next;
     });
@@ -229,23 +235,6 @@ export default function DiscoverFlows() {
                         }`}
                       >
                         <CardContent className="flex items-center gap-4 p-4">
-                          {/* Main flow radio */}
-                          <button
-                            type="button"
-                            className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                              isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
-                            }`}
-                            onClick={() => {
-                              setMainFlowIdState(flow.id);
-                              if (!isEnabled) {
-                                setEnabledFlows((prev) => new Set(prev).add(flow.id));
-                              }
-                            }}
-                            title="Définir comme parcours principal"
-                          >
-                            {isMain && <Star className="h-3 w-3 text-background" />}
-                          </button>
-
                           {/* Flow info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
