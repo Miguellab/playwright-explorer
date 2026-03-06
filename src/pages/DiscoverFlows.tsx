@@ -235,23 +235,6 @@ export default function DiscoverFlows() {
                         }`}
                       >
                         <CardContent className="flex items-center gap-4 p-4">
-                          {/* Main flow radio */}
-                          <button
-                            type="button"
-                            className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                              isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
-                            }`}
-                            onClick={() => {
-                              setMainFlowIdState(flow.id);
-                              if (!isEnabled) {
-                                setEnabledFlows((prev) => new Set(prev).add(flow.id));
-                              }
-                            }}
-                            title="Définir comme parcours principal"
-                          >
-                            {isMain && <Star className="h-3 w-3 text-background" />}
-                          </button>
-
                           {/* Flow info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
