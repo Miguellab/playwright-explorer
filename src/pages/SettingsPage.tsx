@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { healthCheck, DEFAULT_RUNNER_URL, DEFAULT_RUNNER_KEY, getSettings, updateSettings } from "@/lib/sentinelle-api";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, CheckCircle, XCircle, Save, Sparkles, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, XCircle, Save, Eye, EyeOff, AlertTriangle } from "lucide-react";
 
 export default function SettingsPage() {
   const { toast } = useToast();
@@ -137,17 +137,9 @@ export default function SettingsPage() {
 
       <Card className="bg-surface border-border">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-neon" />
-            <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Intelligence Artificielle
-            </CardTitle>
-            {hasAnthropicKey ? (
-              <span className="text-[10px] font-medium text-status-safe bg-status-safe/10 rounded px-1.5 py-0.5">Configurée</span>
-            ) : (
-              <span className="text-[10px] font-medium text-muted-foreground bg-muted rounded px-1.5 py-0.5">Non configurée</span>
-            )}
-          </div>
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Intelligence Artificielle
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -207,10 +199,9 @@ export default function SettingsPage() {
               }
             }}
             disabled={savingKey || !anthropicKey.trim()}
-            variant="secondary"
           >
             {savingKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Sauvegarder la clé
+            Enregistrer
           </Button>
         </CardContent>
       </Card>
