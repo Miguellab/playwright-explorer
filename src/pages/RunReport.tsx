@@ -44,6 +44,7 @@ function stepDuration(ms: number): string {
 export default function RunReport() {
   const { id: projectId, runId } = useParams<{ id: string; runId: string }>();
   const [run, setRun] = useState<Run | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
