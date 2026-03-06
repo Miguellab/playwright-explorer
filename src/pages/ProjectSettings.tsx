@@ -1,38 +1,41 @@
 import { useEffect, useState, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
-
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
-
-import { getProject, updateProject } from "@/lib/sentinelle-api";
+import { getProject, updateProject, deleteProject, setMainFlow as apiSetMainFlow } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
-import { ArrowLeft, Loader2, Save, ShieldAlert, Sparkles, Eye, EyeOff, Lock, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { ArrowLeft, Loader2, Save, Trash2, Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // Form state
   const [name, setName] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [enabled, setEnabled] = useState(true);
-  const [checkFrequencyMin, setCheckFrequencyMin] = useState(5);
-  const [maxRunsPerDay, setMaxRunsPerDay] = useState(10);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
-  const [flowCredentials, setFlowCredentials] = useState<Record<string, { email: string; password: string }>>({});
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
-  const [configuredFlowIds, setConfiguredFlowIds] = useState<Set<string>>(new Set());
-  const [editingFlowIds, setEditingFlowIds] = useState<Set<string>>(new Set());
-  const [savedCredentials, setSavedCredentials] = useState<Record<string, { email: string; password: string }>>({});
+  const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -42,22 +45,8 @@ export default function ProjectSettings() {
         setName(p.name);
         setSiteUrl(p.siteUrl);
         setEnabled(p.enabled);
-        setCheckFrequencyMin(p.checkFrequencyMin);
-        setMaxRunsPerDay(p.maxRunsPerDay);
-        const monitoredIds = new Set((p.monitoredFlows ?? []).map((f) => f.id));
-        setSelectedFlowIds(monitoredIds);
-        const creds: Record<string, { email: string; password: string }> = {};
-        const configured = new Set<string>();
-        (p.monitoredFlows ?? []).forEach((f) => {
-          if (f.credentials) {
-            creds[f.id] = { ...f.credentials };
-          } else if (f.hasCredentials) {
-            creds[f.id] = { email: "••••••••", password: "••••••••" };
-            configured.add(f.id);
-          }
-        });
-        setFlowCredentials(creds);
-        setConfiguredFlowIds(configured);
+        setMainFlowIdState(p.mainFlowId || null);
+        setSelectedFlowIds(new Set((p.monitoredFlows ?? []).map((f) => f.id)));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -67,58 +56,50 @@ export default function ProjectSettings() {
     setSelectedFlowIds((prev) => {
       const next = new Set(prev);
       if (checked) next.add(flowId);
-      else next.delete(flowId);
+      else {
+        next.delete(flowId);
+        if (mainFlowId === flowId) setMainFlowIdState(null);
+      }
       return next;
     });
-  }, []);
+  }, [mainFlowId]);
 
   const handleSave = async () => {
     if (!id || !project) return;
     setSaving(true);
     try {
-      const monitoredFlows = (project.suggestedFlows ?? [])
-        .filter((f) => selectedFlowIds.has(f.id))
-        .map((f) => {
-          const creds = flowCredentials[f.id];
-          const hasNewCreds = creds && creds.email && creds.password
-            && creds.email !== "••••••••" && creds.password !== "••••••••";
-          if (hasNewCreds) return { ...f, credentials: creds };
-          return f;
-        });
+      const monitoredFlows = (project.suggestedFlows ?? []).filter((f) => selectedFlowIds.has(f.id));
       const updated = await updateProject(id, {
         name: name.trim(),
         siteUrl: siteUrl.trim(),
         enabled,
-        checkFrequencyMin,
-        maxRunsPerDay,
         monitoredFlows,
       });
+      if (mainFlowId) {
+        await apiSetMainFlow(id, mainFlowId);
+      }
       setProject(updated);
-      // Cache credentials locally for session pre-fill
-      const cachedCreds: Record<string, { email: string; password: string }> = { ...savedCredentials };
-      (updated.monitoredFlows ?? []).forEach((f) => {
-        const creds = flowCredentials[f.id];
-        if (creds && creds.email !== "••••••••" && creds.password !== "••••••••") {
-          cachedCreds[f.id] = { ...creds };
-        }
-      });
-      setSavedCredentials(cachedCreds);
-      // Update configuredFlowIds from response
-      const newConfigured = new Set<string>();
-      (updated.monitoredFlows ?? []).forEach((f) => {
-        if (f.hasCredentials) newConfigured.add(f.id);
-      });
-      setConfiguredFlowIds(newConfigured);
-      setEditingFlowIds(new Set());
-      toast({ title: "Sauvegarde", description: "Paramètres mis à jour." });
+      toast({ title: "Paramètres sauvegardés" });
     } catch (e: unknown) {
-      const err = e as Error;
-      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+      toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await deleteProject(id);
+      toast({ title: "Projet supprimé" });
+      navigate("/");
+    } catch {
+      toast({ title: "Erreur", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -130,164 +111,76 @@ export default function ProjectSettings() {
 
   if (!project) {
     return (
-      <div className="container py-10 text-center font-mono text-muted-foreground">
+      <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
         Projet introuvable.
       </div>
     );
   }
 
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
-  const analysisMode = project.discoveryMeta?.analysisMode;
-
 
   return (
-    <div className="container max-w-2xl py-10">
+    <div className="container max-w-2xl py-10 space-y-8">
       <Link
         to={`/project/${project.id}`}
-        className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-3 w-3" /> Retour au projet
       </Link>
 
-      <h1 className="font-mono text-2xl font-bold">Paramètres</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{project.name}</p>
+      <h1 className="text-2xl font-bold tracking-tight">Paramètres</h1>
+      <p className="text-sm text-muted-foreground">{project.name}</p>
 
-      {/* Project config card */}
-      <Card className="mt-8">
-        <CardHeader className="pb-3">
-          <CardTitle className="font-mono text-sm uppercase tracking-wider">
-            Configuration du projet
+      <Card className="bg-surface border-border">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Configuration
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="space-y-2">
-            <Label className="font-mono text-xs">Nom du projet</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="font-mono text-sm"
-            />
+            <Label className="text-xs">Nom du projet</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-background border-border text-sm" />
           </div>
 
           <div className="space-y-2">
-            <Label className="font-mono text-xs">URL du site</Label>
-            <Input
-              value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
-              className="font-mono text-sm"
-            />
+            <Label className="text-xs">URL du site</Label>
+            <Input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="bg-background border-border text-sm" />
           </div>
 
-          {/* Parcours surveillés */}
+          {/* Flows */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Label className="font-mono text-xs">Parcours surveillés</Label>
-            </div>
+            <Label className="text-xs">Parcours surveillés</Label>
             {suggestedFlows.length === 0 ? (
-              <p className="text-sm text-muted-foreground italic">
-                Aucun parcours découvert. Lancez une découverte depuis le tableau de bord.
-              </p>
+              <p className="text-sm text-muted-foreground italic">Aucun parcours découvert.</p>
             ) : (
               <div className="space-y-2">
                 {suggestedFlows.map((flow) => {
                   const isSelected = selectedFlowIds.has(flow.id);
-                  const creds = flowCredentials[flow.id];
-                  const showPwd = showPasswords[flow.id] ?? false;
+                  const isMain = mainFlowId === flow.id;
                   return (
-                    <div key={flow.id} className="rounded-lg border p-3 space-y-2">
-                      <label className="flex items-center gap-3 cursor-pointer hover:bg-accent/50 transition-colors rounded p-1 -m-1">
+                    <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="flex items-center gap-3">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
                         />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm truncate">{flow.labelFr}</span>
-                            {flow.authenticatedOnly && (
-                              <Badge variant="outline" className="shrink-0 font-mono text-[10px] border-blue-500/50 text-blue-600 dark:text-blue-400">
-                                Post-login
-                              </Badge>
-                            )}
-                            {flow.requiresCredentials && (
-                              <Badge variant="outline" className="shrink-0 gap-1 border-orange-500/50 text-orange-600 dark:text-orange-400">
-                                <ShieldAlert className="h-3 w-3" />
-                                Identifiants requis
-                              </Badge>
-                            )}
-                          </div>
-                          {flow.descriptionFr && (
-                            <p className="font-mono text-xs text-muted-foreground mt-0.5">{flow.descriptionFr}</p>
-                          )}
-                        </div>
-                      </label>
-                      {/* Credential fields for selected flows requiring credentials */}
-                      {isSelected && flow.requiresCredentials && (
-                        <div className="ml-8 space-y-2">
-                          {configuredFlowIds.has(flow.id) && !editingFlowIds.has(flow.id) ? (
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex items-center gap-1.5 font-mono text-xs text-status-pass">
-                                <Lock className="h-3.5 w-3.5" /> Identifiants configurés
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="font-mono text-xs h-7 px-2"
-                                onClick={() => {
-                                  setEditingFlowIds((prev) => new Set(prev).add(flow.id));
-                                  const cached = savedCredentials[flow.id];
-                                  setFlowCredentials((prev) => ({
-                                    ...prev,
-                                    [flow.id]: cached ? { ...cached } : { email: "", password: "" },
-                                  }));
-                                }}
-                              >
-                                <Pencil className="h-3 w-3 mr-1" /> Modifier
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <Label className="font-mono text-[10px]">Email de test</Label>
-                                <Input
-                                  type="email"
-                                  placeholder="email@test.com"
-                                  value={creds?.email ?? ""}
-                                  onChange={(e) =>
-                                    setFlowCredentials((prev) => ({
-                                      ...prev,
-                                      [flow.id]: { email: e.target.value, password: prev[flow.id]?.password ?? "" },
-                                    }))
-                                  }
-                                  className="font-mono text-xs h-8"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="font-mono text-[10px]">Mot de passe de test</Label>
-                                <div className="relative">
-                                  <Input
-                                    type={showPwd ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    value={creds?.password ?? ""}
-                                    onChange={(e) =>
-                                      setFlowCredentials((prev) => ({
-                                        ...prev,
-                                        [flow.id]: { email: prev[flow.id]?.email ?? "", password: e.target.value },
-                                      }))
-                                    }
-                                    className="font-mono text-xs h-8 pr-8"
-                                  />
-                                  <button
-                                    type="button"
-                                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    onClick={() => setShowPasswords((prev) => ({ ...prev, [flow.id]: !showPwd }))}
-                                  >
-                                    {showPwd ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                        <span className="text-sm flex-1">{flow.labelFr}</span>
+                        {isSelected && (
+                          <button
+                            type="button"
+                            className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                              isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
+                            }`}
+                            onClick={() => setMainFlowIdState(flow.id)}
+                            title="Définir comme parcours principal"
+                          >
+                            {isMain && <Star className="h-3 w-3 text-background" />}
+                          </button>
+                        )}
+                      </div>
+                      {flow.descriptionFr && (
+                        <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
                       )}
                     </div>
                   );
@@ -296,47 +189,56 @@ export default function ProjectSettings() {
             )}
           </div>
 
-          <div className="space-y-2">
-            <Label className="font-mono text-xs">Fréquence de vérification</Label>
-            <select
-              value={String(checkFrequencyMin)}
-              onChange={(e) => setCheckFrequencyMin(Number(e.target.value))}
-              className="flex h-10 w-48 rounded-md border border-input bg-background px-3 py-2 font-mono text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="5">Toutes les 5 min</option>
-              <option value="15">Toutes les 15 min</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="font-mono text-xs">Maximum de tests par jour</Label>
-            <Input
-              type="number"
-              value={maxRunsPerDay}
-              onChange={(e) => setMaxRunsPerDay(Number(e.target.value))}
-              className="font-mono text-sm w-24"
-            />
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="flex items-center justify-between rounded-lg border border-border p-4">
             <div>
-              <p className="font-mono text-sm font-semibold">Surveillance active</p>
+              <p className="text-sm font-semibold">Surveillance active</p>
               <p className="text-xs text-muted-foreground">
-                {enabled
-                  ? "Sentinelle surveille votre application en continu."
-                  : "Surveillance en pause. Aucun test automatique ne sera lancé."}
+                {enabled ? "Sentinelle surveille votre application." : "Surveillance en pause."}
               </p>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
-          <Button onClick={handleSave} disabled={saving} className="font-mono">
+          <Button onClick={handleSave} disabled={saving} className="bg-neon text-background hover:bg-neon/90">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Sauvegarder
           </Button>
         </CardContent>
       </Card>
 
+      {/* Danger zone */}
+      <Card className="bg-surface border-status-erreur/20">
+        <CardHeader>
+          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-status-erreur">
+            Zone danger
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="text-status-erreur border-status-erreur/30 hover:bg-status-erreur/10">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Supprimer le projet
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="bg-surface border-border">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer {project.name} ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Cette action est irréversible. Toutes les données seront supprimées.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={deleting} className="bg-destructive text-destructive-foreground">
+                  {deleting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     </div>
   );
 }

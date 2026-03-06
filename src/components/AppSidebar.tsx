@@ -1,4 +1,4 @@
-import { LayoutDashboard, ScrollText, Settings } from "lucide-react";
+import { LayoutDashboard, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -6,7 +6,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -15,32 +14,28 @@ import {
 
 const items = [
   { title: "Projets", url: "/", icon: LayoutDashboard },
-  { title: "Logs", url: "/logs", icon: ScrollText },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const location = useLocation();
-
-  const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
         {/* Logo */}
         <div className="flex items-center px-4 py-5">
-          {!collapsed && (
-            <span className="font-mono text-sm font-bold tracking-tight text-sidebar-foreground">
+          {!collapsed ? (
+            <span className="text-sm font-bold tracking-tight text-neon">
               SENTINELLE
             </span>
+          ) : (
+            <span className="text-sm font-bold text-neon">S</span>
           )}
         </div>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -50,7 +45,7 @@ export function AppSidebar() {
                       to={item.url}
                       end={item.url === "/"}
                       className="hover:bg-muted/50"
-                      activeClassName="bg-muted text-primary font-medium"
+                      activeClassName="bg-muted text-neon font-medium"
                     >
                       <item.icon className="mr-2 h-4 w-4" />
                       {!collapsed && <span>{item.title}</span>}
