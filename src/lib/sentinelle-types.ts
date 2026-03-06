@@ -132,7 +132,6 @@ export interface Findings {
 }
 
 export interface RunAssets {
-  reportUrl?: string;
   screenshots?: { label: string; filename: string; path: string }[];
 }
 
