@@ -53,6 +53,10 @@ export default function ProjectSettings() {
         setEnabled(p.enabled);
         setMainFlowIdState(p.mainFlowId || null);
         setSelectedFlowIds(new Set((p.monitoredFlows ?? []).map((f) => f.id)));
+        const creds: Record<string, boolean> = {};
+        (p.monitoredFlows ?? []).forEach((f) => { if (f.hasCredentials) creds[f.id] = true; });
+        (p.suggestedFlows ?? []).forEach((f) => { if (f.hasCredentials) creds[f.id] = true; });
+        setFlowCredentials(creds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
