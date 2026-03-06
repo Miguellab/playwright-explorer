@@ -42,7 +42,7 @@ export default function ProjectDashboard() {
   const navigate = useNavigate();
 
   const [project, setProject] = useState<Project | null>(null);
-  const [latestRelease, setLatestRelease] = useState<Release | null>(null);
+  const [latestRelease, setLatestRelease] = useState<Release | ReleaseDetail | null>(null);
   const [mainFlow, setMainFlow] = useState<MainFlowInfo | null>(null);
   const [mainFlowSteps, setMainFlowSteps] = useState<RunStep[]>([]);
   const [loading, setLoading] = useState(true);
