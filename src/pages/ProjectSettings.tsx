@@ -19,8 +19,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, Save, Trash2, Star } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import CredentialsModal from "@/components/CredentialsModal";
+import { saveFlowCredentials, deleteFlowCredentials } from "@/lib/sentinelle-api";
 
 export default function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
@@ -36,6 +38,10 @@ export default function ProjectSettings() {
   const [enabled, setEnabled] = useState(true);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
+  const [credentialModalOpen, setCredentialModalOpen] = useState(false);
+  const [credentialFlowId, setCredentialFlowId] = useState("");
+  const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
+  const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +53,10 @@ export default function ProjectSettings() {
         setEnabled(p.enabled);
         setMainFlowIdState(p.mainFlowId || null);
         setSelectedFlowIds(new Set((p.monitoredFlows ?? []).map((f) => f.id)));
+        const creds: Record<string, boolean> = {};
+        (p.monitoredFlows ?? []).forEach((f) => { if (f.hasCredentials) creds[f.id] = true; });
+        (p.suggestedFlows ?? []).forEach((f) => { if (f.hasCredentials) creds[f.id] = true; });
+        setFlowCredentials(creds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -182,6 +192,43 @@ export default function ProjectSettings() {
                       {flow.descriptionFr && (
                         <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
                       )}
+                      {/* Credential indicator */}
+                      {(flow.goal === "LOGIN" || flow.requiresCredentials) && (
+                        <div className="flex items-center gap-2 ml-8">
+                          {flowCredentials[flow.id] ? (
+                            <>
+                              <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
+                                <ShieldCheck className="h-3 w-3" />
+                                Compte test configuré
+                              </span>
+                              <button
+                                type="button"
+                                className="text-[11px] text-muted-foreground hover:text-foreground"
+                                onClick={() => {
+                                  setCredentialFlowId(flow.id);
+                                  setCredentialFlowLabel(flow.labelFr);
+                                  setCredentialModalOpen(true);
+                                }}
+                              >
+                                Modifier
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
+                              onClick={() => {
+                                setCredentialFlowId(flow.id);
+                                setCredentialFlowLabel(flow.labelFr);
+                                setCredentialModalOpen(true);
+                              }}
+                            >
+                              <KeyRound className="h-3 w-3" />
+                              Configurer les identifiants
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -239,6 +286,18 @@ export default function ProjectSettings() {
           </AlertDialog>
         </CardContent>
       </Card>
+
+      {/* Credentials Modal */}
+      {id && (
+        <CredentialsModal
+          open={credentialModalOpen}
+          onOpenChange={setCredentialModalOpen}
+          projectId={id}
+          flowId={credentialFlowId}
+          flowLabel={credentialFlowLabel}
+          onSaved={() => setFlowCredentials((prev) => ({ ...prev, [credentialFlowId]: true }))}
+        />
+      )}
     </div>
   );
 }
