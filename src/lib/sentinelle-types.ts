@@ -172,6 +172,7 @@ export interface Findings {
   consoleErrors: ConsoleError[];
   failedRequests: FailedRequest[];
   diagnostics: Diagnostic[];
+  performanceMetrics?: Record<string, PerformanceMetrics>;
 }
 
 export interface RunAssets {
