@@ -56,7 +56,7 @@ export function AuthenticatedZone({ projectId, project, onProjectUpdated }: Auth
       ...(project.suggestedFlows ?? []),
     ];
     const hasLogin = allFlows.some(
-      (f) => f.goal === "LOGIN" && f.credentials && f.credentials.email
+      (f) => f.goal === "LOGIN" && f.hasCredentials
     );
     setHasAuthCredentials(hasLogin);
     setCheckingCredentials(false);
