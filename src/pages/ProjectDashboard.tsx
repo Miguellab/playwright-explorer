@@ -189,11 +189,11 @@ export default function ProjectDashboard() {
               <ExternalLink className="h-3 w-3" />
               {project.siteUrl.replace(/^https?:\/\//, "")}
             </a>
-            {latestRelease && (
+            {displayRelease && (
               <>
                 <span>·</span>
                 <Clock className="h-3 w-3" />
-                <span>Dernière publication {timeAgo(latestRelease.detectedAt)}</span>
+                <span>Dernière publication {timeAgo(displayRelease.detectedAt)}</span>
               </>
             )}
           </div>
