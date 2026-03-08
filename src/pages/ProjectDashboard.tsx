@@ -115,7 +115,9 @@ export default function ProjectDashboard() {
     setTesting(true);
     try {
       const response = await testNow(id);
-      setPollingReleaseId(response.releaseId);
+      if (response.releaseId) {
+        setPollingReleaseId(response.releaseId);
+      }
       // Immediately fetch the new release
       const releases = await listReleases(id, 1);
       if (releases.length > 0) {
