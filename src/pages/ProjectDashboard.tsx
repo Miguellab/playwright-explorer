@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { AuthenticatedZone } from "@/components/AuthenticatedZone";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
