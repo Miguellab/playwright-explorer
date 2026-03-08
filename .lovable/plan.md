@@ -1,56 +1,69 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Amélioration de l'affichage des flows en erreur
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Contexte
+Actuellement, `ReleaseDetail.tsx` affiche les steps et screenshots pour tous les runs, mais sans traitement spécial pour les erreurs : pas de `errorSummary`, pas de mise en avant de l'étape failed, pas de findings inline par run, pas d'ouverture automatique des runs en erreur.
 
-## Ce qui reste à faire
+### Changements
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+#### 1. Types — `src/lib/sentinelle-types.ts`
+Ajouter les nouveaux champs sur `Run` :
+- `errorSummary: string | null`
+- `failedStepName: string | null`
+- `stepsSummary: { total: number; passed: number; failed: number; skipped: number } | null`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Ajouter sur `ReleaseRunSummary` :
+- `hasScreenshots?: boolean`
+- `screenshotCount?: number`
+- `consoleErrorCount?: number`
+- `failedRequestCount?: number`
+- `errorSummary?: string | null`
+- `failedStepName?: string | null`
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+#### 2. Composant `MainFlowSteps` — `src/components/MainFlowSteps.tsx`
+Enrichir pour mettre en avant les étapes failed :
+- L'étape `failed`/`fail` reçoit un fond rouge subtil (`bg-status-erreur/5 border-l-2 border-status-erreur`) et affiche `step.detail` en dessous si présent.
+- Ajouter une prop optionnelle `stepsSummary` pour afficher un résumé compact en bas : "10/12 réussies — 1 en échec — 1 ignorée".
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+#### 3. Nouveau composant `RunFindings` — `src/components/RunFindings.tsx`
+Composant qui prend `findings: Findings` et affiche inline :
+- **Console errors** : les 5 premiers `consoleError.text`, puis "et X autres" si plus.
+- **Failed requests** : `{method} {url} — {status}` (ou "Erreur réseau" si status === 0). Limite 5 + "et X autres".
+- Si aucun finding : "Aucun détail technique disponible".
+Réutilise le style existant de `IssueCard` (couleurs `status-erreur`, `status-alerte`).
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+#### 4. Nouveau composant `RunCard` — `src/components/RunCard.tsx`
+Composant unifié pour afficher un run (main ou secondaire), remplaçant le code inline dupliqué dans `ReleaseDetail.tsx`.
 
-### 3. Badge verdict sur les cartes Dashboard
+Props : `run: Run`, `isMainFlow: boolean`, `isExpanded: boolean`, `onToggle`, `onRetest`, `retesting: boolean`.
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+Structure du composant :
+- **Header** : badge parcours principal (si main), label du flow, VerdictBadge, chevron toggle.
+- **Bloc erreur** (si `run.status === "failed" || "error"`) :
+  - Fond rouge subtil `bg-status-erreur/5 border border-status-erreur/20 rounded-lg p-3`.
+  - `errorSummary` en texte principal (fallback : "Le parcours a échoué.").
+  - Sous-texte : "Erreur détectée sur : {failedStepName}" si disponible.
+- **Steps** : `MainFlowSteps` avec `stepsSummary`.
+- **Screenshots** : `EvidenceViewer` — si aucune : "Aucune capture disponible".
+- **Findings inline** : `RunFindings` — si aucun : "Aucun détail technique disponible".
+- **Actions** : bouton Relancer.
 
-### 4. Collapsible CTO dans RunReport
+#### 5. Refactor `ReleaseDetail.tsx`
+- Remplacer le code inline des cards main et other par `<RunCard>`.
+- **Auto-expand** : au chargement, pré-ouvrir les runs dont `status === "failed" || "error"`. Les runs `passed` restent fermés.
+- Supprimer la section "Issues" globale en bas (les findings sont maintenant inline par run).
+- Conserver la section Trace download en bas.
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+#### 6. Hiérarchie visuelle
+- `passed` : accordéon fermé par défaut, compact.
+- `failed`/`error` : accordéon ouvert par défaut, bloc errorSummary visible, étape failed mise en avant.
+- `running`/`queued` : accordéon fermé, spinner.
 
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichiers impactés
+1. `src/lib/sentinelle-types.ts` — ajout champs
+2. `src/components/MainFlowSteps.tsx` — enrichir étapes failed + stepsSummary
+3. `src/components/RunFindings.tsx` — nouveau composant
+4. `src/components/RunCard.tsx` — nouveau composant unifié
+5. `src/pages/ReleaseDetail.tsx` — refactor pour utiliser RunCard + auto-expand
 
