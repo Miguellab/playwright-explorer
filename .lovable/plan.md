@@ -1,56 +1,76 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Ajouter la section "Zone authentifiée" au dashboard projet
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Vue d'ensemble
 
-## Ce qui reste à faire
+Ajouter sur `ProjectDashboard.tsx` une carte conditionnelle "Zone authentifiée" qui apparait uniquement si un flow LOGIN a des credentials configurés. Cette carte permet de lancer la découverte authentifiée directement depuis le dashboard, avec gestion des états loading/résultats/erreur et sélection des flows découverts.
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### Condition d'affichage
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Au chargement du dashboard, appeler `getFlowCredentialsStatus(id)`. Afficher la carte si au moins un flow avec `goal === "LOGIN"` a `hasCredentials === true`.
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+### Fichier modifié : `src/pages/ProjectDashboard.tsx`
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+**Nouveaux imports** : `getFlowCredentialsStatus`, `discoverAuthenticatedFlows`, `updateProject`, `setMainFlow` depuis sentinelle-api. Icones `Lock`, `ShieldCheck`, `Sparkles`, `CheckCircle2`. Composant `Switch`.
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**Nouveaux states** :
+- `hasAuthCredentials: boolean` — condition d'affichage
+- `authPhase: "idle" | "discovering" | "results" | "error"` — phase de la découverte auth
+- `authFlows: SuggestedFlow[]` — flows découverts
+- `enabledAuthFlows: Set<string>` — flows sélectionnés
+- `authMainFlowId: string | null` — flow principal parmi les auth flows
+- `authDiscoveryMsg: number` — index du message de progression
+- `authError: string` — message d'erreur
 
-### 3. Badge verdict sur les cartes Dashboard
+**Nouveau useEffect** : appeler `getFlowCredentialsStatus(id)` au mount, set `hasAuthCredentials` si condition remplie.
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+**Nouvelle section UI** (après le bloc Verdict, avant les actions) :
 
-### 4. Collapsible CTO dans RunReport
+1. **Carte "Zone authentifiée"** (`authPhase === "idle"`) :
+   - Icone Lock, titre "Zone authentifiée"
+   - Description : "Sentinelle peut se connecter à votre application et explorer les pages internes."
+   - CTA principal : "Découvrir les parcours internes" → lance `discoverAuthenticatedFlows(id)`
+   - CTA secondaire : "Voir les parcours surveillés" → navigue vers settings
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+2. **Carte progression** (`authPhase === "discovering"`) :
+   - Spinner + messages rotatifs (Connexion en cours… / Navigation… / Analyse…)
+   - Pas de progress bar (le POST est synchrone, timeout jusqu'à 3min)
 
----
+3. **Résultats** (`authPhase === "results"`) :
+   - Message : "N nouveaux parcours détectés"
+   - Liste de FlowCards avec : labelFr, description, confidence (%), toggle surveillance, bouton "Définir comme principal", badge "Principal" si sélectionné
+   - Animation framer-motion pour l'apparition
+   - CTA : "Commencer la surveillance" → PATCH project avec les flows activés + PUT main-flow
 
-## Fichiers modifiés
+4. **Erreur** (`authPhase === "error"`) :
+   - Si `loginSuccess === false` : "La connexion a échoué. Vérifiez les identifiants configurés." + lien vers settings
+   - Si 504/500 : message d'erreur de l'API
+   - Bouton "Réessayer"
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+**Fonction `startAuthDiscovery`** :
+- Set `authPhase = "discovering"`
+- Appel `discoverAuthenticatedFlows(id)` (synchrone, attend la réponse)
+- Si `loginSuccess === false` → `authPhase = "error"` avec message spécifique
+- Si succès → `authFlows = response.flows`, tous activés par défaut, `authPhase = "results"`
+- Toast : "Parcours internes détectés avec succès"
+- Catch erreur → `authPhase = "error"` avec `err.message`
 
-4 fichiers, ~80 lignes modifiées.
+**Fonction `handleSaveAuthFlows`** :
+- Fusionne les `monitoredFlows` existants du projet avec les auth flows activés
+- PATCH project avec `monitoredFlows` mis à jour
+- Si `authMainFlowId` défini, PUT main-flow
+- Toast succès, refresh projet
+
+### Design
+
+- Carte avec bordure `border-neon/20`, icone Lock en vert neon
+- FlowCards : carte sombre, toggle Switch, badge confidence en pourcentage
+- Badge "Principal" en vert neon
+- Animations framer-motion : fade-in + slide-up pour les cartes
+- Messages rotatifs pendant le loading avec interval 4s
+
+### Estimation
+
+1 fichier modifié, ~200 lignes ajoutées.
 
