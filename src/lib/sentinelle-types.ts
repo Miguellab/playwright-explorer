@@ -214,6 +214,12 @@ export interface ReleaseRunSummary {
   status: RunStatus;
   durationMs: number | null;
   isMainFlow: boolean;
+  errorSummary?: string | null;
+  failedStepName?: string | null;
+  hasScreenshots?: boolean;
+  screenshotCount?: number;
+  consoleErrorCount?: number;
+  failedRequestCount?: number;
 }
 
 export interface Release {

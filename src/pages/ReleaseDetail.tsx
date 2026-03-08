@@ -1,23 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getRelease, getProject, runSingleFlow, getTraceUrl } from "@/lib/sentinelle-api";
-import type { ReleaseDetail as ReleaseDetailType, Project, Run } from "@/lib/sentinelle-types";
+import type { ReleaseDetail as ReleaseDetailType, Project } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { MainFlowSteps } from "@/components/MainFlowSteps";
-import { IssueCard } from "@/components/IssueCard";
-import { EvidenceViewer } from "@/components/EvidenceViewer";
-import {
-  ArrowLeft,
-  Loader2,
-  RotateCcw,
-  Download,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { RunCard } from "@/components/RunCard";
+import { ArrowLeft, Loader2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+
+function isErrorStatus(status: string) {
+  return status === "failed" || status === "error";
+}
 
 export default function ReleaseDetail() {
   const { id: projectId, releaseId } = useParams<{ id: string; releaseId: string }>();
@@ -31,12 +25,18 @@ export default function ReleaseDetail() {
 
   const isActive = release?.verdict === "PENDING";
 
+  // Initial load
   useEffect(() => {
     if (!releaseId || !projectId) return;
     Promise.all([getRelease(releaseId), getProject(projectId)])
       .then(([r, p]) => {
         setRelease(r);
         setProject(p);
+        // Auto-expand failed/error runs
+        const failedIds = new Set(
+          r.runs.filter((run) => isErrorStatus(run.status)).map((run) => run.id)
+        );
+        setExpandedRuns(failedIds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -49,6 +49,14 @@ export default function ReleaseDetail() {
       try {
         const detail = await getRelease(releaseId);
         setRelease(detail);
+        // Auto-expand newly failed runs
+        setExpandedRuns((prev) => {
+          const next = new Set(prev);
+          detail.runs.forEach((run) => {
+            if (isErrorStatus(run.status)) next.add(run.id);
+          });
+          return next;
+        });
         if (detail.verdict !== "PENDING") clearInterval(interval);
       } catch {}
     }, 3000);
@@ -97,10 +105,6 @@ export default function ReleaseDetail() {
     release.mainFlowId ? r.flowId === release.mainFlowId : false
   );
   const otherRuns = release.runs.filter((r) => r !== mainRun);
-  const allIssues = release.runs.flatMap((r) => [
-    ...(r.findings?.consoleErrors?.map((e) => ({ type: "console" as const, consoleError: e })) ?? []),
-    ...(r.findings?.failedRequests?.map((f) => ({ type: "network" as const, failedRequest: f })) ?? []),
-  ]);
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -128,110 +132,32 @@ export default function ReleaseDetail() {
         </p>
       </motion.div>
 
-      {/* Main flow section */}
+      {/* Main flow */}
       {mainRun && (
-        <Card className="border-border bg-surface">
-          <CardContent className="p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
-                  Parcours principal
-                </span>
-                <span className="text-sm font-medium">{mainRun.flowLabel}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs"
-                onClick={() => mainRun.flowId && handleRetest(mainRun.flowId)}
-                disabled={retesting === mainRun.flowId}
-              >
-                {retesting === mainRun.flowId ? (
-                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                ) : (
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                )}
-                Relancer
-              </Button>
-            </div>
-            <MainFlowSteps steps={mainRun.steps || []} />
-            {mainRun.assets?.screenshots && mainRun.assets.screenshots.length > 0 && (
-              <EvidenceViewer screenshots={mainRun.assets.screenshots} />
-            )}
-          </CardContent>
-        </Card>
+        <RunCard
+          run={mainRun}
+          isMainFlow
+          isExpanded={expandedRuns.has(mainRun.id)}
+          onToggle={() => toggleRun(mainRun.id)}
+          onRetest={handleRetest}
+          retesting={retesting === mainRun.flowId}
+        />
       )}
 
       {/* Other runs */}
       {otherRuns.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-muted-foreground">Autres parcours</h2>
-          {otherRuns.map((run) => {
-            const isExpanded = expandedRuns.has(run.id);
-            return (
-              <Card key={run.id} className="border-border bg-surface">
-                <CardContent className="p-0">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
-                    onClick={() => toggleRun(run.id)}
-                  >
-                    <div className="flex items-center gap-3">
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className="text-sm font-medium">{run.flowLabel || "Parcours"}</span>
-                    </div>
-                    <VerdictBadge
-                      verdict={
-                        run.status === "passed" ? "OK"
-                        : run.status === "failed" || run.status === "error" ? "ERREUR"
-                        : run.status === "running" || run.status === "queued" ? "PENDING"
-                        : "PENDING"
-                      }
-                    />
-                  </button>
-                  {isExpanded && (
-                    <div className="px-4 pb-4 space-y-4 border-t border-border pt-3">
-                      <MainFlowSteps steps={run.steps || []} />
-                      {run.assets?.screenshots && run.assets.screenshots.length > 0 && (
-                        <EvidenceViewer screenshots={run.assets.screenshots} />
-                      )}
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => run.flowId && handleRetest(run.flowId)}
-                          disabled={retesting === run.flowId}
-                        >
-                          {retesting === run.flowId ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                          )}
-                          Relancer
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Issues */}
-      {allIssues.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            Problèmes détectés ({allIssues.length})
-          </h2>
-          {allIssues.map((issue, i) => (
-            <IssueCard key={i} {...issue} />
+          {otherRuns.map((run) => (
+            <RunCard
+              key={run.id}
+              run={run}
+              isMainFlow={false}
+              isExpanded={expandedRuns.has(run.id)}
+              onToggle={() => toggleRun(run.id)}
+              onRetest={handleRetest}
+              retesting={retesting === run.flowId}
+            />
           ))}
         </div>
       )}
