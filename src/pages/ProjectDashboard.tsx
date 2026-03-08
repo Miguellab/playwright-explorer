@@ -225,19 +225,19 @@ export default function ProjectDashboard() {
       {/* Verdict Card */}
       {project.configStatus !== "no_flows" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {latestRelease ? (
+          {displayRelease ? (
             <div className="space-y-6">
-              <VerdictBadge verdict={latestRelease.verdict} size="lg" />
+              <VerdictBadge verdict={displayRelease.verdict} size="lg" />
 
               {/* Main flow result */}
-              {mainFlow && latestRelease.mainFlowLabel && (
+              {mainFlow && displayRelease.mainFlowLabel && (
                 <Card className="border-border bg-surface">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
                         Parcours principal
                       </span>
-                      <span className="text-sm font-medium">{latestRelease.mainFlowLabel}</span>
+                      <span className="text-sm font-medium">{displayRelease.mainFlowLabel}</span>
                     </div>
                     <MainFlowSteps steps={mainFlowSteps} />
                     {isPending && mainFlowSteps.length === 0 && (
@@ -251,10 +251,10 @@ export default function ProjectDashboard() {
               )}
 
               {/* Other runs summary */}
-              {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).length > 0 && (
+              {(displayRelease as any).runs?.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Autres parcours</p>
-                  {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).map((run) => (
+                  {(displayRelease as any).runs.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).map((run: any) => (
                     <div key={run.id} className="flex items-center justify-between rounded-lg border border-border bg-surface p-3">
                       <span className="text-sm">{run.flowLabel}</span>
                       <VerdictBadge
@@ -273,13 +273,25 @@ export default function ProjectDashboard() {
             </div>
           ) : (
             <Card className="border-border bg-surface">
-              <CardContent className="p-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Aucune publication détectée pour le moment.
+              <CardContent className="p-8 text-center space-y-4">
+                <p className="text-sm font-medium">
+                  Sentinelle est prête.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Lancez un test pour valider votre application.
+                  Lancez un premier test ou attendez la prochaine publication.
                 </p>
+                <Button
+                  onClick={handleTestNow}
+                  disabled={testing}
+                  className="bg-neon text-background hover:bg-neon/90"
+                >
+                  {testing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
+                  Lancer un premier test
+                </Button>
               </CardContent>
             </Card>
           )}
