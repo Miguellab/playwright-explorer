@@ -299,6 +299,17 @@ export default function ProjectDashboard() {
         </motion.div>
       )}
 
+      {/* Authenticated Zone */}
+      {project.configStatus !== "no_flows" && (
+        <AuthenticatedZone
+          projectId={project.id}
+          project={project}
+          onProjectUpdated={() => {
+            getProject(project.id).then(setProject).catch(() => {});
+          }}
+        />
+      )}
+
       {/* Actions */}
       {project.configStatus !== "no_flows" && displayRelease && (
         <div className="flex gap-3">
