@@ -57,10 +57,12 @@ export default function ProjectDashboard() {
         setProject(p);
         setMainFlow(mf);
         if (releases.length > 0) {
-          setLatestRelease(releases[0]);
-          // If pending, start polling
-          if (releases[0].verdict === "PENDING") {
-            setPollingReleaseId(releases[0].id);
+          const rel = releases[0];
+          setLatestRelease(rel);
+          // Only poll if PENDING AND has actual runs (not just a detected release with no tests)
+          const hasRuns = (rel as any).runCount > 0 || ((rel as any).runs && (rel as any).runs.length > 0);
+          if (rel.verdict === "PENDING" && hasRuns && rel.id) {
+            setPollingReleaseId(rel.id);
           }
         }
       })
