@@ -299,7 +299,7 @@ export default function ProjectDashboard() {
       )}
 
       {/* Actions */}
-      {project.configStatus !== "no_flows" && (
+      {project.configStatus !== "no_flows" && displayRelease && (
         <div className="flex gap-3">
           <Button
             onClick={handleTestNow}
