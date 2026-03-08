@@ -156,7 +156,14 @@ export default function ProjectDashboard() {
     );
   }
 
-  const isPending = latestRelease?.verdict === "PENDING";
+  // A release is only truly "pending" if it has runs being executed
+  const hasActualRuns = latestRelease && (
+    (latestRelease as any).runCount > 0 || 
+    ((latestRelease as any).runs && (latestRelease as any).runs.length > 0)
+  );
+  const isPending = latestRelease?.verdict === "PENDING" && hasActualRuns;
+  // Treat releases with no runs as "no release" for display
+  const displayRelease = latestRelease && hasActualRuns ? latestRelease : null;
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
