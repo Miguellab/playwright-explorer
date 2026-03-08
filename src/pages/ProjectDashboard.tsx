@@ -315,12 +315,12 @@ export default function ProjectDashboard() {
             {isPending ? "Vérification en cours…" : "Lancer un test maintenant"}
           </Button>
 
-          {latestRelease && (
+          {displayRelease && (
             <>
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => navigate(`/project/${project.id}/release/${latestRelease.id}`)}
+                onClick={() => navigate(`/project/${project.id}/release/${displayRelease.id}`)}
               >
                 <Eye className="mr-2 h-4 w-4" />
                 Détails
