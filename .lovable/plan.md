@@ -1,32 +1,56 @@
 
 
-## Fix: Dashboard polling and empty state bugs
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Root causes
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-1. **Polling with no runs**: A release exists with `verdict: "PENDING"` and `runs: []` (release detected but no test launched). The dashboard polls it indefinitely and shows "Vérification en cours…" even though no test is running.
-2. **`getRelease(latestRelease.id)` called unconditionally** (line 74): If `latestRelease.id` is ever falsy, it fetches `/releases/null` → 404.
-3. **No proper empty state** when releases exist but have no runs, or when no release exists at all.
+## Ce qui reste à faire
 
-### Changes in `src/pages/ProjectDashboard.tsx`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**1. Guard all API calls with ID validation**
-- Line 74: Add `if (!latestRelease?.id) return;` before `getRelease()`
-- Line 96: Already guarded by `pollingReleaseId` check, but add explicit falsy guard
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**2. Distinguish "no release" from "PENDING release with no runs"**
-- A release with `verdict === "PENDING"` and `runs.length === 0` and `runCount === 0` means no test was launched — treat it like no release for display purposes
-- Only start polling if the release actually has runs (`runCount > 0` or `runs.length > 0`)
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**3. Improve empty state**
-- When no actionable release exists, show: "Sentinelle est prête. Lancez un premier test ou attendez la prochaine publication."
-- CTA: "Lancer un test maintenant" (calls `testNow`)
-- No VerdictBadge, no spinner
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**4. After `testNow`, use the returned `releaseId` for polling**
-- Already done (line 116), but also guard against falsy `response.releaseId`
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-### Summary
+### 3. Badge verdict sur les cartes Dashboard
 
-1 file modified, ~15 lines changed. Core fix: don't poll or show PENDING UI for releases that have no runs.
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

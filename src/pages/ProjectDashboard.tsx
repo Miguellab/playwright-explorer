@@ -57,10 +57,12 @@ export default function ProjectDashboard() {
         setProject(p);
         setMainFlow(mf);
         if (releases.length > 0) {
-          setLatestRelease(releases[0]);
-          // If pending, start polling
-          if (releases[0].verdict === "PENDING") {
-            setPollingReleaseId(releases[0].id);
+          const rel = releases[0];
+          setLatestRelease(rel);
+          // Only poll if PENDING AND has actual runs (not just a detected release with no tests)
+          const hasRuns = (rel as any).runCount > 0 || ((rel as any).runs && (rel as any).runs.length > 0);
+          if (rel.verdict === "PENDING" && hasRuns && rel.id) {
+            setPollingReleaseId(rel.id);
           }
         }
       })
@@ -70,7 +72,7 @@ export default function ProjectDashboard() {
 
   // Fetch main flow steps from release detail
   useEffect(() => {
-    if (!latestRelease) return;
+    if (!latestRelease?.id) return;
     getRelease(latestRelease.id)
       .then((detail: ReleaseDetail) => {
         const mainRun = detail.runs.find((r) =>
@@ -113,7 +115,9 @@ export default function ProjectDashboard() {
     setTesting(true);
     try {
       const response = await testNow(id);
-      setPollingReleaseId(response.releaseId);
+      if (response.releaseId) {
+        setPollingReleaseId(response.releaseId);
+      }
       // Immediately fetch the new release
       const releases = await listReleases(id, 1);
       if (releases.length > 0) {
@@ -152,7 +156,14 @@ export default function ProjectDashboard() {
     );
   }
 
-  const isPending = latestRelease?.verdict === "PENDING";
+  // A release is only truly "pending" if it has runs being executed
+  const hasActualRuns = latestRelease && (
+    (latestRelease as any).runCount > 0 || 
+    ((latestRelease as any).runs && (latestRelease as any).runs.length > 0)
+  );
+  const isPending = latestRelease?.verdict === "PENDING" && hasActualRuns;
+  // Treat releases with no runs as "no release" for display
+  const displayRelease = latestRelease && hasActualRuns ? latestRelease : null;
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -178,11 +189,11 @@ export default function ProjectDashboard() {
               <ExternalLink className="h-3 w-3" />
               {project.siteUrl.replace(/^https?:\/\//, "")}
             </a>
-            {latestRelease && (
+            {displayRelease && (
               <>
                 <span>·</span>
                 <Clock className="h-3 w-3" />
-                <span>Dernière publication {timeAgo(latestRelease.detectedAt)}</span>
+                <span>Dernière publication {timeAgo(displayRelease.detectedAt)}</span>
               </>
             )}
           </div>
@@ -214,19 +225,19 @@ export default function ProjectDashboard() {
       {/* Verdict Card */}
       {project.configStatus !== "no_flows" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {latestRelease ? (
+          {displayRelease ? (
             <div className="space-y-6">
-              <VerdictBadge verdict={latestRelease.verdict} size="lg" />
+              <VerdictBadge verdict={displayRelease.verdict} size="lg" />
 
               {/* Main flow result */}
-              {mainFlow && latestRelease.mainFlowLabel && (
+              {mainFlow && displayRelease.mainFlowLabel && (
                 <Card className="border-border bg-surface">
                   <CardContent className="p-5 space-y-4">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
                         Parcours principal
                       </span>
-                      <span className="text-sm font-medium">{latestRelease.mainFlowLabel}</span>
+                      <span className="text-sm font-medium">{displayRelease.mainFlowLabel}</span>
                     </div>
                     <MainFlowSteps steps={mainFlowSteps} />
                     {isPending && mainFlowSteps.length === 0 && (
@@ -240,10 +251,10 @@ export default function ProjectDashboard() {
               )}
 
               {/* Other runs summary */}
-              {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).length > 0 && (
+              {(displayRelease as any).runs?.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-medium text-muted-foreground">Autres parcours</p>
-                  {latestRelease.runs.filter(r => !('isMainFlow' in r ? r.isMainFlow : r.flowId === latestRelease.mainFlowId)).map((run) => (
+                  {(displayRelease as any).runs.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).map((run: any) => (
                     <div key={run.id} className="flex items-center justify-between rounded-lg border border-border bg-surface p-3">
                       <span className="text-sm">{run.flowLabel}</span>
                       <VerdictBadge
@@ -262,13 +273,25 @@ export default function ProjectDashboard() {
             </div>
           ) : (
             <Card className="border-border bg-surface">
-              <CardContent className="p-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Aucune publication détectée pour le moment.
+              <CardContent className="p-8 text-center space-y-4">
+                <p className="text-sm font-medium">
+                  Sentinelle est prête.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Lancez un test pour valider votre application.
+                  Lancez un premier test ou attendez la prochaine publication.
                 </p>
+                <Button
+                  onClick={handleTestNow}
+                  disabled={testing}
+                  className="bg-neon text-background hover:bg-neon/90"
+                >
+                  {testing ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
+                  Lancer un premier test
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -292,12 +315,12 @@ export default function ProjectDashboard() {
             {isPending ? "Vérification en cours…" : "Lancer un test maintenant"}
           </Button>
 
-          {latestRelease && (
+          {displayRelease && (
             <>
               <Button
                 variant="outline"
                 size="lg"
-                onClick={() => navigate(`/project/${project.id}/release/${latestRelease.id}`)}
+                onClick={() => navigate(`/project/${project.id}/release/${displayRelease.id}`)}
               >
                 <Eye className="mr-2 h-4 w-4" />
                 Détails
