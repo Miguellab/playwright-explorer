@@ -72,7 +72,7 @@ export default function ProjectDashboard() {
 
   // Fetch main flow steps from release detail
   useEffect(() => {
-    if (!latestRelease) return;
+    if (!latestRelease?.id) return;
     getRelease(latestRelease.id)
       .then((detail: ReleaseDetail) => {
         const mainRun = detail.runs.find((r) =>
