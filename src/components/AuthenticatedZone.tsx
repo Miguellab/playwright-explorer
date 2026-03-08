@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
-  getFlowCredentialsStatus,
   discoverAuthenticatedFlows,
   updateProject,
   setMainFlow as apiSetMainFlow,
@@ -50,18 +49,18 @@ export function AuthenticatedZone({ projectId, project, onProjectUpdated }: Auth
   const [discoveryMsgIndex, setDiscoveryMsgIndex] = useState(0);
   const [authError, setAuthError] = useState("");
 
-  // Check if LOGIN flow has credentials
+  // Check if LOGIN flow has credentials from project data
   useEffect(() => {
-    getFlowCredentialsStatus(projectId)
-      .then((data) => {
-        const hasLogin = data.flows.some(
-          (f) => f.goal === "LOGIN" && f.hasCredentials
-        );
-        setHasAuthCredentials(hasLogin);
-      })
-      .catch(() => {})
-      .finally(() => setCheckingCredentials(false));
-  }, [projectId]);
+    const allFlows = [
+      ...(project.monitoredFlows ?? []),
+      ...(project.suggestedFlows ?? []),
+    ];
+    const hasLogin = allFlows.some(
+      (f) => f.goal === "LOGIN" && f.credentials && f.credentials.email
+    );
+    setHasAuthCredentials(hasLogin);
+    setCheckingCredentials(false);
+  }, [project]);
 
   // Rotate discovery messages
   useEffect(() => {
