@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { AuthenticatedZone } from "@/components/AuthenticatedZone";
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -296,6 +297,17 @@ export default function ProjectDashboard() {
             </Card>
           )}
         </motion.div>
+      )}
+
+      {/* Authenticated Zone */}
+      {project.configStatus !== "no_flows" && (
+        <AuthenticatedZone
+          projectId={project.id}
+          project={project}
+          onProjectUpdated={() => {
+            getProject(project.id).then(setProject).catch(() => {});
+          }}
+        />
       )}
 
       {/* Actions */}
