@@ -257,7 +257,7 @@ export function AuthenticatedZone({ projectId, project, onProjectUpdated }: Auth
                             </span>
                           )}
                           <span className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
-                            {Math.round(flow.confidence * 100)}%
+                            {Math.round(flow.confidence)}%
                           </span>
                         </div>
                         {flow.descriptionFr && (
