@@ -175,6 +175,13 @@ export interface RunAssets {
   tracePath?: string;
 }
 
+export interface StepsSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+}
+
 export interface Run {
   id: string;
   projectId: string;
@@ -190,6 +197,9 @@ export interface Run {
   findings: Findings;
   assets?: RunAssets;
   error: string | null;
+  errorSummary?: string | null;
+  failedStepName?: string | null;
+  stepsSummary?: StepsSummary | null;
   durationMs: number | null;
   startedAt: string | null;
   finishedAt: string | null;
@@ -204,6 +214,12 @@ export interface ReleaseRunSummary {
   status: RunStatus;
   durationMs: number | null;
   isMainFlow: boolean;
+  errorSummary?: string | null;
+  failedStepName?: string | null;
+  hasScreenshots?: boolean;
+  screenshotCount?: number;
+  consoleErrorCount?: number;
+  failedRequestCount?: number;
 }
 
 export interface Release {
