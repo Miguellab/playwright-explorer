@@ -36,6 +36,7 @@ export default function ProjectSettings() {
   const [name, setName] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [maxRunsPerDay, setMaxRunsPerDay] = useState(10);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
   const [credentialModalOpen, setCredentialModalOpen] = useState(false);
@@ -51,6 +52,7 @@ export default function ProjectSettings() {
         setName(p.name);
         setSiteUrl(p.siteUrl);
         setEnabled(p.enabled);
+        setMaxRunsPerDay(p.maxRunsPerDay ?? 10);
         setMainFlowIdState(p.mainFlowId || null);
         setSelectedFlowIds(new Set((p.monitoredFlows ?? []).map((f) => f.id)));
         const creds: Record<string, boolean> = {};
@@ -83,6 +85,7 @@ export default function ProjectSettings() {
         name: name.trim(),
         siteUrl: siteUrl.trim(),
         enabled,
+        maxRunsPerDay,
         monitoredFlows,
       });
       if (mainFlowId) {
@@ -244,6 +247,22 @@ export default function ProjectSettings() {
               </p>
             </div>
             <Switch checked={enabled} onCheckedChange={setEnabled} />
+          </div>
+
+          {/* Limites */}
+          <div className="space-y-2">
+            <Label className="text-xs">Tests maximum par jour</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={maxRunsPerDay}
+              onChange={(e) => setMaxRunsPerDay(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              className="bg-background border-border text-sm w-32"
+            />
+            <p className="text-xs text-muted-foreground">
+              Nombre maximum de tests pouvant être lancés par jour pour ce projet.
+            </p>
           </div>
 
           <Button onClick={handleSave} disabled={saving} className="bg-neon text-background hover:bg-neon/90">
