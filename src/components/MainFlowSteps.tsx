@@ -64,6 +64,9 @@ export function MainFlowSteps({ steps, stepsSummary, findings, className }: Main
             {stepIcon(step.status)}
             <span className={cn("text-sm text-foreground", isFailed(step.status) && "font-medium")}>
               {step.label || step.name}
+              {(() => { const mc = getMetricCount(step, findings); return mc !== null ? (
+                <span className={cn("text-xs font-mono font-medium ml-1", metricCountColor(mc))}>({mc})</span>
+              ) : null; })()}
             </span>
             {step.durationMs != null && step.durationMs > 0 && (
               <span className="text-xs text-muted-foreground ml-auto font-mono">
