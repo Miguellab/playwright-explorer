@@ -1,56 +1,25 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Ajouter le réglage "Nombre max de tests par jour" dans les paramètres projet
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Constat
+- `maxRunsPerDay` est retourné par l'API sur chaque projet (valeur actuelle : 10)
+- L'API supporte `PATCH /api/projects/:id` avec `maxRunsPerDay` dans le body
+- Aucun champ dans l'UI ne permet de le consulter ou modifier
+- Le toast "Limite atteinte — Réessayez demain" s'affiche sans que l'utilisateur sache quelle est la limite ni ou la changer
 
-## Ce qui reste à faire
+### Changement
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+#### `src/pages/ProjectSettings.tsx`
+Ajouter une section "Limites" dans les parametres projet :
+- Un champ `Input` de type `number` pour `maxRunsPerDay`, pre-rempli avec la valeur du projet
+- Label : "Tests maximum par jour"
+- Description : "Nombre maximum de tests pouvant etre lances par jour pour ce projet."
+- Min: 1, Max: 100
+- Sauvegarde avec le reste du formulaire via `updateProject({ maxRunsPerDay })`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Placer cette section apres le bloc "Surveillance" (enabled/siteUrl) et avant la zone dangereuse (suppression).
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
-
-### 2. Refonte affichage verdict dans RunReport.tsx
-
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
-
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichiers impactes
+1. `src/pages/ProjectSettings.tsx` — ajout champ maxRunsPerDay
 
