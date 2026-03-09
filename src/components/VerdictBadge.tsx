@@ -43,10 +43,12 @@ const verdictConfig: Record<ReleaseVerdict, {
 interface VerdictBadgeProps {
   verdict: ReleaseVerdict;
   size?: "sm" | "lg";
+  label?: string;
+  subtitle?: string;
   className?: string;
 }
 
-export function VerdictBadge({ verdict, size = "sm", className }: VerdictBadgeProps) {
+export function VerdictBadge({ verdict, size = "sm", label, subtitle, className }: VerdictBadgeProps) {
   const config = verdictConfig[verdict];
   const Icon = config.icon;
 
@@ -65,9 +67,9 @@ export function VerdictBadge({ verdict, size = "sm", className }: VerdictBadgePr
       >
         <Icon className={cn("h-12 w-12 mx-auto mb-4", config.className)} />
         <h2 className={cn("text-2xl font-bold tracking-tight", config.className)}>
-          {config.label}
+          {label || config.label}
         </h2>
-        <p className="mt-2 text-sm text-muted-foreground">{config.headline}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{subtitle || config.headline}</p>
       </motion.div>
     );
   }
