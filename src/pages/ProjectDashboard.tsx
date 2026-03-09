@@ -62,7 +62,7 @@ function runStatusToVerdict(status: string): "OK" | "ALERTE" | "ERREUR" | "PENDI
   return "PENDING";
 }
 
-function verdictContext(release: Release | null): { label: string; subtitle: string; verdict: "OK" | "ALERTE" | "ERREUR" | "PENDING" } {
+function verdictContext(release: Release | ReleaseDetail | null): { label: string; subtitle: string; verdict: "OK" | "ALERTE" | "ERREUR" | "PENDING" } {
   if (!release) {
     return { label: "En attente de publication", subtitle: "Aucune publication n'a encore été détectée.", verdict: "PENDING" };
   }
