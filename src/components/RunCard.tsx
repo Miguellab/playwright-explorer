@@ -99,6 +99,7 @@ export function RunCard({ run, isMainFlow, isExpanded, onToggle, onRetest, retes
             <MainFlowSteps
               steps={run.steps || []}
               stepsSummary={run.stepsSummary}
+              findings={run.findings}
             />
 
             {/* Screenshots */}
