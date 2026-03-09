@@ -93,7 +93,7 @@ export default function ProjectDashboard() {
   const [project, setProject] = useState<Project | null>(null);
   const [latestRelease, setLatestRelease] = useState<Release | ReleaseDetail | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
-  const [mainFlowSteps, setMainFlowSteps] = useState<import("@/lib/sentinelle-types").RunStep[]>([]);
+  const [releaseRuns, setReleaseRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
 
