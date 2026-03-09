@@ -80,7 +80,7 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   return { label: "Vérification en cours…", subtitle: "Les tests sont en cours d'exécution.", verdict: "PENDING" };
 }
 
-// FlowCard removed — now using FlowAccordion component
+
 
 // ── Main Component ──
 
