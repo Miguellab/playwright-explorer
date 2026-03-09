@@ -44,7 +44,7 @@ function isFailed(status: string) {
   return status === "failed" || status === "fail";
 }
 
-export function MainFlowSteps({ steps, stepsSummary, className }: MainFlowStepsProps) {
+export function MainFlowSteps({ steps, stepsSummary, findings, className }: MainFlowStepsProps) {
   if (!steps || steps.length === 0) {
     return (
       <p className="text-xs text-muted-foreground italic">Aucune étape détaillée disponible</p>
