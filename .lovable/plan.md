@@ -1,29 +1,56 @@
 
 
-## Désactiver le bouton "Relancer" jusqu'à la fin du test
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Problème
-Actuellement, `setRetesting(null)` est appelé dans le `finally` du `handleRetest`, donc le bouton redevient actif dès que l'appel API HTTP retourne (quelques ms), pas quand le test est réellement terminé.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Solution
+## Ce qui reste à faire
 
-**`src/pages/ReleaseDetail.tsx`** :
-- Changer `retesting` de `string | null` en `Set<string>` pour permettre plusieurs retests simultanés sur des flows différents.
-- Dans `handleRetest` : ajouter le `flowId` au Set, ne PAS le retirer dans le `finally`.
-- Dans le polling existant (qui tourne tant que `isActive`), ou dans un nouveau polling déclenché par le retest : quand le run du flow retesté passe en statut terminé (`passed`/`failed`/`error`), retirer le `flowId` du Set.
-- On peut détecter qu'un flow est "en cours" en vérifiant si son run le plus récent a un statut `running` ou `queued` dans les données de la release.
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-Approche simplifiée : après un retest, activer le polling sur la release (si pas déjà actif). À chaque tick du poll, pour chaque flowId dans `retesting`, vérifier si le run correspondant est terminé et le retirer du Set.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**`src/components/RunCard.tsx`** : aucun changement nécessaire, la prop `retesting` boolean fonctionne déjà.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-### Détail du changement dans ReleaseDetail.tsx
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-1. `const [retesting, setRetesting] = useState<Set<string>>(new Set());`
-2. `handleRetest` : ajoute le flowId au Set, ne le retire pas dans finally (sauf en cas d'erreur API).
-3. Dans le `useEffect` de polling (ou un nouveau) : à chaque refresh de la release, parcourir `retesting` et retirer les flowIds dont le run n'est plus `running`/`queued`.
-4. Passer `retesting={retesting.has(run.flowId)}` au `RunCard`.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-### Fichiers impactés
-1. `src/pages/ReleaseDetail.tsx`
+### 3. Badge verdict sur les cartes Dashboard
+
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

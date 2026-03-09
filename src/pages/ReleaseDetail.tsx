@@ -20,7 +20,7 @@ export default function ReleaseDetail() {
   const [release, setRelease] = useState<ReleaseDetailType | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [retesting, setRetesting] = useState<string | null>(null);
+  const [retesting, setRetesting] = useState<Set<string>>(new Set());
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
 
   const isActive = release?.verdict === "PENDING";
@@ -42,9 +42,10 @@ export default function ReleaseDetail() {
       .finally(() => setLoading(false));
   }, [releaseId, projectId]);
 
-  // Poll while PENDING
+  // Poll while PENDING or retesting
+  const hasRetesting = retesting.size > 0;
   useEffect(() => {
-    if (!releaseId || !isActive) return;
+    if (!releaseId || (!isActive && !hasRetesting)) return;
     const interval = setInterval(async () => {
       try {
         const detail = await getRelease(releaseId);
@@ -57,22 +58,32 @@ export default function ReleaseDetail() {
           });
           return next;
         });
-        if (detail.verdict !== "PENDING") clearInterval(interval);
+        // Clear retesting for flows whose runs are no longer running/queued
+        setRetesting((prev) => {
+          const next = new Set(prev);
+          for (const fid of prev) {
+            const run = detail.runs.find((r) => r.flowId === fid);
+            if (run && !["running", "queued"].includes(run.status)) {
+              next.delete(fid);
+            }
+          }
+          return next;
+        });
+        if (detail.verdict !== "PENDING" && retesting.size === 0) clearInterval(interval);
       } catch {}
     }, 3000);
     return () => clearInterval(interval);
-  }, [releaseId, isActive]);
+  }, [releaseId, isActive, hasRetesting]);
 
   const handleRetest = async (flowId: string) => {
     if (!projectId) return;
-    setRetesting(flowId);
+    setRetesting((prev) => new Set(prev).add(flowId));
     try {
       const result = await runSingleFlow(projectId, flowId);
       toast({ title: "Test relancé", description: result.message });
     } catch (e: unknown) {
       toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setRetesting(null);
+      setRetesting((prev) => { const next = new Set(prev); next.delete(flowId); return next; });
     }
   };
 
@@ -140,7 +151,7 @@ export default function ReleaseDetail() {
           isExpanded={expandedRuns.has(mainRun.id)}
           onToggle={() => toggleRun(mainRun.id)}
           onRetest={handleRetest}
-          retesting={retesting === mainRun.flowId}
+          retesting={retesting.has(mainRun.flowId)}
         />
       )}
 
@@ -156,7 +167,7 @@ export default function ReleaseDetail() {
               isExpanded={expandedRuns.has(run.id)}
               onToggle={() => toggleRun(run.id)}
               onRetest={handleRetest}
-              retesting={retesting === run.flowId}
+              retesting={retesting.has(run.flowId)}
             />
           ))}
         </div>
