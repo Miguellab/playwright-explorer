@@ -8,9 +8,8 @@ import {
   listRuns,
   testNow,
   getRelease,
-  getMainFlow,
 } from "@/lib/sentinelle-api";
-import type { Project, Release, ReleaseDetail, MainFlowInfo, Run, SuggestedFlow, ReleaseRunSummary } from "@/lib/sentinelle-types";
+import type { Project, Release, ReleaseDetail, Run, SuggestedFlow } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { FlowAccordion } from "@/components/FlowAccordion";
 import {
