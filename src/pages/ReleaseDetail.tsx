@@ -167,7 +167,7 @@ export default function ReleaseDetail() {
               isExpanded={expandedRuns.has(run.id)}
               onToggle={() => toggleRun(run.id)}
               onRetest={handleRetest}
-              retesting={retesting === run.flowId}
+              retesting={retesting.has(run.flowId)}
             />
           ))}
         </div>
