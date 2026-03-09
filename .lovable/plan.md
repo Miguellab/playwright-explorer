@@ -1,57 +1,56 @@
 
 
-## Amélioration de l'historique des tests
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Résumé
-Transformer `ReleasesTimeline.tsx` en une page "Historique" unifiée qui fusionne releases et runs manuels isolés, avec type de déclenchement, parcours testé, et bouton Relancer intelligent avec polling.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Changements
+## Ce qui reste à faire
 
-#### 1. Types — `src/lib/sentinelle-types.ts`
-- Ajouter `"manual_flow_retest"` au type `Trigger` (actuellement absent).
-- Ajouter `trigger` sur `ReleaseRunSummary` (pour les runs dans les releases).
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-#### 2. Refonte `ReleasesTimeline.tsx` → page "Historique"
-**Données** : charger en parallèle `listReleases(id, 50)` + `listRuns(id, 50)` + `getProject(id)`.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**Fusion** : construire une timeline unifiée :
-- Chaque release → une entrée avec `detectedAt`, `verdict`, `trigger`, `mainFlowLabel`, `runCount`.
-- Les runs avec `trigger === "manual_flow_retest"` qui n'ont pas de `releaseId` correspondant dans les releases chargées → entrées individuelles avec `startedAt`, `status`, `flowLabel`.
-- Trier par date décroissante.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Carte release** (nouvelle publication / test manuel groupé) :
-```
-[VerdictBadge]  🚀 Nouvelle publication    Flow principal : {mainFlowLabel}
-                {date formatée}             {runCount} tests exécutés
-```
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Carte run isolé** (retest manuel) :
-```
-[StatusBadge]   🧪 Retest manuel           {flowLabel}
-                {date formatée}
-```
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Mapping trigger → label/icône** :
-- `release_detected` / `deploy_webhook` → "Nouvelle publication" + `Rocket` icon
-- `manual` → "Test manuel" + `FlaskConical` icon
-- `manual_flow_retest` → "Retest manuel" + `FlaskConical` icon
+### 3. Badge verdict sur les cartes Dashboard
 
-**Titre page** : "Historique" (au lieu de "Historique des publications").
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**Bouton Relancer** : en haut de page, un bouton "Lancer un test" qui :
-- Appelle `POST /projects/:id/test-now`
-- Se désactive immédiatement avec spinner + "Test en cours…"
-- Poll `listRuns(id, 5)` toutes les 5s pour détecter quand plus aucun run n'est `queued`/`running`
-- Se réactive quand tous les runs sont terminés
-- Rafraîchit la timeline automatiquement à la fin
+### 4. Collapsible CTO dans RunReport
 
-**Lien vers détail** : chaque carte release reste cliquable → `/project/:id/release/:releaseId`. Les runs isolés ne sont pas cliquables (pas de page dédiée).
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-#### 3. Ajustement `ProjectDashboard.tsx`
-- Renommer le label du bouton Historique : rien à changer (il dit déjà "Historique").
+---
 
-### Fichiers impactés
-1. `src/lib/sentinelle-types.ts` — ajout `manual_flow_retest` au type Trigger
-2. `src/pages/ReleasesTimeline.tsx` — refonte complète
-3. `src/lib/sentinelle-api.ts` — aucun changement nécessaire (endpoints déjà disponibles)
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

@@ -2,7 +2,7 @@
 
 export type RunStatus = "queued" | "running" | "passed" | "failed" | "error";
 export type StepStatus = "passed" | "failed" | "skipped" | "running" | "pass" | "fail";
-export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery";
+export type Trigger = "release_detected" | "manual" | "scheduled" | "deploy_webhook" | "discovery" | "manual_flow_retest";
 export type ReleaseTrigger = "release_detected" | "manual" | "deploy_webhook" | "manual_flow_retest";
 export type ReleaseVerdict = "PENDING" | "OK" | "ALERTE" | "ERREUR";
 export type IssueSeverity = "critical" | "warning";
