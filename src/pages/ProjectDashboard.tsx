@@ -8,11 +8,10 @@ import {
   listRuns,
   testNow,
   getRelease,
-  getMainFlow,
 } from "@/lib/sentinelle-api";
-import type { Project, Release, ReleaseDetail, MainFlowInfo, Run, SuggestedFlow, ReleaseRunSummary } from "@/lib/sentinelle-types";
+import type { Project, Release, ReleaseDetail, Run, SuggestedFlow } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { MainFlowSteps } from "@/components/MainFlowSteps";
+import { FlowAccordion } from "@/components/FlowAccordion";
 import {
   ArrowLeft,
   ExternalLink,
@@ -22,7 +21,7 @@ import {
   History,
   Rocket,
   FlaskConical,
-  AlertTriangle,
+  
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -81,32 +80,7 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   return { label: "Vérification en cours…", subtitle: "Les tests sont en cours d'exécution.", verdict: "PENDING" };
 }
 
-// ── Flow Card ──
 
-function FlowCard({ flow, run }: { flow: SuggestedFlow; run?: Run }) {
-  const status = run ? runStatusToVerdict(run.status) : "PENDING";
-  const stepsInfo = run?.stepsSummary;
-
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-border bg-surface p-4">
-      <div className="space-y-1 min-w-0 flex-1">
-        <span className="text-sm font-medium">{flow.labelFr || flow.goal}</span>
-        {stepsInfo && (
-          <p className="text-xs text-muted-foreground">
-            {stepsInfo.passed}/{stepsInfo.total} étapes réussies
-          </p>
-        )}
-        {run?.errorSummary && (
-          <p className="text-xs text-status-erreur flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            {run.errorSummary}
-          </p>
-        )}
-      </div>
-      <VerdictBadge verdict={status} size="sm" />
-    </div>
-  );
-}
 
 // ── Main Component ──
 
@@ -118,7 +92,7 @@ export default function ProjectDashboard() {
   const [project, setProject] = useState<Project | null>(null);
   const [latestRelease, setLatestRelease] = useState<Release | ReleaseDetail | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
-  const [mainFlowSteps, setMainFlowSteps] = useState<import("@/lib/sentinelle-types").RunStep[]>([]);
+  const [releaseRuns, setReleaseRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
 
@@ -143,15 +117,11 @@ export default function ProjectDashboard() {
       startPolling();
     }
 
-    // Load main flow steps from release detail
+    // Load full run details from release
     if (rel?.id) {
       try {
         const detail = await getRelease(rel.id);
-        const mainRun = detail.runs.find(r =>
-          rel.mainFlowId ? r.flowId === rel.mainFlowId : detail.runs.indexOf(r) === 0
-        );
-        if (mainRun?.steps) setMainFlowSteps(mainRun.steps);
-        // Update release with full data
+        setReleaseRuns(detail.runs);
         setLatestRelease(detail);
       } catch {}
     }
@@ -319,20 +289,11 @@ export default function ProjectDashboard() {
               Parcours principal
             </span>
           </div>
-          <FlowCard flow={mainFlow} run={latestRunByFlow(mainFlow.id)} />
-          {mainFlowSteps.length > 0 && (
-            <Card className="border-border bg-surface">
-              <CardContent className="p-5">
-                <MainFlowSteps steps={mainFlowSteps} />
-              </CardContent>
-            </Card>
-          )}
-          {isActive && mainFlowSteps.length === 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              En attente des résultats…
-            </div>
-          )}
+          <FlowAccordion
+            flow={mainFlow}
+            run={releaseRuns.find(r => r.flowId === mainFlow.id) ?? latestRunByFlow(mainFlow.id)}
+            isMainFlow
+          />
         </div>
       )}
 
@@ -343,7 +304,11 @@ export default function ProjectDashboard() {
             {mainFlow ? "Autres parcours surveillés" : "Parcours surveillés"}
           </p>
           {otherFlows.map(flow => (
-            <FlowCard key={flow.id} flow={flow} run={latestRunByFlow(flow.id)} />
+            <FlowAccordion
+              key={flow.id}
+              flow={flow}
+              run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
+            />
           ))}
         </div>
       )}
