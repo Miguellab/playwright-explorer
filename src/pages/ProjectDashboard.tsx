@@ -12,7 +12,7 @@ import {
 } from "@/lib/sentinelle-api";
 import type { Project, Release, ReleaseDetail, MainFlowInfo, Run, SuggestedFlow, ReleaseRunSummary } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
-import { MainFlowSteps } from "@/components/MainFlowSteps";
+import { FlowAccordion } from "@/components/FlowAccordion";
 import {
   ArrowLeft,
   ExternalLink,
