@@ -20,7 +20,7 @@ export default function ReleaseDetail() {
   const [release, setRelease] = useState<ReleaseDetailType | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [retesting, setRetesting] = useState<string | null>(null);
+  const [retesting, setRetesting] = useState<Set<string>>(new Set());
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
 
   const isActive = release?.verdict === "PENDING";
