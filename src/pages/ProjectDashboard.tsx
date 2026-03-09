@@ -81,32 +81,7 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   return { label: "Vérification en cours…", subtitle: "Les tests sont en cours d'exécution.", verdict: "PENDING" };
 }
 
-// ── Flow Card ──
-
-function FlowCard({ flow, run }: { flow: SuggestedFlow; run?: Run }) {
-  const status = run ? runStatusToVerdict(run.status) : "PENDING";
-  const stepsInfo = run?.stepsSummary;
-
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-border bg-surface p-4">
-      <div className="space-y-1 min-w-0 flex-1">
-        <span className="text-sm font-medium">{flow.labelFr || flow.goal}</span>
-        {stepsInfo && (
-          <p className="text-xs text-muted-foreground">
-            {stepsInfo.passed}/{stepsInfo.total} étapes réussies
-          </p>
-        )}
-        {run?.errorSummary && (
-          <p className="text-xs text-status-erreur flex items-center gap-1">
-            <AlertTriangle className="h-3 w-3" />
-            {run.errorSummary}
-          </p>
-        )}
-      </div>
-      <VerdictBadge verdict={status} size="sm" />
-    </div>
-  );
-}
+// FlowCard removed — now using FlowAccordion component
 
 // ── Main Component ──
 
