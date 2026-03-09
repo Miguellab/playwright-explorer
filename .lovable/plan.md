@@ -1,56 +1,43 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Affichage conditionnel des flows selon leur statut
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Résumé
+Transformer le `FlowCard` en accordeon intelligent : compact pour les succes (nom + badge + count), detaille automatiquement pour les erreurs (etapes, screenshots, findings). Reduire le bruit visuel quand tout fonctionne.
 
-## Ce qui reste à faire
+### Changements
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+#### 1. Refonte du `FlowCard` dans `ProjectDashboard.tsx`
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Remplacer le `FlowCard` actuel par un composant accordeon avec comportement conditionnel :
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+**OK (passed)** — Ferme par defaut :
+- Ligne compacte : nom du flow + badge OK + "{N} etapes validees"
+- Bouton discret "Voir les details" qui ouvre l'accordeon
+- Contenu deploye : `MainFlowSteps` + `EvidenceViewer` + `RunFindings`
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+**ERREUR (failed/error)** — Ouvert automatiquement :
+- Affiche immediatement : `errorSummary`, `MainFlowSteps` (etape echouee mise en evidence), `EvidenceViewer`, `RunFindings`
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**ALERTE** — Semi-ouvert :
+- Affiche le resume du probleme (`errorSummary`)
+- Etapes repliees avec bouton pour les voir
 
-### 3. Badge verdict sur les cartes Dashboard
+**PENDING (queued/running)** — Ferme :
+- Ligne compacte avec spinner + "En cours..."
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+Utiliser `Collapsible` de Radix (deja installe) pour le mecanisme d'ouverture/fermeture.
 
-### 4. Collapsible CTO dans RunReport
+#### 2. Suppression de la section `MainFlowSteps` separee
 
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+Actuellement le parcours principal affiche ses etapes dans une `Card` separee sous le `FlowCard`. Integrer les etapes directement dans le `FlowCard` accordeon du parcours principal, pour eviter la duplication.
 
----
+Supprimer le bloc `mainFlowSteps` autonome (lignes 323-336) et charger les steps depuis le run correspondant.
 
-## Fichiers modifiés
+#### 3. Chargement des steps par run
 
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+Pour afficher les etapes dans un FlowCard, utiliser `run.steps` du run correspondant. Si les steps ne sont pas disponibles dans le run initial (car `listRuns` ne retourne pas toujours les steps complets), les charger via `getRelease` comme c'est deja fait pour le main flow.
 
-4 fichiers, ~80 lignes modifiées.
+### Fichiers impactes
+1. `src/pages/ProjectDashboard.tsx` — refonte FlowCard en accordeon, suppression section steps separee
 
