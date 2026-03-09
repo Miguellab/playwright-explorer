@@ -52,6 +52,7 @@ export default function ProjectSettings() {
         setName(p.name);
         setSiteUrl(p.siteUrl);
         setEnabled(p.enabled);
+        setMaxRunsPerDay(p.maxRunsPerDay ?? 10);
         setMainFlowIdState(p.mainFlowId || null);
         setSelectedFlowIds(new Set((p.monitoredFlows ?? []).map((f) => f.id)));
         const creds: Record<string, boolean> = {};
