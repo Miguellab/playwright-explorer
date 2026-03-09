@@ -73,7 +73,7 @@ export default function ReleaseDetail() {
       } catch {}
     }, 3000);
     return () => clearInterval(interval);
-  }, [releaseId, isActive]);
+  }, [releaseId, isActive, hasRetesting]);
 
   const handleRetest = async (flowId: string) => {
     if (!projectId) return;
