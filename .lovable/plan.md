@@ -1,56 +1,19 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Fix: texte des requetes en echec qui deborde
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Probleme
+Dans `RunFindings.tsx`, le `<span>` qui affiche les URLs des requetes en echec (ligne 74) n'a pas de classe pour gerer le debordement. Les URLs longues (Google Analytics, etc.) sortent du conteneur.
 
-## Ce qui reste à faire
+### Changement
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+**`src/components/RunFindings.tsx`** — ligne 74 :
+- Remplacer `<span className="text-xs font-mono text-foreground/80">` par `<span className="text-xs font-mono text-foreground/80 break-all block">`
+- `break-all` permet de couper les URLs longues a n'importe quel caractere
+- `block` assure que le span prend toute la largeur disponible
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+Meme traitement que celui deja applique aux erreurs console (ligne 38 : `<code className="text-xs text-foreground/80 break-all block">`).
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
-
-### 2. Refonte affichage verdict dans RunReport.tsx
-
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
-
-### 3. Badge verdict sur les cartes Dashboard
-
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+### Fichier impacte
+1. `src/components/RunFindings.tsx` — ajout `break-all block` sur le span des requetes en echec
 
