@@ -1,11 +1,26 @@
 import { CheckCircle, XCircle, Clock, Loader2, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RunStep, StepsSummary } from "@/lib/sentinelle-types";
+import type { RunStep, StepsSummary, Findings } from "@/lib/sentinelle-types";
 
 interface MainFlowStepsProps {
   steps: RunStep[];
   stepsSummary?: StepsSummary | null;
+  findings?: Findings | null;
   className?: string;
+}
+
+function getMetricCount(step: RunStep, findings?: Findings | null): number | null {
+  const name = (step.label || step.name).toLowerCase();
+  if (name.includes("console")) return findings?.consoleErrors?.length ?? 0;
+  if (name.includes("requête") || name.includes("request"))
+    return findings?.failedRequests?.filter(r => r.status >= 400 || r.status === 0).length ?? 0;
+  return null;
+}
+
+function metricCountColor(count: number): string {
+  if (count === 0) return "text-status-safe";
+  if (count <= 2) return "text-status-alerte";
+  return "text-status-erreur";
 }
 
 function stepIcon(status: string) {
