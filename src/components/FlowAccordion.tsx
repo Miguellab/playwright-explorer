@@ -112,6 +112,7 @@ export function FlowAccordion({ flow, run, isMainFlow }: FlowAccordionProps) {
                 <MainFlowSteps
                   steps={run!.steps}
                   stepsSummary={run!.stepsSummary}
+                  findings={run?.findings}
                 />
               )}
 

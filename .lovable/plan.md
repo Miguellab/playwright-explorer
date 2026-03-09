@@ -1,57 +1,56 @@
 
 
-## Affichage obligatoire des metriques dans les etapes de test
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Probleme
-Les etapes "Erreurs console" et "Requetes en echec" s'affichent sans valeur numerique quand le compte est 0. L'utilisateur ne sait pas si l'audit a ete effectue.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Plan
+## Ce qui reste à faire
 
-**1. `src/components/MainFlowSteps.tsx`** — Enrichir l'affichage des etapes metriques
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-Detecter les etapes de type metrique par leur nom (ex: contient "console" ou "requete"/"request") et injecter le compteur correspondant depuis les `findings` du run.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Probleme : `MainFlowSteps` ne recoit pas les `findings`. Il faut ajouter une prop `findings` optionnelle.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-- Ajouter `findings?: Findings | null` aux props
-- Pour les etapes dont le nom correspond a "Erreurs console" ou "Requetes en echec", afficher le compteur a cote du label
-- Colorer le compteur : 0 → `text-status-safe` (vert), 1-2 → `text-status-alerte` (orange), ≥3 → `text-status-erreur` (rouge)
-- Format : `{label} ({count})` ou `{label} — {count}` avec couleur adaptee
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-Helper pour determiner le compteur :
-```ts
-function getMetricCount(step: RunStep, findings?: Findings | null): number | null {
-  const name = (step.label || step.name).toLowerCase();
-  if (name.includes("console")) return findings?.consoleErrors?.length ?? 0;
-  if (name.includes("requête") || name.includes("request")) 
-    return findings?.failedRequests?.filter(r => r.status >= 400 || r.status === 0).length ?? 0;
-  return null; // not a metric step
-}
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-function metricCountColor(count: number): string {
-  if (count === 0) return "text-status-safe";
-  if (count <= 2) return "text-status-alerte";
-  return "text-status-erreur";
-}
-```
+### 3. Badge verdict sur les cartes Dashboard
 
-Rendu dans la ligne de l'etape, apres le label :
-```tsx
-{metricCount !== null && (
-  <span className={cn("text-xs font-mono font-medium ml-1", metricCountColor(metricCount))}>
-    ({metricCount})
-  </span>
-)}
-```
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**2. `src/components/FlowAccordion.tsx`** — Passer `findings` a `MainFlowSteps`
+### 4. Collapsible CTO dans RunReport
 
-Ajouter la prop `findings` lors de l'appel :
-```tsx
-<MainFlowSteps steps={run!.steps} stepsSummary={run!.stepsSummary} findings={run?.findings} />
-```
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-### Fichiers impactes
-1. `src/components/MainFlowSteps.tsx` — ajout prop `findings`, helper de comptage, affichage du compteur colore
-2. `src/components/FlowAccordion.tsx` — passage de `findings` a `MainFlowSteps`
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
+|---|---|
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
