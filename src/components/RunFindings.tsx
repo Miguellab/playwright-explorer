@@ -71,7 +71,7 @@ export function RunFindings({ findings, className }: RunFindingsProps) {
                     : "border-status-alerte/15 bg-status-alerte/5"
                 )}
               >
-                <span className="text-xs font-mono text-foreground/80">
+                <span className="text-xs font-mono text-foreground/80 break-all block">
                   {req.method || "GET"} {req.url} —{" "}
                   {isNetworkError ? (
                     <span className="text-status-erreur">Erreur réseau</span>
