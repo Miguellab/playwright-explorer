@@ -77,14 +77,13 @@ export default function ReleaseDetail() {
 
   const handleRetest = async (flowId: string) => {
     if (!projectId) return;
-    setRetesting(flowId);
+    setRetesting((prev) => new Set(prev).add(flowId));
     try {
       const result = await runSingleFlow(projectId, flowId);
       toast({ title: "Test relancé", description: result.message });
     } catch (e: unknown) {
       toast({ title: "Erreur", description: (e as Error).message, variant: "destructive" });
-    } finally {
-      setRetesting(null);
+      setRetesting((prev) => { const next = new Set(prev); next.delete(flowId); return next; });
     }
   };
 
