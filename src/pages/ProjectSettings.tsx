@@ -249,6 +249,22 @@ export default function ProjectSettings() {
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
+          {/* Limites */}
+          <div className="space-y-2">
+            <Label className="text-xs">Tests maximum par jour</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={maxRunsPerDay}
+              onChange={(e) => setMaxRunsPerDay(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+              className="bg-background border-border text-sm w-32"
+            />
+            <p className="text-xs text-muted-foreground">
+              Nombre maximum de tests pouvant être lancés par jour pour ce projet.
+            </p>
+          </div>
+
           <Button onClick={handleSave} disabled={saving} className="bg-neon text-background hover:bg-neon/90">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Sauvegarder
