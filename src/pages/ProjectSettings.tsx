@@ -36,6 +36,7 @@ export default function ProjectSettings() {
   const [name, setName] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
   const [enabled, setEnabled] = useState(true);
+  const [maxRunsPerDay, setMaxRunsPerDay] = useState(10);
   const [selectedFlowIds, setSelectedFlowIds] = useState<Set<string>>(new Set());
   const [mainFlowId, setMainFlowIdState] = useState<string | null>(null);
   const [credentialModalOpen, setCredentialModalOpen] = useState(false);
