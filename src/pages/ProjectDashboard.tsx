@@ -118,15 +118,11 @@ export default function ProjectDashboard() {
       startPolling();
     }
 
-    // Load main flow steps from release detail
+    // Load full run details from release
     if (rel?.id) {
       try {
         const detail = await getRelease(rel.id);
-        const mainRun = detail.runs.find(r =>
-          rel.mainFlowId ? r.flowId === rel.mainFlowId : detail.runs.indexOf(r) === 0
-        );
-        if (mainRun?.steps) setMainFlowSteps(mainRun.steps);
-        // Update release with full data
+        setReleaseRuns(detail.runs);
         setLatestRelease(detail);
       } catch {}
     }
