@@ -85,6 +85,7 @@ export default function ProjectSettings() {
         name: name.trim(),
         siteUrl: siteUrl.trim(),
         enabled,
+        maxRunsPerDay,
         monitoredFlows,
       });
       if (mainFlowId) {
