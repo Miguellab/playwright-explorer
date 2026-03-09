@@ -1,15 +1,16 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   getProject,
   listReleases,
+  listRuns,
   testNow,
   getRelease,
   getMainFlow,
 } from "@/lib/sentinelle-api";
-import type { Project, Release, ReleaseDetail, MainFlowInfo, RunStep } from "@/lib/sentinelle-types";
+import type { Project, Release, ReleaseDetail, MainFlowInfo, Run, SuggestedFlow, ReleaseRunSummary } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { MainFlowSteps } from "@/components/MainFlowSteps";
 import {
@@ -18,13 +19,16 @@ import {
   Play,
   Loader2,
   Settings,
-  Clock,
   History,
-  Eye,
+  Rocket,
+  FlaskConical,
+  AlertTriangle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { AuthenticatedZone } from "@/components/AuthenticatedZone";
+
+// ── Helpers ──
 
 function timeAgo(date: string): string {
   const diff = Date.now() - new Date(date).getTime();
@@ -37,6 +41,75 @@ function timeAgo(date: string): string {
   return `il y a ${days}j`;
 }
 
+function triggerLabel(trigger: string): { text: string; icon: typeof Rocket } {
+  switch (trigger) {
+    case "release_detected":
+    case "deploy_webhook":
+      return { text: "Dernière publication détectée", icon: Rocket };
+    case "manual":
+      return { text: "Dernier test manuel", icon: FlaskConical };
+    case "manual_flow_retest":
+      return { text: "Dernier retest manuel", icon: FlaskConical };
+    default:
+      return { text: "Dernier test", icon: FlaskConical };
+  }
+}
+
+function runStatusToVerdict(status: string): "OK" | "ALERTE" | "ERREUR" | "PENDING" {
+  if (status === "passed") return "OK";
+  if (status === "failed") return "ALERTE";
+  if (status === "error") return "ERREUR";
+  return "PENDING";
+}
+
+function verdictContext(release: Release | ReleaseDetail | null): { label: string; subtitle: string; verdict: "OK" | "ALERTE" | "ERREUR" | "PENDING" } {
+  if (!release) {
+    return { label: "En attente de publication", subtitle: "Aucune publication n'a encore été détectée.", verdict: "PENDING" };
+  }
+  const v = release.verdict;
+  if (v === "OK") {
+    return { label: "Publication vérifiée", subtitle: "Tous les parcours surveillés fonctionnent correctement.", verdict: "OK" };
+  }
+  if (v === "ALERTE") {
+    const failedCount = release.runs.filter(r => r.status === "failed" || r.status === "error").length;
+    return { label: "Problème détecté après publication", subtitle: `Le parcours principal fonctionne mais ${failedCount} parcours secondaire(s) en échec.`, verdict: "ALERTE" };
+  }
+  if (v === "ERREUR") {
+    return { label: "Problème détecté après publication", subtitle: `Le parcours principal "${release.mainFlowLabel || "inconnu"}" a échoué.`, verdict: "ERREUR" };
+  }
+  // PENDING
+  return { label: "Vérification en cours…", subtitle: "Les tests sont en cours d'exécution.", verdict: "PENDING" };
+}
+
+// ── Flow Card ──
+
+function FlowCard({ flow, run }: { flow: SuggestedFlow; run?: Run }) {
+  const status = run ? runStatusToVerdict(run.status) : "PENDING";
+  const stepsInfo = run?.stepsSummary;
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border bg-surface p-4">
+      <div className="space-y-1 min-w-0 flex-1">
+        <span className="text-sm font-medium">{flow.labelFr || flow.goal}</span>
+        {stepsInfo && (
+          <p className="text-xs text-muted-foreground">
+            {stepsInfo.passed}/{stepsInfo.total} étapes réussies
+          </p>
+        )}
+        {run?.errorSummary && (
+          <p className="text-xs text-status-erreur flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            {run.errorSummary}
+          </p>
+        )}
+      </div>
+      <VerdictBadge verdict={status} size="sm" />
+    </div>
+  );
+}
+
+// ── Main Component ──
+
 export default function ProjectDashboard() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -44,102 +117,94 @@ export default function ProjectDashboard() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [latestRelease, setLatestRelease] = useState<Release | ReleaseDetail | null>(null);
-  const [mainFlow, setMainFlow] = useState<MainFlowInfo | null>(null);
-  const [mainFlowSteps, setMainFlowSteps] = useState<RunStep[]>([]);
+  const [runs, setRuns] = useState<Run[]>([]);
+  const [mainFlowSteps, setMainFlowSteps] = useState<import("@/lib/sentinelle-types").RunStep[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
-  const [pollingReleaseId, setPollingReleaseId] = useState<string | null>(null);
 
-  // Load project + latest release + main flow
-  useEffect(() => {
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Load data ──
+  const loadData = useCallback(async () => {
     if (!id) return;
-    Promise.all([getProject(id), listReleases(id, 1), getMainFlow(id)])
-      .then(([p, releases, mf]) => {
-        setProject(p);
-        setMainFlow(mf);
-        if (releases.length > 0) {
-          const rel = releases[0];
-          setLatestRelease(rel);
-          // Only poll if PENDING AND has actual runs (not just a detected release with no tests)
-          const hasRuns = (rel as any).runCount > 0 || ((rel as any).runs && (rel as any).runs.length > 0);
-          if (rel.verdict === "PENDING" && hasRuns && rel.id) {
-            setPollingReleaseId(rel.id);
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [id]);
+    const [p, releases, latestRuns] = await Promise.all([
+      getProject(id),
+      listReleases(id, 1),
+      listRuns(id, 10),
+    ]);
+    setProject(p);
+    setRuns(latestRuns);
+    const rel = releases.length > 0 ? releases[0] : null;
+    setLatestRelease(rel);
 
-  // Fetch main flow steps from release detail
-  useEffect(() => {
-    if (!latestRelease?.id) return;
-    getRelease(latestRelease.id)
-      .then((detail: ReleaseDetail) => {
-        const mainRun = detail.runs.find((r) =>
-          latestRelease.mainFlowId ? r.flowId === latestRelease.mainFlowId : detail.runs.indexOf(r) === 0
-        );
-        if (mainRun?.steps) {
-          setMainFlowSteps(mainRun.steps);
-        }
-        // Update release with latest data
-        setLatestRelease(detail);
-        if (detail.verdict !== "PENDING") {
-          setPollingReleaseId(null);
-        }
-      })
-      .catch(() => {});
-  }, [latestRelease?.id]);
+    // Check if any run is still active
+    const hasActive = latestRuns.some(r => r.status === "queued" || r.status === "running");
+    if (hasActive && !pollRef.current) {
+      startPolling();
+    }
 
-  // Poll release while PENDING
-  useEffect(() => {
-    if (!pollingReleaseId) return;
-    const interval = setInterval(async () => {
+    // Load main flow steps from release detail
+    if (rel?.id) {
       try {
-        const detail = await getRelease(pollingReleaseId);
-        setLatestRelease(detail);
-        const mainRun = detail.runs.find((r) =>
-          detail.mainFlowId ? r.flowId === detail.mainFlowId : detail.runs.indexOf(r) === 0
+        const detail = await getRelease(rel.id);
+        const mainRun = detail.runs.find(r =>
+          rel.mainFlowId ? r.flowId === rel.mainFlowId : detail.runs.indexOf(r) === 0
         );
         if (mainRun?.steps) setMainFlowSteps(mainRun.steps);
-        if (detail.verdict !== "PENDING") {
-          clearInterval(interval);
-          setPollingReleaseId(null);
-        }
-      } catch { }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [pollingReleaseId]);
+        // Update release with full data
+        setLatestRelease(detail);
+      } catch {}
+    }
+  }, [id]);
+
+  const startPolling = useCallback(() => {
+    if (pollRef.current) return;
+    pollRef.current = setInterval(async () => {
+      if (!id) return;
+      const latestRuns = await listRuns(id, 10);
+      setRuns(latestRuns);
+      const hasActive = latestRuns.some(r => r.status === "queued" || r.status === "running");
+      if (!hasActive) {
+        clearInterval(pollRef.current!);
+        pollRef.current = null;
+        setTesting(false);
+        // Refresh everything
+        loadData();
+      }
+    }, 5000);
+  }, [id, loadData]);
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [loadData]);
 
   const handleTestNow = useCallback(async () => {
     if (!id) return;
     setTesting(true);
     try {
       const response = await testNow(id);
-      if (response.releaseId) {
-        setPollingReleaseId(response.releaseId);
-      }
-      // Immediately fetch the new release
-      const releases = await listReleases(id, 1);
-      if (releases.length > 0) {
-        setLatestRelease(releases[0]);
-        setMainFlowSteps([]);
-      }
       toast({
         title: "Test lancé",
         description: response.message || `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} en cours.`,
       });
+      // Start polling
+      startPolling();
+      // Refresh runs immediately
+      const latestRuns = await listRuns(id, 10);
+      setRuns(latestRuns);
     } catch (e: unknown) {
+      setTesting(false);
       const err = e as Error & { status?: number };
       if (err.status === 429) {
         toast({ title: "Limite atteinte", description: "Réessayez demain.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
       }
-    } finally {
-      setTesting(false);
     }
-  }, [id, toast]);
+  }, [id, toast, startPolling]);
+
+  // ── Render ──
 
   if (loading) {
     return (
@@ -157,14 +222,19 @@ export default function ProjectDashboard() {
     );
   }
 
-  // A release is only truly "pending" if it has runs being executed
-  const hasActualRuns = latestRelease && (
-    (latestRelease as any).runCount > 0 || 
-    ((latestRelease as any).runs && (latestRelease as any).runs.length > 0)
-  );
-  const isPending = latestRelease?.verdict === "PENDING" && hasActualRuns;
-  // Treat releases with no runs as "no release" for display
-  const displayRelease = latestRelease && hasActualRuns ? latestRelease : null;
+  const lastRun = runs[0] ?? null;
+  const { label: vLabel, subtitle: vSubtitle, verdict: vVerdict } = verdictContext(latestRelease);
+
+  // Flow separation
+  const mainFlowId = project.mainFlowId;
+  const monitoredFlows = project.monitoredFlows ?? [];
+  const mainFlow = mainFlowId ? monitoredFlows.find(f => f.id === mainFlowId) : null;
+  const otherFlows = mainFlowId ? monitoredFlows.filter(f => f.id !== mainFlowId) : monitoredFlows;
+
+  // Find latest run per flow
+  const latestRunByFlow = (flowId: string) => runs.find(r => r.flowId === flowId);
+
+  const isActive = testing || runs.some(r => r.status === "queued" || r.status === "running");
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -180,7 +250,7 @@ export default function ProjectDashboard() {
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <a
               href={project.siteUrl}
               target="_blank"
@@ -190,20 +260,31 @@ export default function ProjectDashboard() {
               <ExternalLink className="h-3 w-3" />
               {project.siteUrl.replace(/^https?:\/\//, "")}
             </a>
-            {displayRelease && (
-              <>
-                <span>·</span>
-                <Clock className="h-3 w-3" />
-                <span>Dernière publication {timeAgo(displayRelease.detectedAt)}</span>
-              </>
-            )}
+            {lastRun?.startedAt && (() => {
+              const info = triggerLabel(lastRun.trigger);
+              const TriggerIcon = info.icon;
+              return (
+                <>
+                  <span>·</span>
+                  <TriggerIcon className="h-3 w-3" />
+                  <span>{info.text} — {timeAgo(lastRun.startedAt)}</span>
+                </>
+              );
+            })()}
           </div>
         </div>
-        <Link to={`/project/${project.id}/settings`}>
-          <Button variant="outline" size="sm" className="text-xs">
-            <Settings className="h-3 w-3 mr-1" /> Paramètres
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to={`/project/${project.id}/releases`}>
+            <Button variant="outline" size="sm" className="text-xs">
+              <History className="h-3 w-3 mr-1" /> Historique
+            </Button>
+          </Link>
+          <Link to={`/project/${project.id}/settings`}>
+            <Button variant="outline" size="sm" className="text-xs">
+              <Settings className="h-3 w-3 mr-1" /> Paramètres
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* No flows configured */}
@@ -226,77 +307,45 @@ export default function ProjectDashboard() {
       {/* Verdict Card */}
       {project.configStatus !== "no_flows" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          {displayRelease ? (
-            <div className="space-y-6">
-              <VerdictBadge verdict={displayRelease.verdict} size="lg" />
+          <VerdictBadge verdict={vVerdict} size="lg" label={vLabel} subtitle={vSubtitle} />
+        </motion.div>
+      )}
 
-              {/* Main flow result */}
-              {mainFlow && displayRelease.mainFlowLabel && (
-                <Card className="border-border bg-surface">
-                  <CardContent className="p-5 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
-                        Parcours principal
-                      </span>
-                      <span className="text-sm font-medium">{displayRelease.mainFlowLabel}</span>
-                    </div>
-                    <MainFlowSteps steps={mainFlowSteps} />
-                    {isPending && mainFlowSteps.length === 0 && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        En attente des résultats…
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Other runs summary */}
-              {(displayRelease as any).runs?.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground">Autres parcours</p>
-                  {(displayRelease as any).runs.filter((r: any) => !('isMainFlow' in r ? r.isMainFlow : r.flowId === (displayRelease as any).mainFlowId)).map((run: any) => (
-                    <div key={run.id} className="flex items-center justify-between rounded-lg border border-border bg-surface p-3">
-                      <span className="text-sm">{run.flowLabel}</span>
-                      <VerdictBadge
-                        verdict={
-                          run.status === "passed" ? "OK"
-                            : run.status === "failed" ? "ERREUR"
-                              : run.status === "error" ? "ERREUR"
-                                : "PENDING"
-                        }
-                        size="sm"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : (
+      {/* Parcours principal */}
+      {project.configStatus !== "no_flows" && mainFlow && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
+              Parcours principal
+            </span>
+          </div>
+          <FlowCard flow={mainFlow} run={latestRunByFlow(mainFlow.id)} />
+          {mainFlowSteps.length > 0 && (
             <Card className="border-border bg-surface">
-              <CardContent className="p-8 text-center space-y-4">
-                <p className="text-sm font-medium">
-                  Sentinelle est prête.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Lancez un premier test ou attendez la prochaine publication.
-                </p>
-                <Button
-                  onClick={handleTestNow}
-                  disabled={testing}
-                  className="bg-neon text-background hover:bg-neon/90"
-                >
-                  {testing ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-4 w-4" />
-                  )}
-                  Lancer un premier test
-                </Button>
+              <CardContent className="p-5">
+                <MainFlowSteps steps={mainFlowSteps} />
               </CardContent>
             </Card>
           )}
-        </motion.div>
+          {isActive && mainFlowSteps.length === 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              En attente des résultats…
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Autres parcours surveillés */}
+      {project.configStatus !== "no_flows" && otherFlows.length > 0 && (
+        <div className="space-y-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            {mainFlow ? "Autres parcours surveillés" : "Parcours surveillés"}
+          </p>
+          {otherFlows.map(flow => (
+            <FlowCard key={flow.id} flow={flow} run={latestRunByFlow(flow.id)} />
+          ))}
+        </div>
       )}
 
       {/* Authenticated Zone */}
@@ -310,44 +359,21 @@ export default function ProjectDashboard() {
         />
       )}
 
-      {/* Actions */}
-      {project.configStatus !== "no_flows" && displayRelease && (
-        <div className="flex gap-3">
-          <Button
-            onClick={handleTestNow}
-            disabled={testing || isPending}
-            className="flex-1 bg-neon text-background hover:bg-neon/90 font-semibold"
-            size="lg"
-          >
-            {testing || isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            {isPending ? "Vérification en cours…" : "Lancer un test maintenant"}
-          </Button>
-
-          {displayRelease && (
-            <>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate(`/project/${project.id}/release/${displayRelease.id}`)}
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                Détails
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate(`/project/${project.id}/releases`)}
-              >
-                <History className="mr-2 h-4 w-4" />
-                Historique
-              </Button>
-            </>
+      {/* Action */}
+      {project.configStatus !== "no_flows" && (
+        <Button
+          onClick={handleTestNow}
+          disabled={isActive}
+          className="w-full bg-neon text-background hover:bg-neon/90 font-semibold"
+          size="lg"
+        >
+          {isActive ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Play className="mr-2 h-4 w-4" />
           )}
-        </div>
+          {isActive ? "Test en cours…" : "Lancer un test manuel"}
+        </Button>
       )}
     </div>
   );
