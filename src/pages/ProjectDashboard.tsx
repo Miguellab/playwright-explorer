@@ -290,20 +290,11 @@ export default function ProjectDashboard() {
               Parcours principal
             </span>
           </div>
-          <FlowCard flow={mainFlow} run={latestRunByFlow(mainFlow.id)} />
-          {mainFlowSteps.length > 0 && (
-            <Card className="border-border bg-surface">
-              <CardContent className="p-5">
-                <MainFlowSteps steps={mainFlowSteps} />
-              </CardContent>
-            </Card>
-          )}
-          {isActive && mainFlowSteps.length === 0 && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              En attente des résultats…
-            </div>
-          )}
+          <FlowAccordion
+            flow={mainFlow}
+            run={releaseRuns.find(r => r.flowId === mainFlow.id) ?? latestRunByFlow(mainFlow.id)}
+            isMainFlow
+          />
         </div>
       )}
 
@@ -314,7 +305,11 @@ export default function ProjectDashboard() {
             {mainFlow ? "Autres parcours surveillés" : "Parcours surveillés"}
           </p>
           {otherFlows.map(flow => (
-            <FlowCard key={flow.id} flow={flow} run={latestRunByFlow(flow.id)} />
+            <FlowAccordion
+              key={flow.id}
+              flow={flow}
+              run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
+            />
           ))}
         </div>
       )}
