@@ -314,6 +314,8 @@ export default function ProjectDashboard() {
             flow={mainFlow}
             run={releaseRuns.find(r => r.flowId === mainFlow.id) ?? latestRunByFlow(mainFlow.id)}
             isMainFlow
+            projectId={id}
+            onRetestComplete={loadData}
           />
         </div>
       )}
