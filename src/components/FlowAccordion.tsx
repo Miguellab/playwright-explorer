@@ -32,6 +32,9 @@ interface FlowAccordionProps {
 export function FlowAccordion({ flow, run, isMainFlow }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
+  const checkType = getCheckType(flow);
+  const typeMeta = CHECK_TYPE_META[checkType];
+  const isPageCheck = checkType === "page-check";
 
   const stepsCount = run?.stepsSummary?.total ?? run?.steps?.length ?? 0;
   const passedCount = run?.stepsSummary?.passed ?? 0;
