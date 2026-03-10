@@ -294,6 +294,11 @@ export default function ProjectDashboard() {
       {project.configStatus !== "no_flows" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <VerdictBadge verdict={vVerdict} size="lg" label={vLabel} subtitle={vSubtitle} />
+          {latestRelease?.verdictResult?.issues && latestRelease.verdictResult.issues.length > 0 && (
+            <div className="mt-3">
+              <VerdictIssues issues={latestRelease.verdictResult.issues} />
+            </div>
+          )}
         </motion.div>
       )}
 
