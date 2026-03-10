@@ -8,9 +8,11 @@ import {
   listRuns,
   testNow,
   getRelease,
+  runSingleFlow,
 } from "@/lib/sentinelle-api";
 import type { Project, Release, ReleaseDetail, Run, SuggestedFlow } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { VerdictIssues } from "@/components/VerdictIssues";
 import { FlowAccordion } from "@/components/FlowAccordion";
 import {
   ArrowLeft,
@@ -25,6 +27,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 import { AuthenticatedZone } from "@/components/AuthenticatedZone";
 
 // ── Helpers ──
@@ -65,6 +68,14 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   if (!release) {
     return { label: "En attente de publication", subtitle: "Aucune publication n'a encore été détectée.", verdict: "PENDING" };
   }
+  // Use enriched verdict if available
+  if (release.verdictResult) {
+    return {
+      label: release.verdictResult.headline,
+      subtitle: release.verdictResult.forUser,
+      verdict: release.verdictResult.verdict as "OK" | "ALERTE" | "ERREUR" | "PENDING",
+    };
+  }
   const v = release.verdict;
   if (v === "OK") {
     return { label: "Publication vérifiée", subtitle: "Toutes les vérifications configurées sont validées.", verdict: "OK" };
@@ -95,6 +106,7 @@ export default function ProjectDashboard() {
   const [releaseRuns, setReleaseRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
+  const [dailyRunCount, setDailyRunCount] = useState<number | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -158,15 +170,20 @@ export default function ProjectDashboard() {
         title: "Test lancé",
         description: response.message || `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} en cours.`,
       });
-      // Start polling
       startPolling();
-      // Refresh runs immediately
       const latestRuns = await listRuns(id, 10);
       setRuns(latestRuns);
     } catch (e: unknown) {
       setTesting(false);
-      const err = e as Error & { status?: number };
+      const err = e as Error & { status?: number; dailyCount?: number; maxRunsPerDay?: number };
       if (err.status === 429) {
+        // Try to parse daily count from error response
+        try {
+          const body = JSON.parse(err.message);
+          if (body.dailyCount != null) setDailyRunCount(body.dailyCount);
+        } catch {
+          // message is just a string
+        }
         toast({ title: "Limite atteinte", description: "Réessayez demain.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
@@ -278,6 +295,11 @@ export default function ProjectDashboard() {
       {project.configStatus !== "no_flows" && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <VerdictBadge verdict={vVerdict} size="lg" label={vLabel} subtitle={vSubtitle} />
+          {latestRelease?.verdictResult?.issues && latestRelease.verdictResult.issues.length > 0 && (
+            <div className="mt-3">
+              <VerdictIssues issues={latestRelease.verdictResult.issues} />
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -293,6 +315,8 @@ export default function ProjectDashboard() {
             flow={mainFlow}
             run={releaseRuns.find(r => r.flowId === mainFlow.id) ?? latestRunByFlow(mainFlow.id)}
             isMainFlow
+            projectId={id}
+            onRetestComplete={loadData}
           />
         </div>
       )}
@@ -308,6 +332,8 @@ export default function ProjectDashboard() {
               key={flow.id}
               flow={flow}
               run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
+              projectId={id}
+              onRetestComplete={loadData}
             />
           ))}
         </div>
@@ -326,19 +352,32 @@ export default function ProjectDashboard() {
 
       {/* Action */}
       {project.configStatus !== "no_flows" && (
-        <Button
-          onClick={handleTestNow}
-          disabled={isActive}
-          className="w-full bg-neon text-background hover:bg-neon/90 font-semibold"
-          size="lg"
-        >
-          {isActive ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="mr-2 h-4 w-4" />
+        <div className="space-y-2">
+          {dailyRunCount != null && project.maxRunsPerDay && (
+            <p className={cn(
+              "text-xs text-center",
+              dailyRunCount >= project.maxRunsPerDay ? "text-status-alerte" : "text-muted-foreground"
+            )}>
+              {dailyRunCount >= project.maxRunsPerDay
+                ? `Limite atteinte (${dailyRunCount}/${project.maxRunsPerDay})`
+                : `${dailyRunCount}/${project.maxRunsPerDay} tests aujourd'hui`
+              }
+            </p>
           )}
-          {isActive ? "Test en cours…" : "Lancer un test manuel"}
-        </Button>
+          <Button
+            onClick={handleTestNow}
+            disabled={isActive || (dailyRunCount != null && project.maxRunsPerDay != null && dailyRunCount >= project.maxRunsPerDay)}
+            className="w-full bg-neon text-background hover:bg-neon/90 font-semibold"
+            size="lg"
+          >
+            {isActive ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            {isActive ? "Test en cours…" : "Lancer un test manuel"}
+          </Button>
+        </div>
       )}
     </div>
   );
