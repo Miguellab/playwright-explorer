@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProject, updateProject, deleteProject, setMainFlow as apiSetMainFlow } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
+import { groupFlowsByType, CHECK_TYPE_META, type CheckType } from "@/lib/flow-categories";
 import {
   AlertDialog,
   AlertDialogAction,
