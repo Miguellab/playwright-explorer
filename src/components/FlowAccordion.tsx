@@ -35,7 +35,7 @@ interface FlowAccordionProps {
   disabled?: boolean;
 }
 
-export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete }: FlowAccordionProps) {
+export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
   const [retesting, setRetesting] = useState(false);
