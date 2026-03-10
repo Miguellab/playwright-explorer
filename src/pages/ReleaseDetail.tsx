@@ -4,13 +4,31 @@ import { Button } from "@/components/ui/button";
 import { getRelease, getProject, runSingleFlow, getTraceUrl } from "@/lib/sentinelle-api";
 import type { ReleaseDetail as ReleaseDetailType, Project } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { VerdictIssues } from "@/components/VerdictIssues";
 import { RunCard } from "@/components/RunCard";
-import { ArrowLeft, Loader2, Download } from "lucide-react";
+import { ArrowLeft, Loader2, Download, Rocket, FlaskConical, Webhook, RotateCcw, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 function isErrorStatus(status: string) {
   return status === "failed" || status === "error";
+}
+
+function triggerInfo(trigger: string) {
+  switch (trigger) {
+    case "release_detected":
+      return { text: "Publication détectée", Icon: Rocket, className: "bg-neon/10 text-neon border-neon/30" };
+    case "deploy_webhook":
+      return { text: "Déploiement notifié", Icon: Webhook, className: "bg-blue-500/10 text-blue-400 border-blue-500/30" };
+    case "manual":
+      return { text: "Test manuel", Icon: FlaskConical, className: "bg-purple-500/10 text-purple-400 border-purple-500/30" };
+    case "manual_flow_retest":
+      return { text: "Retest manuel", Icon: RotateCcw, className: "bg-status-alerte/10 text-status-alerte border-status-alerte/30" };
+    default:
+      return { text: "Test", Icon: FlaskConical, className: "bg-muted text-muted-foreground border-border" };
+  }
 }
 
 export default function ReleaseDetail() {
@@ -22,17 +40,16 @@ export default function ReleaseDetail() {
   const [loading, setLoading] = useState(true);
   const [retesting, setRetesting] = useState<Set<string>>(new Set());
   const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
+  const [ctoOpen, setCtoOpen] = useState(false);
 
   const isActive = release?.verdict === "PENDING";
 
-  // Initial load
   useEffect(() => {
     if (!releaseId || !projectId) return;
     Promise.all([getRelease(releaseId), getProject(projectId)])
       .then(([r, p]) => {
         setRelease(r);
         setProject(p);
-        // Auto-expand failed/error runs
         const failedIds = new Set(
           r.runs.filter((run) => isErrorStatus(run.status)).map((run) => run.id)
         );
@@ -42,7 +59,6 @@ export default function ReleaseDetail() {
       .finally(() => setLoading(false));
   }, [releaseId, projectId]);
 
-  // Poll while PENDING or retesting
   const hasRetesting = retesting.size > 0;
   useEffect(() => {
     if (!releaseId || (!isActive && !hasRetesting)) return;
@@ -50,7 +66,6 @@ export default function ReleaseDetail() {
       try {
         const detail = await getRelease(releaseId);
         setRelease(detail);
-        // Auto-expand newly failed runs
         setExpandedRuns((prev) => {
           const next = new Set(prev);
           detail.runs.forEach((run) => {
@@ -58,7 +73,6 @@ export default function ReleaseDetail() {
           });
           return next;
         });
-        // Clear retesting for flows whose runs are no longer running/queued
         setRetesting((prev) => {
           const next = new Set(prev);
           for (const fid of prev) {
@@ -116,6 +130,10 @@ export default function ReleaseDetail() {
     release.mainFlowId ? r.flowId === release.mainFlowId : false
   );
   const otherRuns = release.runs.filter((r) => r !== mainRun);
+  const totalDuration = release.runs.reduce((sum, r) => sum + (r.durationMs ?? 0), 0);
+  const trigger = triggerInfo(release.trigger);
+  const TriggerIcon = trigger.Icon;
+  const vr = release.verdictResult;
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -128,20 +146,59 @@ export default function ReleaseDetail() {
 
       {/* Header */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <VerdictBadge verdict={release.verdict} />
+          <span className={cn("inline-flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md border", trigger.className)}>
+            <TriggerIcon className="h-3 w-3" />
+            {trigger.text}
+          </span>
           {isActive && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
+
         <h1 className="text-xl font-bold">
-          Publication détectée à{" "}
-          {new Date(release.detectedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+          {vr?.headline || `Publication détectée à ${new Date(release.detectedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}
         </h1>
+
         <p className="text-xs text-muted-foreground">
           {new Date(release.detectedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
           {" · "}
-          {release.runs.length} parcours testé{release.runs.length > 1 ? "s" : ""}
+          {release.runs.length} vérification{release.runs.length > 1 ? "s" : ""}
+          {totalDuration > 0 && (
+            <>
+              {" · "}
+              <span className="font-mono">{(totalDuration / 1000).toFixed(1)}s</span> au total
+            </>
+          )}
         </p>
       </motion.div>
+
+      {/* Enriched verdict */}
+      {vr && (
+        <div className="space-y-3">
+          {vr.forUser && (
+            <p className="text-sm text-muted-foreground whitespace-pre-line">{vr.forUser}</p>
+          )}
+          {vr.issues.length > 0 && <VerdictIssues issues={vr.issues} />}
+          {vr.forCTO && (
+            <Collapsible open={ctoOpen} onOpenChange={setCtoOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", ctoOpen && "rotate-180")} />
+                  Détails techniques
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 rounded-lg border border-border bg-background/50 p-3">
+                  <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">{vr.forCTO}</pre>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+        </div>
+      )}
 
       {/* Main flow */}
       {mainRun && (
@@ -158,7 +215,7 @@ export default function ReleaseDetail() {
       {/* Other runs */}
       {otherRuns.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground">Autres parcours</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">Autres vérifications</h2>
           {otherRuns.map((run) => (
             <RunCard
               key={run.id}

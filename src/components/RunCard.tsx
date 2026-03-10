@@ -116,6 +116,11 @@ export function RunCard({ run, isMainFlow, isExpanded, onToggle, onRetest, retes
             {/* Findings */}
             <RunFindings findings={run.findings} />
 
+            {/* Performance */}
+            {run.findings?.performanceMetrics && Object.keys(run.findings.performanceMetrics).length > 0 && (
+              <PerformanceMetrics metrics={run.findings.performanceMetrics} />
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 pt-1">
               <Button
