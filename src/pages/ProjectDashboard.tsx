@@ -317,6 +317,7 @@ export default function ProjectDashboard() {
             isMainFlow
             projectId={id}
             onRetestComplete={loadData}
+            disabled={isActive}
           />
         </div>
       )}
