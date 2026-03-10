@@ -4,6 +4,7 @@ import { VerdictBadge } from "@/components/VerdictBadge";
 import { MainFlowSteps } from "@/components/MainFlowSteps";
 import { EvidenceViewer } from "@/components/EvidenceViewer";
 import { RunFindings } from "@/components/RunFindings";
+import { PerformanceMetrics } from "@/components/PerformanceMetrics";
 import type { Run } from "@/lib/sentinelle-types";
 import {
   ChevronDown,
