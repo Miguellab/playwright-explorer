@@ -6,9 +6,10 @@ const USER_FLOW_GOALS = ["LOGIN", "SIGNUP", "BOOK", "BUY", "CONTACT"];
 
 export function getCheckType(flow: SuggestedFlow): CheckType {
   if (USER_FLOW_GOALS.includes(flow.goal)) return "user-flow";
-  if (flow.source === "detected") return "user-flow";
-  if (flow.source === "nav-link" || flow.source === "cta-link" || flow.source === "page-link") return "page-check";
-  if (flow.source === "button") return "ui-element";
+  const source = flow.source as string | undefined;
+  if (source === "detected") return "user-flow";
+  if (source === "nav-link" || source === "cta-link" || source === "page-link") return "page-check";
+  if (source === "button") return "ui-element";
   return "user-flow";
 }
 
