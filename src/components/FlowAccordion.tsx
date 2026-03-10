@@ -53,7 +53,7 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
   );
   const hasPerfMetrics = run?.findings?.performanceMetrics && Object.keys(run.findings.performanceMetrics).length > 0;
   const hasDetails = hasSteps || hasScreenshots || hasFindings || hasPerfMetrics;
-  const canRetest = projectId && (verdict === "ALERTE" || verdict === "ERREUR") && !retesting;
+  const canRetest = projectId && (verdict === "ALERTE" || verdict === "ERREUR") && !retesting && !disabled;
 
   const handleRetest = async (e: React.MouseEvent) => {
     e.stopPropagation();
