@@ -105,6 +105,7 @@ export default function ProjectDashboard() {
   const [releaseRuns, setReleaseRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
+  const [dailyRunCount, setDailyRunCount] = useState<number | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
