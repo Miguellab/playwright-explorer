@@ -67,6 +67,14 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   if (!release) {
     return { label: "En attente de publication", subtitle: "Aucune publication n'a encore été détectée.", verdict: "PENDING" };
   }
+  // Use enriched verdict if available
+  if (release.verdictResult) {
+    return {
+      label: release.verdictResult.headline,
+      subtitle: release.verdictResult.forUser,
+      verdict: release.verdictResult.verdict as "OK" | "ALERTE" | "ERREUR" | "PENDING",
+    };
+  }
   const v = release.verdict;
   if (v === "OK") {
     return { label: "Publication vérifiée", subtitle: "Toutes les vérifications configurées sont validées.", verdict: "OK" };
