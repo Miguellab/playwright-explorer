@@ -182,6 +182,25 @@ export interface StepsSummary {
   skipped: number;
 }
 
+// ── Verdict Result ──
+
+export interface VerdictIssue {
+  severity: "critical" | "warning" | "pending";
+  message: string;
+  action?: string;
+  details?: string[];
+}
+
+export interface VerdictResult {
+  verdict: ReleaseVerdict;
+  headline: string;
+  forUser: string;
+  forCTO: string;
+  issues: VerdictIssue[];
+  statusExplanation: string;
+  verdictExplanation: string;
+}
+
 export interface Run {
   id: string;
   projectId: string;
