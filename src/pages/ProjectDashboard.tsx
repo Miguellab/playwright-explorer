@@ -169,15 +169,20 @@ export default function ProjectDashboard() {
         title: "Test lancé",
         description: response.message || `${response.runs.length} test${response.runs.length > 1 ? "s" : ""} en cours.`,
       });
-      // Start polling
       startPolling();
-      // Refresh runs immediately
       const latestRuns = await listRuns(id, 10);
       setRuns(latestRuns);
     } catch (e: unknown) {
       setTesting(false);
-      const err = e as Error & { status?: number };
+      const err = e as Error & { status?: number; dailyCount?: number; maxRunsPerDay?: number };
       if (err.status === 429) {
+        // Try to parse daily count from error response
+        try {
+          const body = JSON.parse(err.message);
+          if (body.dailyCount != null) setDailyRunCount(body.dailyCount);
+        } catch {
+          // message is just a string
+        }
         toast({ title: "Limite atteinte", description: "Réessayez demain.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
