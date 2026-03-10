@@ -301,7 +301,7 @@ export default function ProjectDashboard() {
       {project.configStatus !== "no_flows" && otherFlows.length > 0 && (
         <div className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground">
-            {mainFlow ? "Autres parcours surveillés" : "Parcours surveillés"}
+            {mainFlow ? "Autres vérifications" : "Vérifications"}
           </p>
           {otherFlows.map(flow => (
             <FlowAccordion

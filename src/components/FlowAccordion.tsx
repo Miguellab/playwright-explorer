@@ -77,13 +77,21 @@ export function FlowAccordion({ flow, run, isMainFlow }: FlowAccordionProps) {
               <span className="text-sm font-medium block truncate">
                 {flow.labelFr || flow.goal}
               </span>
-              {verdict === "OK" && stepsCount > 0 && (
-                <span className="text-xs text-muted-foreground">
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border inline-block mt-0.5", typeMeta.badgeClass)}>
+                {typeMeta.badgeLabel}
+              </span>
+              {verdict === "OK" && isPageCheck && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  Page accessible — Aucune erreur détectée
+                </span>
+              )}
+              {verdict === "OK" && !isPageCheck && stepsCount > 0 && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
                   {passedCount}/{stepsCount} étapes validées
                 </span>
               )}
               {verdict === "PENDING" && run && (
-                <span className="text-xs text-muted-foreground">En cours…</span>
+                <span className="text-xs text-muted-foreground block mt-0.5">En cours…</span>
               )}
               {(verdict === "ERREUR" || verdict === "ALERTE") && run?.errorSummary && (
                 <span className="text-xs text-status-erreur block mt-0.5">
