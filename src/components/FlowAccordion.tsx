@@ -32,6 +32,7 @@ interface FlowAccordionProps {
   isMainFlow?: boolean;
   projectId?: string;
   onRetestComplete?: () => void;
+  disabled?: boolean;
 }
 
 export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete }: FlowAccordionProps) {
