@@ -331,6 +331,8 @@ export default function ProjectDashboard() {
               key={flow.id}
               flow={flow}
               run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
+              projectId={id}
+              onRetestComplete={loadData}
             />
           ))}
         </div>
