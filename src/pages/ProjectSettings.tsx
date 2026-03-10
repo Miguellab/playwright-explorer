@@ -44,6 +44,7 @@ export default function ProjectSettings() {
   const [credentialFlowId, setCredentialFlowId] = useState("");
   const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
   const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
+  const [webhookCopied, setWebhookCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
