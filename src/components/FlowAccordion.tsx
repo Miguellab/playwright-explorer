@@ -6,6 +6,7 @@ import { MainFlowSteps } from "@/components/MainFlowSteps";
 import { EvidenceViewer } from "@/components/EvidenceViewer";
 import { RunFindings } from "@/components/RunFindings";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { getCheckType, CHECK_TYPE_META } from "@/lib/flow-categories";
 import type { SuggestedFlow, Run } from "@/lib/sentinelle-types";
 
 type FlowVerdict = "OK" | "ALERTE" | "ERREUR" | "PENDING";
