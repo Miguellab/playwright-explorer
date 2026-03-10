@@ -317,6 +317,7 @@ export default function ProjectDashboard() {
             isMainFlow
             projectId={id}
             onRetestComplete={loadData}
+            disabled={isActive}
           />
         </div>
       )}
@@ -334,6 +335,7 @@ export default function ProjectDashboard() {
               run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
               projectId={id}
               onRetestComplete={loadData}
+              disabled={isActive}
             />
           ))}
         </div>

@@ -32,9 +32,10 @@ interface FlowAccordionProps {
   isMainFlow?: boolean;
   projectId?: string;
   onRetestComplete?: () => void;
+  disabled?: boolean;
 }
 
-export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete }: FlowAccordionProps) {
+export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
   const [retesting, setRetesting] = useState(false);
@@ -52,7 +53,7 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
   );
   const hasPerfMetrics = run?.findings?.performanceMetrics && Object.keys(run.findings.performanceMetrics).length > 0;
   const hasDetails = hasSteps || hasScreenshots || hasFindings || hasPerfMetrics;
-  const canRetest = projectId && (verdict === "ALERTE" || verdict === "ERREUR") && !retesting;
+  const canRetest = projectId && (verdict === "ALERTE" || verdict === "ERREUR") && !retesting && !disabled;
 
   const handleRetest = async (e: React.MouseEvent) => {
     e.stopPropagation();
