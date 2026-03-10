@@ -169,7 +169,7 @@ export default function ProjectSettings() {
             {suggestedFlows.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">Aucun parcours découvert.</p>
             ) : (
-              <Accordion type="multiple" defaultValue={["user-flow", "page-check", "ui-element"]} className="space-y-2">
+              <Accordion type="multiple" <Accordion type="multiple" defaultValue={[]} className="space-y-2"> className="space-y-2">
                 {(["user-flow", "page-check", "ui-element"] as CheckType[]).map((type) => {
                   const flows = groupFlowsByType(suggestedFlows)[type];
                   if (flows.length === 0) return null;
