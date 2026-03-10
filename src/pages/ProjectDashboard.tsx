@@ -351,19 +351,32 @@ export default function ProjectDashboard() {
 
       {/* Action */}
       {project.configStatus !== "no_flows" && (
-        <Button
-          onClick={handleTestNow}
-          disabled={isActive}
-          className="w-full bg-neon text-background hover:bg-neon/90 font-semibold"
-          size="lg"
-        >
-          {isActive ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Play className="mr-2 h-4 w-4" />
+        <div className="space-y-2">
+          {dailyRunCount != null && project.maxRunsPerDay && (
+            <p className={cn(
+              "text-xs text-center",
+              dailyRunCount >= project.maxRunsPerDay ? "text-status-alerte" : "text-muted-foreground"
+            )}>
+              {dailyRunCount >= project.maxRunsPerDay
+                ? `Limite atteinte (${dailyRunCount}/${project.maxRunsPerDay})`
+                : `${dailyRunCount}/${project.maxRunsPerDay} tests aujourd'hui`
+              }
+            </p>
           )}
-          {isActive ? "Test en cours…" : "Lancer un test manuel"}
-        </Button>
+          <Button
+            onClick={handleTestNow}
+            disabled={isActive || (dailyRunCount != null && project.maxRunsPerDay != null && dailyRunCount >= project.maxRunsPerDay)}
+            className="w-full bg-neon text-background hover:bg-neon/90 font-semibold"
+            size="lg"
+          >
+            {isActive ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            {isActive ? "Test en cours…" : "Lancer un test manuel"}
+          </Button>
+        </div>
       )}
     </div>
   );
