@@ -67,7 +67,7 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   }
   const v = release.verdict;
   if (v === "OK") {
-    return { label: "Publication vérifiée", subtitle: "Tous les parcours surveillés fonctionnent correctement.", verdict: "OK" };
+    return { label: "Publication vérifiée", subtitle: "Toutes les vérifications configurées sont validées.", verdict: "OK" };
   }
   if (v === "ALERTE") {
     const failedCount = release.runs.filter(r => r.status === "failed" || r.status === "error").length;
