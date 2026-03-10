@@ -1,44 +1,56 @@
 
 
-## Refactor: Clear verification model with 3 check types
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### 1. New: `src/lib/flow-categories.ts`
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Classification helper with corrected logic:
+## Ce qui reste à faire
 
-```ts
-const USER_FLOW_GOALS = ["LOGIN", "SIGNUP", "BOOK", "BUY", "CONTACT"];
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-function getCheckType(flow: SuggestedFlow): CheckType {
-  if (USER_FLOW_GOALS.includes(flow.goal)) return "user-flow";
-  if (flow.source === "detected") return "user-flow";
-  if (flow.source === "nav-link" || flow.source === "cta-link" || flow.source === "page-link") return "page-check";
-  if (flow.source === "button") return "ui-element";
-  return "user-flow";
-}
-```
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Plus metadata per type (title, description, badge color classes) and `groupFlowsByType()` helper.
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-### 2. `src/pages/ProjectSettings.tsx`
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-Replace flat "Parcours surveillés" list with 3 collapsible sections grouped by `getCheckType()`. Each section has colored header, description, and flow list with existing checkboxes/star/credentials logic.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-### 3. `src/pages/ProjectDashboard.tsx`
+### 3. Badge verdict sur les cartes Dashboard
 
-- OK subtitle: "Toutes les vérifications configurées sont validées"
-- "Autres parcours surveillés" → "Autres vérifications"
-- Page-check flows with OK verdict: show "Page accessible — Aucune erreur détectée" instead of step counts
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-### 4. `src/components/FlowAccordion.tsx`
+### 4. Collapsible CTO dans RunReport
 
-- Add small colored type badge below flow label
-- Page-check flows with OK verdict: "Page accessible" instead of step counts
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-| File | Change |
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
 |---|---|
-| `src/lib/flow-categories.ts` | New — classification + metadata |
-| `src/pages/ProjectSettings.tsx` | 3 typed sections |
-| `src/pages/ProjectDashboard.tsx` | Wording updates |
-| `src/components/FlowAccordion.tsx` | Type badge + page-check status |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

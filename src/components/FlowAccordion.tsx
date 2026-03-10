@@ -6,6 +6,7 @@ import { MainFlowSteps } from "@/components/MainFlowSteps";
 import { EvidenceViewer } from "@/components/EvidenceViewer";
 import { RunFindings } from "@/components/RunFindings";
 import { VerdictBadge } from "@/components/VerdictBadge";
+import { getCheckType, CHECK_TYPE_META } from "@/lib/flow-categories";
 import type { SuggestedFlow, Run } from "@/lib/sentinelle-types";
 
 type FlowVerdict = "OK" | "ALERTE" | "ERREUR" | "PENDING";
@@ -31,6 +32,9 @@ interface FlowAccordionProps {
 export function FlowAccordion({ flow, run, isMainFlow }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
+  const checkType = getCheckType(flow);
+  const typeMeta = CHECK_TYPE_META[checkType];
+  const isPageCheck = checkType === "page-check";
 
   const stepsCount = run?.stepsSummary?.total ?? run?.steps?.length ?? 0;
   const passedCount = run?.stepsSummary?.passed ?? 0;
@@ -73,13 +77,21 @@ export function FlowAccordion({ flow, run, isMainFlow }: FlowAccordionProps) {
               <span className="text-sm font-medium block truncate">
                 {flow.labelFr || flow.goal}
               </span>
-              {verdict === "OK" && stepsCount > 0 && (
-                <span className="text-xs text-muted-foreground">
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border inline-block mt-0.5", typeMeta.badgeClass)}>
+                {typeMeta.badgeLabel}
+              </span>
+              {verdict === "OK" && isPageCheck && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  Page accessible — Aucune erreur détectée
+                </span>
+              )}
+              {verdict === "OK" && !isPageCheck && stepsCount > 0 && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
                   {passedCount}/{stepsCount} étapes validées
                 </span>
               )}
               {verdict === "PENDING" && run && (
-                <span className="text-xs text-muted-foreground">En cours…</span>
+                <span className="text-xs text-muted-foreground block mt-0.5">En cours…</span>
               )}
               {(verdict === "ERREUR" || verdict === "ALERTE") && run?.errorSummary && (
                 <span className="text-xs text-status-erreur block mt-0.5">

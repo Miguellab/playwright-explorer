@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProject, updateProject, deleteProject, setMainFlow as apiSetMainFlow } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
+import { groupFlowsByType, CHECK_TYPE_META, type CheckType } from "@/lib/flow-categories";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -161,81 +162,97 @@ export default function ProjectSettings() {
             <Input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} className="bg-background border-border text-sm" />
           </div>
 
-          {/* Flows */}
-          <div className="space-y-3">
-            <Label className="text-xs">Parcours surveillés</Label>
+          {/* Flows grouped by type */}
+          <div className="space-y-6">
             {suggestedFlows.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">Aucun parcours découvert.</p>
             ) : (
-              <div className="space-y-2">
-                {suggestedFlows.map((flow) => {
-                  const isSelected = selectedFlowIds.has(flow.id);
-                  const isMain = mainFlowId === flow.id;
-                  return (
-                    <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
-                        />
-                        <span className="text-sm flex-1">{flow.labelFr}</span>
-                        {isSelected && (
-                          <button
-                            type="button"
-                            className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                              isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
-                            }`}
-                            onClick={() => setMainFlowIdState(flow.id)}
-                            title="Définir comme parcours principal"
-                          >
-                            {isMain && <Star className="h-3 w-3 text-background" />}
-                          </button>
-                        )}
+              (["user-flow", "page-check", "ui-element"] as CheckType[]).map((type) => {
+                const flows = groupFlowsByType(suggestedFlows)[type];
+                if (flows.length === 0) return null;
+                const meta = CHECK_TYPE_META[type];
+                return (
+                  <div key={type} className="space-y-3">
+                    <div className={`rounded-lg border ${meta.sectionClass} p-3 space-y-1`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${meta.badgeClass}`}>
+                          {meta.title}
+                        </span>
                       </div>
-                      {flow.descriptionFr && (
-                        <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
-                      )}
-                      {/* Credential indicator */}
-                      {(flow.goal === "LOGIN" || flow.requiresCredentials) && (
-                        <div className="flex items-center gap-2 ml-8">
-                          {flowCredentials[flow.id] ? (
-                            <>
-                              <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
-                                <ShieldCheck className="h-3 w-3" />
-                                Compte test configuré
-                              </span>
-                              <button
-                                type="button"
-                                className="text-[11px] text-muted-foreground hover:text-foreground"
-                                onClick={() => {
-                                  setCredentialFlowId(flow.id);
-                                  setCredentialFlowLabel(flow.labelFr);
-                                  setCredentialModalOpen(true);
-                                }}
-                              >
-                                Modifier
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
-                              onClick={() => {
-                                setCredentialFlowId(flow.id);
-                                setCredentialFlowLabel(flow.labelFr);
-                                setCredentialModalOpen(true);
-                              }}
-                            >
-                              <KeyRound className="h-3 w-3" />
-                              Configurer les identifiants
-                            </button>
-                          )}
-                        </div>
-                      )}
+                      <p className="text-xs text-muted-foreground">{meta.description}</p>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="space-y-2 ml-1">
+                      {flows.map((flow) => {
+                        const isSelected = selectedFlowIds.has(flow.id);
+                        const isMain = mainFlowId === flow.id;
+                        return (
+                          <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
+                              />
+                              <span className="text-sm flex-1">{flow.labelFr}</span>
+                              {isSelected && (
+                                <button
+                                  type="button"
+                                  className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                    isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
+                                  }`}
+                                  onClick={() => setMainFlowIdState(flow.id)}
+                                  title="Définir comme parcours principal"
+                                >
+                                  {isMain && <Star className="h-3 w-3 text-background" />}
+                                </button>
+                              )}
+                            </div>
+                            {flow.descriptionFr && (
+                              <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
+                            )}
+                            {/* Credential indicator */}
+                            {(flow.goal === "LOGIN" || flow.requiresCredentials) && (
+                              <div className="flex items-center gap-2 ml-8">
+                                {flowCredentials[flow.id] ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
+                                      <ShieldCheck className="h-3 w-3" />
+                                      Compte test configuré
+                                    </span>
+                                    <button
+                                      type="button"
+                                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                                      onClick={() => {
+                                        setCredentialFlowId(flow.id);
+                                        setCredentialFlowLabel(flow.labelFr);
+                                        setCredentialModalOpen(true);
+                                      }}
+                                    >
+                                      Modifier
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
+                                    onClick={() => {
+                                      setCredentialFlowId(flow.id);
+                                      setCredentialFlowLabel(flow.labelFr);
+                                      setCredentialModalOpen(true);
+                                    }}
+                                  >
+                                    <KeyRound className="h-3 w-3" />
+                                    Configurer les identifiants
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
 
