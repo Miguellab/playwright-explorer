@@ -247,6 +247,7 @@ export interface Release {
   signature: string | null;
   trigger: ReleaseTrigger;
   verdict: ReleaseVerdict;
+  verdictResult?: VerdictResult;
   detectedAt: string;
   completedAt: string | null;
   mainFlowId: string | null;
