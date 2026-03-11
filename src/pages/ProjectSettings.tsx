@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck, Copy, Check, Webhook } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CredentialsModal from "@/components/CredentialsModal";
 import { saveFlowCredentials, deleteFlowCredentials } from "@/lib/sentinelle-api";
