@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (runnerKey) headers["Authorization"] = `Bearer ${runnerKey}`;
 
-          const resp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
+          let resp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
             method: "POST",
             headers,
             body: JSON.stringify({
