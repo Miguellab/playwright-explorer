@@ -220,7 +220,7 @@ Deno.serve(async (req: Request) => {
                   findings: result.findings || { consoleErrors: [], failedRequests: [] },
                   assets: {
                     ...(data.assets as Record<string, unknown> || {}),
-                    screenshots: result.screenshots || [],
+                    screenshots: result.assets?.screenshots || result.screenshots || [],
                   },
                 };
                 await supabase.from("test_runs").update(updateData).eq("id", id);
