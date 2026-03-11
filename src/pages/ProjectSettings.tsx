@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck, Copy, Check, Webhook } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CredentialsModal from "@/components/CredentialsModal";
 import { saveFlowCredentials, deleteFlowCredentials } from "@/lib/sentinelle-api";
@@ -45,7 +45,7 @@ export default function ProjectSettings() {
   const [credentialFlowId, setCredentialFlowId] = useState("");
   const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
   const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
-  const [webhookCopied, setWebhookCopied] = useState(false);
+  
 
   useEffect(() => {
     if (!id) return;
@@ -298,45 +298,6 @@ export default function ProjectSettings() {
         </CardContent>
       </Card>
 
-      {/* Webhook deploy */}
-      <Card className="bg-surface border-border">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <Webhook className="h-4 w-4" />
-            Webhook de déploiement
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            Ajoutez cette URL dans les webhooks de votre plateforme de déploiement pour déclencher automatiquement les tests après chaque publication.
-          </p>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={`${import.meta.env.VITE_SENTINELLE_API_URL || ""}/projects/${id}/deploy`}
-              className="bg-background border-border text-xs font-mono flex-1"
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={() => {
-                navigator.clipboard.writeText(
-                  `${import.meta.env.VITE_SENTINELLE_API_URL || ""}/projects/${id}/deploy`
-                );
-                setWebhookCopied(true);
-                setTimeout(() => setWebhookCopied(false), 2000);
-              }}
-            >
-              {webhookCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            </Button>
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            Méthode : <span className="font-mono font-medium text-foreground">POST</span>
-          </p>
-        </CardContent>
-      </Card>
 
       {/* Danger zone */}
       <Card className="bg-surface border-status-erreur/20">
