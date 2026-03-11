@@ -1,56 +1,31 @@
 
 
-# Mise à jour Sentinelle — Verdicts FR + améliorations
+## Fix Frontend API Contract Alignment
 
-## Ce qui est déjà fait (v3 précédente)
-- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
-- Toggle Switch sur Dashboard + ProjectDashboard
-- Zone danger suppression dans ProjectSettings
-- Galerie screenshots dans RunReport
-- Pages legacy supprimées
+### Context
+Several files referenced in the request (Runner.tsx, RunDetail.tsx, StatusBadge.tsx, src/lib/types.ts) do not exist in this project. After auditing the actual codebase, here is what applies and what does not:
 
-## Ce qui reste à faire
+| Requested | Actual File | Status |
+|---|---|---|
+| src/lib/types.ts | src/lib/sentinelle-types.ts | Already correct -- `RunStatus` includes `"error"`, `StepStatus` includes both forms, `RunStep` has `label` and `detail` |
+| StatusBadge.tsx | Does not exist | N/A -- project uses `VerdictBadge` |
+| Runner.tsx | Does not exist | N/A |
+| RunDetail.tsx | src/pages/ReleaseDetail.tsx | Already handles `"error"` status and uses `RunCard` (which delegates to `MainFlowSteps` already using `step.label \|\| step.name`) |
+| test-runs edge function | supabase/functions/test-runs/index.ts | Needs fixes |
 
-### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
+### Actual changes needed
 
-**`src/lib/sentinelle-types.ts`** (ligne 3) :
-- `Verdict = "OK" | "ALERTE" | "ERREUR"`
-- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
+**1. `supabase/functions/test-runs/index.ts` -- 409 retry + screenshots fix**
 
-**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
-- `OK` → `CheckCircle`, vert, label "OK"
-- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
-- `ERREUR` → `XCircle`, rouge, label "ERREUR"
-- Mettre à jour `VerdictText` avec les nouveaux textes FR
+In the `forwardToRunner` function (lines 125-131): replace the immediate fail on 409/429 with a retry loop (up to 30 attempts, 10s delay).
 
-### 2. Refonte affichage verdict dans RunReport.tsx
+In the GET action (line 203): fix screenshots extraction from `result.assets?.screenshots || result.screenshots || []` instead of `result.screenshots || []`.
 
-Remplacer le header actuel (lignes 113-136) par :
-- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
-- `forUser` affiché en `whitespace-pre-line` sous la bannière
-- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
-- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
+**2. Tests**
 
-### 3. Badge verdict sur les cartes Dashboard
+Create vitest test files for contract alignment:
+- `src/test/sentinelle-types.test.ts` -- validate type definitions accept both runner and frontend formats
+- `src/test/api-consistency.test.ts` -- validate expected API response shapes and edge function screenshot mapping logic
 
-**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
-- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
-- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
-
-### 4. Collapsible CTO dans RunReport
-
-Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
-
----
-
-## Fichiers modifiés
-
-| Fichier | Changement |
-|---|---|
-| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
-| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
-| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
-| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
-
-4 fichiers, ~80 lignes modifiées.
+No changes needed to types, components, or pages -- they already handle the runner format correctly.
 
