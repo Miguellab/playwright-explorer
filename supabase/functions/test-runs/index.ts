@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
           const headers: Record<string, string> = { "Content-Type": "application/json" };
           if (runnerKey) headers["Authorization"] = `Bearer ${runnerKey}`;
 
-          const resp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
+          let resp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
             method: "POST",
             headers,
             body: JSON.stringify({
@@ -122,13 +122,33 @@ Deno.serve(async (req: Request) => {
             return;
           }
 
+          // Retry on 409/429 (runner busy) — up to 30 attempts, 10s apart
           if (resp.status === 409 || resp.status === 429) {
-            await supabase.from("test_runs").update({
-              status: "failed",
-              finished_at: new Date().toISOString(),
-              steps: [{ name: "Runner", status: "fail", durationMs: 0, note: "Runner busy — try again later" }],
-            }).eq("id", run.id);
-            return;
+            let retryResp = resp;
+            for (let attempt = 1; attempt < 30; attempt++) {
+              await new Promise((r) => setTimeout(r, 10_000));
+              retryResp = await fetch(`${runnerUrl.replace(/\/+$/, "")}/v1/runs`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify({
+                  siteUrl,
+                  scenarioId: scenarioId || "smoke_v1",
+                  options,
+                  ...(scenarioId === "custom" && steps ? { steps } : {}),
+                }),
+              });
+              if (retryResp.status !== 409 && retryResp.status !== 429) break;
+            }
+            if (retryResp.status === 409 || retryResp.status === 429) {
+              await supabase.from("test_runs").update({
+                status: "failed",
+                finished_at: new Date().toISOString(),
+                steps: [{ name: "Runner", status: "fail", durationMs: 0, note: "Runner busy after 30 retries" }],
+              }).eq("id", run.id);
+              return;
+            }
+            // Use the successful retry response going forward
+            resp = retryResp;
           }
 
           if (!resp.ok) {
@@ -200,7 +220,7 @@ Deno.serve(async (req: Request) => {
                   findings: result.findings || { consoleErrors: [], failedRequests: [] },
                   assets: {
                     ...(data.assets as Record<string, unknown> || {}),
-                    screenshots: result.screenshots || [],
+                    screenshots: result.assets?.screenshots || result.screenshots || [],
                   },
                 };
                 await supabase.from("test_runs").update(updateData).eq("id", id);
