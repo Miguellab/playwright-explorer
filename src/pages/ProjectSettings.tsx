@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getProject, updateProject, deleteProject, setMainFlow as apiSetMainFlow } from "@/lib/sentinelle-api";
 import type { Project, SuggestedFlow } from "@/lib/sentinelle-types";
-import { groupFlowsByType, CHECK_TYPE_META, type CheckType } from "@/lib/flow-categories";
+import { groupFlowsByType, CHECK_TYPE_META, isMainFlowEligible, type CheckType } from "@/lib/flow-categories";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +24,9 @@ import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck } from "l
 import { useToast } from "@/hooks/use-toast";
 import CredentialsModal from "@/components/CredentialsModal";
 import { saveFlowCredentials, deleteFlowCredentials } from "@/lib/sentinelle-api";
+import { cn } from "@/lib/utils";
+
+const SECTION_ORDER: CheckType[] = ["user-flow", "page-check", "ui-element"];
 
 export default function ProjectSettings() {
   const { id } = useParams<{ id: string }>();
@@ -45,7 +47,6 @@ export default function ProjectSettings() {
   const [credentialFlowId, setCredentialFlowId] = useState("");
   const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
   const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
-  
 
   useEffect(() => {
     if (!id) return;
@@ -134,6 +135,8 @@ export default function ProjectSettings() {
   }
 
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
+  const flowsByType = groupFlowsByType(suggestedFlows);
+  const byCategory = project.flowClassification?.byCategory;
 
   return (
     <div className="container max-w-2xl py-10 space-y-8">
@@ -165,103 +168,109 @@ export default function ProjectSettings() {
           </div>
 
           {/* Flows grouped by type */}
-          <div className="space-y-2">
+          <div className="space-y-4">
             {suggestedFlows.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">Aucun parcours découvert.</p>
             ) : (
-              <Accordion type="multiple" defaultValue={[]} className="space-y-2">
-                {(["user-flow", "page-check", "ui-element"] as CheckType[]).map((type) => {
-                  const flows = groupFlowsByType(suggestedFlows)[type];
-                  if (flows.length === 0) return null;
-                  const meta = CHECK_TYPE_META[type];
-                  const selectedCount = flows.filter((f) => selectedFlowIds.has(f.id)).length;
-                  return (
-                    <AccordionItem key={type} value={type} className="border rounded-lg overflow-hidden">
-                      <AccordionTrigger className={`px-3 py-3 hover:no-underline ${meta.sectionClass}`}>
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${meta.badgeClass}`}>
-                            {meta.title}
-                          </span>
-                          <span className="text-xs text-muted-foreground ml-auto mr-2">
-                            {selectedCount}/{flows.length}
-                          </span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-3 pb-3 pt-1">
-                        <p className="text-xs text-muted-foreground mb-3">{meta.description}</p>
-                        <div className="space-y-2">
-                          {flows.map((flow) => {
-                            const isSelected = selectedFlowIds.has(flow.id);
-                            const isMain = mainFlowId === flow.id;
-                            return (
-                              <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
-                                <div className="flex items-center gap-3">
-                                  <Checkbox
-                                    checked={isSelected}
-                                    onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
-                                  />
-                                  <span className="text-sm flex-1">{flow.labelFr}</span>
-                                  {isSelected && (
+              SECTION_ORDER.map((type) => {
+                const flows = flowsByType[type];
+                if (flows.length === 0) return null;
+                const meta = CHECK_TYPE_META[type];
+                const selectedCount = flows.filter((f) => selectedFlowIds.has(f.id)).length;
+                const categoryCount = byCategory
+                  ? Object.entries(byCategory)
+                      .filter(([cat]) => {
+                        if (type === "user-flow") return cat === "auth" || cat === "transactional";
+                        if (type === "page-check") return cat === "core" || cat === "content" || cat === "settings";
+                        return cat === "infra";
+                      })
+                      .reduce((sum, [, count]) => sum + (count as number), 0)
+                  : flows.length;
+
+                return (
+                  <div key={type} className={cn("rounded-lg border p-4 space-y-3", meta.sectionClass)}>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
+                        {meta.title} ({categoryCount})
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {selectedCount}/{flows.length} activé{selectedCount > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{meta.description}</p>
+                    <div className="space-y-2">
+                      {flows.map((flow) => {
+                        const isSelected = selectedFlowIds.has(flow.id);
+                        const isMain = mainFlowId === flow.id;
+                        const eligible = isMainFlowEligible(flow);
+                        return (
+                          <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
+                            <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
+                              />
+                              <span className="text-sm flex-1">{flow.labelFr}</span>
+                              {isSelected && eligible && (
+                                <button
+                                  type="button"
+                                  className={cn(
+                                    "shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                                    isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
+                                  )}
+                                  onClick={() => setMainFlowIdState(flow.id)}
+                                  title="Définir comme parcours principal"
+                                >
+                                  {isMain && <Star className="h-3 w-3 text-background" />}
+                                </button>
+                              )}
+                            </div>
+                            {flow.descriptionFr && (
+                              <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
+                            )}
+                            {flow.requiresCredentials && (
+                              <div className="flex items-center gap-2 ml-8">
+                                {flowCredentials[flow.id] ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
+                                      <ShieldCheck className="h-3 w-3" />
+                                      Compte test configuré
+                                    </span>
                                     <button
                                       type="button"
-                                      className={`shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                                        isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
-                                      }`}
-                                      onClick={() => setMainFlowIdState(flow.id)}
-                                      title="Définir comme parcours principal"
+                                      className="text-[11px] text-muted-foreground hover:text-foreground"
+                                      onClick={() => {
+                                        setCredentialFlowId(flow.id);
+                                        setCredentialFlowLabel(flow.labelFr);
+                                        setCredentialModalOpen(true);
+                                      }}
                                     >
-                                      {isMain && <Star className="h-3 w-3 text-background" />}
+                                      Modifier
                                     </button>
-                                  )}
-                                </div>
-                                {flow.descriptionFr && (
-                                  <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
-                                )}
-                                {(flow.goal === "LOGIN" || flow.requiresCredentials) && (
-                                  <div className="flex items-center gap-2 ml-8">
-                                    {flowCredentials[flow.id] ? (
-                                      <>
-                                        <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
-                                          <ShieldCheck className="h-3 w-3" />
-                                          Compte test configuré
-                                        </span>
-                                        <button
-                                          type="button"
-                                          className="text-[11px] text-muted-foreground hover:text-foreground"
-                                          onClick={() => {
-                                            setCredentialFlowId(flow.id);
-                                            setCredentialFlowLabel(flow.labelFr);
-                                            setCredentialModalOpen(true);
-                                          }}
-                                        >
-                                          Modifier
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
-                                        onClick={() => {
-                                          setCredentialFlowId(flow.id);
-                                          setCredentialFlowLabel(flow.labelFr);
-                                          setCredentialModalOpen(true);
-                                        }}
-                                      >
-                                        <KeyRound className="h-3 w-3" />
-                                        Configurer les identifiants
-                                      </button>
-                                    )}
-                                  </div>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
+                                    onClick={() => {
+                                      setCredentialFlowId(flow.id);
+                                      setCredentialFlowLabel(flow.labelFr);
+                                      setCredentialModalOpen(true);
+                                    }}
+                                  >
+                                    <KeyRound className="h-3 w-3" />
+                                    Configurer les identifiants
+                                  </button>
                                 )}
                               </div>
-                            );
-                          })}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -275,7 +284,6 @@ export default function ProjectSettings() {
             <Switch checked={enabled} onCheckedChange={setEnabled} />
           </div>
 
-          {/* Limites */}
           <div className="space-y-2">
             <Label className="text-xs">Tests maximum par jour</Label>
             <Input
@@ -297,7 +305,6 @@ export default function ProjectSettings() {
           </Button>
         </CardContent>
       </Card>
-
 
       {/* Danger zone */}
       <Card className="bg-surface border-status-erreur/20">

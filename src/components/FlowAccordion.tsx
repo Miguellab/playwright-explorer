@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle, AlertTriangle, XCircle, Loader2, ChevronDown, RotateCcw } from "lucide-react";
+import { CheckCircle, AlertTriangle, XCircle, Loader2, ChevronDown, RotateCcw, Star, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { MainFlowSteps } from "@/components/MainFlowSteps";
@@ -8,7 +8,7 @@ import { RunFindings } from "@/components/RunFindings";
 import { PerformanceMetrics } from "@/components/PerformanceMetrics";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { Button } from "@/components/ui/button";
-import { getCheckType, CHECK_TYPE_META } from "@/lib/flow-categories";
+import { getCheckType, CHECK_TYPE_META, getStatusMessage } from "@/lib/flow-categories";
 import { runSingleFlow } from "@/lib/sentinelle-api";
 import type { SuggestedFlow, Run } from "@/lib/sentinelle-types";
 
@@ -26,6 +26,11 @@ function defaultOpen(verdict: FlowVerdict): boolean {
   return verdict === "ERREUR" || verdict === "ALERTE";
 }
 
+function formatDuration(ms: number | null | undefined): string | null {
+  if (!ms) return null;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 interface FlowAccordionProps {
   flow: SuggestedFlow;
   run?: Run;
@@ -41,7 +46,7 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
   const [retesting, setRetesting] = useState(false);
   const checkType = getCheckType(flow);
   const typeMeta = CHECK_TYPE_META[checkType];
-  const isPageCheck = checkType === "page-check";
+  const criticality = flow.criticality ?? "important";
 
   const stepsCount = run?.stepsSummary?.total ?? run?.steps?.length ?? 0;
   const passedCount = run?.stepsSummary?.passed ?? 0;
@@ -54,6 +59,9 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
   const hasPerfMetrics = run?.findings?.performanceMetrics && Object.keys(run.findings.performanceMetrics).length > 0;
   const hasDetails = hasSteps || hasScreenshots || hasFindings || hasPerfMetrics;
   const canRetest = projectId && (verdict === "ALERTE" || verdict === "ERREUR") && !retesting && !disabled;
+
+  const statusMessage = run ? getStatusMessage(checkType, run.status, run.errorSummary) : null;
+  const duration = formatDuration(run?.durationMs);
 
   const handleRetest = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,7 +85,8 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
           verdict === "ERREUR" && "border-status-erreur/30",
           verdict === "ALERTE" && "border-status-alerte/30",
           verdict === "OK" && "border-border",
-          verdict === "PENDING" && "border-border"
+          verdict === "PENDING" && "border-border",
+          criticality === "infra" && "opacity-80"
         )}
       >
         {/* Header */}
@@ -95,28 +104,39 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
             {verdict === "PENDING" && <Loader2 className="h-4 w-4 text-status-pending animate-spin shrink-0" />}
 
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium block truncate">
-                {flow.labelFr || flow.goal}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "text-sm block truncate",
+                  criticality === "critical" ? "font-semibold" : "font-medium",
+                  criticality === "infra" && "text-muted-foreground"
+                )}>
+                  {flow.labelFr || flow.goal}
+                </span>
+                {isMainFlow && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded bg-neon/15 text-neon border border-neon/30 shrink-0">
+                    <Star className="h-2.5 w-2.5" />
+                    Principal
+                  </span>
+                )}
+              </div>
               <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border inline-block mt-0.5", typeMeta.badgeClass)}>
                 {typeMeta.badgeLabel}
               </span>
-              {verdict === "OK" && isPageCheck && (
-                <span className="text-xs text-muted-foreground block mt-0.5">
-                  Page accessible — Aucune erreur détectée
-                </span>
-              )}
-              {verdict === "OK" && !isPageCheck && stepsCount > 0 && (
-                <span className="text-xs text-muted-foreground block mt-0.5">
-                  {passedCount}/{stepsCount} étapes validées
+              {statusMessage && (
+                <span className={cn(
+                  "text-xs block mt-0.5",
+                  verdict === "OK" && "text-muted-foreground",
+                  (verdict === "ERREUR" || verdict === "ALERTE") && "text-status-erreur"
+                )}>
+                  {statusMessage}
                 </span>
               )}
               {verdict === "PENDING" && run && (
                 <span className="text-xs text-muted-foreground block mt-0.5">En cours…</span>
               )}
-              {(verdict === "ERREUR" || verdict === "ALERTE") && run?.errorSummary && (
-                <span className="text-xs text-status-erreur block mt-0.5">
-                  {run.errorSummary}
+              {verdict === "OK" && stepsCount > 0 && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  {passedCount}/{stepsCount} étapes validées
                 </span>
               )}
               {(verdict === "ERREUR" || verdict === "ALERTE") && run?.failedStepName && (
@@ -127,6 +147,12 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {duration && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {duration}
+                </span>
+              )}
               {canRetest && (
                 <Button
                   variant="outline"
