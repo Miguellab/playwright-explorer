@@ -263,6 +263,7 @@ export interface Release {
   trigger: ReleaseTrigger;
   verdict: ReleaseVerdict;
   verdictResult?: VerdictResult;
+  verdictHeadline?: string;
   detectedAt: string;
   completedAt: string | null;
   mainFlowId: string | null;
