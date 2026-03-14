@@ -8,12 +8,12 @@ import {
   listRuns,
   testNow,
   getRelease,
-  runSingleFlow,
 } from "@/lib/sentinelle-api";
 import type { Project, Release, ReleaseDetail, Run, SuggestedFlow } from "@/lib/sentinelle-types";
 import { VerdictBadge } from "@/components/VerdictBadge";
 import { VerdictIssues } from "@/components/VerdictIssues";
 import { FlowAccordion } from "@/components/FlowAccordion";
+import { groupFlowsByType, CHECK_TYPE_META, type CheckType } from "@/lib/flow-categories";
 import {
   ArrowLeft,
   ExternalLink,
@@ -23,7 +23,6 @@ import {
   History,
   Rocket,
   FlaskConical,
-  
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
@@ -57,16 +56,16 @@ function triggerLabel(trigger: string): { text: string; icon: typeof Rocket } {
   }
 }
 
-function runStatusToVerdict(status: string): "OK" | "ALERTE" | "ERREUR" | "PENDING" {
-  if (status === "passed") return "OK";
-  if (status === "failed") return "ALERTE";
-  if (status === "error") return "ERREUR";
-  return "PENDING";
-}
-
 function verdictContext(release: Release | ReleaseDetail | null): { label: string; subtitle: string; verdict: "OK" | "ALERTE" | "ERREUR" | "PENDING" } {
   if (!release) {
     return { label: "En attente de publication", subtitle: "Aucune publication n'a encore été détectée.", verdict: "PENDING" };
+  }
+  // Use verdictHeadline from API if available
+  if (release.verdictHeadline) {
+    const v = release.verdict as "OK" | "ALERTE" | "ERREUR" | "PENDING";
+    const subtitle = release.verdictResult?.forUser
+      ?? (v === "OK" ? "Toutes les vérifications configurées sont validées." : "");
+    return { label: release.verdictHeadline, subtitle, verdict: v };
   }
   // Use enriched verdict if available
   if (release.verdictResult) {
@@ -82,16 +81,15 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   }
   if (v === "ALERTE") {
     const failedCount = release.runs.filter(r => r.status === "failed" || r.status === "error").length;
-    return { label: "Problème détecté après publication", subtitle: `Le parcours principal fonctionne mais ${failedCount} parcours secondaire(s) en échec.`, verdict: "ALERTE" };
+    return { label: "Problème détecté après publication", subtitle: `Le parcours principal fonctionne mais ${failedCount} vérification(s) en échec.`, verdict: "ALERTE" };
   }
   if (v === "ERREUR") {
     return { label: "Problème détecté après publication", subtitle: `Le parcours principal "${release.mainFlowLabel || "inconnu"}" a échoué.`, verdict: "ERREUR" };
   }
-  // PENDING
   return { label: "Vérification en cours…", subtitle: "Les tests sont en cours d'exécution.", verdict: "PENDING" };
 }
 
-
+const SECTION_ORDER: CheckType[] = ["user-flow", "page-check", "ui-element"];
 
 // ── Main Component ──
 
@@ -110,7 +108,6 @@ export default function ProjectDashboard() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Load data ──
   const loadData = useCallback(async () => {
     if (!id) return;
     const [p, releases, latestRuns] = await Promise.all([
@@ -123,13 +120,11 @@ export default function ProjectDashboard() {
     const rel = releases.length > 0 ? releases[0] : null;
     setLatestRelease(rel);
 
-    // Check if any run is still active
     const hasActive = latestRuns.some(r => r.status === "queued" || r.status === "running");
     if (hasActive && !pollRef.current) {
       startPolling();
     }
 
-    // Load full run details from release
     if (rel?.id) {
       try {
         const detail = await getRelease(rel.id);
@@ -150,7 +145,6 @@ export default function ProjectDashboard() {
         clearInterval(pollRef.current!);
         pollRef.current = null;
         setTesting(false);
-        // Refresh everything
         loadData();
       }
     }, 5000);
@@ -175,23 +169,14 @@ export default function ProjectDashboard() {
       setRuns(latestRuns);
     } catch (e: unknown) {
       setTesting(false);
-      const err = e as Error & { status?: number; dailyCount?: number; maxRunsPerDay?: number };
+      const err = e as Error & { status?: number };
       if (err.status === 429) {
-        // Try to parse daily count from error response
-        try {
-          const body = JSON.parse(err.message);
-          if (body.dailyCount != null) setDailyRunCount(body.dailyCount);
-        } catch {
-          // message is just a string
-        }
         toast({ title: "Limite atteinte", description: "Réessayez demain.", variant: "destructive" });
       } else {
         toast({ title: "Erreur", description: err.message, variant: "destructive" });
       }
     }
   }, [id, toast, startPolling]);
-
-  // ── Render ──
 
   if (loading) {
     return (
@@ -209,19 +194,29 @@ export default function ProjectDashboard() {
     );
   }
 
-  const lastRun = runs[0] ?? null;
   const { label: vLabel, subtitle: vSubtitle, verdict: vVerdict } = verdictContext(latestRelease);
 
-  // Flow separation
-  const mainFlowId = project.mainFlowId;
   const monitoredFlows = project.monitoredFlows ?? [];
-  const mainFlow = mainFlowId ? monitoredFlows.find(f => f.id === mainFlowId) : null;
-  const otherFlows = mainFlowId ? monitoredFlows.filter(f => f.id !== mainFlowId) : monitoredFlows;
+  const mainFlowId = project.mainFlowId;
+  const flowsByType = groupFlowsByType(monitoredFlows);
 
-  // Find latest run per flow
-  const latestRunByFlow = (flowId: string) => runs.find(r => r.flowId === flowId);
+  // Build run lookup from release runs, falling back to latest runs
+  const findRunForFlow = (flowId: string) =>
+    releaseRuns.find(r => r.flowId === flowId) ?? runs.find(r => r.flowId === flowId);
 
   const isActive = testing || runs.some(r => r.status === "queued" || r.status === "running");
+
+  // Release trigger context line
+  const releaseContextLine = latestRelease ? (() => {
+    const info = triggerLabel(latestRelease.trigger);
+    const TriggerIcon = info.icon;
+    return (
+      <>
+        <TriggerIcon className="h-3 w-3" />
+        <span>{info.text} — {timeAgo(latestRelease.detectedAt)}</span>
+      </>
+    );
+  })() : null;
 
   return (
     <div className="container max-w-3xl py-10 space-y-8">
@@ -247,17 +242,12 @@ export default function ProjectDashboard() {
               <ExternalLink className="h-3 w-3" />
               {project.siteUrl.replace(/^https?:\/\//, "")}
             </a>
-            {lastRun?.startedAt && (() => {
-              const info = triggerLabel(lastRun.trigger);
-              const TriggerIcon = info.icon;
-              return (
-                <>
-                  <span>·</span>
-                  <TriggerIcon className="h-3 w-3" />
-                  <span>{info.text} — {timeAgo(lastRun.startedAt)}</span>
-                </>
-              );
-            })()}
+            {releaseContextLine && (
+              <>
+                <span>·</span>
+                {releaseContextLine}
+              </>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -303,43 +293,36 @@ export default function ProjectDashboard() {
         </motion.div>
       )}
 
-      {/* Parcours principal */}
-      {project.configStatus !== "no_flows" && mainFlow && (
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-neon bg-neon/10 rounded px-2 py-0.5">
-              Parcours principal
-            </span>
+      {/* Grouped flow sections */}
+      {project.configStatus !== "no_flows" && SECTION_ORDER.map(type => {
+        const flows = flowsByType[type];
+        if (flows.length === 0) return null;
+        const meta = CHECK_TYPE_META[type];
+        return (
+          <div key={type} className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
+                  {meta.title}
+                </span>
+                <span className="text-xs text-muted-foreground">({flows.length})</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{meta.description}</p>
+            </div>
+            {flows.map(flow => (
+              <FlowAccordion
+                key={flow.id}
+                flow={flow}
+                run={findRunForFlow(flow.id)}
+                isMainFlow={flow.id === mainFlowId}
+                projectId={id}
+                onRetestComplete={loadData}
+                disabled={isActive}
+              />
+            ))}
           </div>
-          <FlowAccordion
-            flow={mainFlow}
-            run={releaseRuns.find(r => r.flowId === mainFlow.id) ?? latestRunByFlow(mainFlow.id)}
-            isMainFlow
-            projectId={id}
-            onRetestComplete={loadData}
-            disabled={isActive}
-          />
-        </div>
-      )}
-
-      {/* Autres parcours surveillés */}
-      {project.configStatus !== "no_flows" && otherFlows.length > 0 && (
-        <div className="space-y-3">
-          <p className="text-xs font-medium text-muted-foreground">
-            {mainFlow ? "Autres vérifications" : "Vérifications"}
-          </p>
-          {otherFlows.map(flow => (
-            <FlowAccordion
-              key={flow.id}
-              flow={flow}
-              run={releaseRuns.find(r => r.flowId === flow.id) ?? latestRunByFlow(flow.id)}
-              projectId={id}
-              onRetestComplete={loadData}
-              disabled={isActive}
-            />
-          ))}
-        </div>
-      )}
+        );
+      })}
 
       {/* Authenticated Zone */}
       {project.configStatus !== "no_flows" && (

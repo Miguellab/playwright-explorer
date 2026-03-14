@@ -50,6 +50,9 @@ export interface Goal {
   label: string;
 }
 
+export type FlowCategory = "auth" | "transactional" | "core" | "content" | "settings" | "infra";
+export type FlowCriticality = "critical" | "important" | "secondary" | "infra";
+
 export interface SuggestedFlow {
   id: string;
   goal: string;
@@ -64,7 +67,11 @@ export interface SuggestedFlow {
   hasCredentials?: boolean;
   credentials?: { email: string; password: string };
   authenticatedOnly?: boolean;
-  priority?: number;
+  priority?: number | string;
+  category?: FlowCategory;
+  criticality?: FlowCriticality;
+  businessValue?: number;
+  functionType?: string;
 }
 
 // ── Project ──
@@ -93,6 +100,12 @@ export interface Project {
     message: string;
     flowIds: string[];
     flowLabels: string[];
+  };
+  flowClassification?: {
+    totalFlows: number;
+    byCategory: Record<string, number>;
+    byCriticality: Record<string, number>;
+    suggestedMainFlowId?: string | null;
   };
   discoveryMeta?: { analysisMode?: string };
   createdAt: string;
@@ -239,6 +252,8 @@ export interface ReleaseRunSummary {
   screenshotCount?: number;
   consoleErrorCount?: number;
   failedRequestCount?: number;
+  flowCategory?: string;
+  flowCriticality?: string;
 }
 
 export interface Release {
@@ -248,6 +263,7 @@ export interface Release {
   trigger: ReleaseTrigger;
   verdict: ReleaseVerdict;
   verdictResult?: VerdictResult;
+  verdictHeadline?: string;
   detectedAt: string;
   completedAt: string | null;
   mainFlowId: string | null;

@@ -1,86 +1,56 @@
 
 
-## Refactoring: Category-based flow grouping using API `category` field
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Summary
-Replace the current client-side flow classification (`flow-categories.ts` using `goal`/`source` heuristics) with the backend's `category` field. Update both the Project Dashboard and Project Settings pages to group flows into 3 sections with category-specific wording and status messages.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### 1. Update types (`src/lib/sentinelle-types.ts`)
+## Ce qui reste à faire
 
-Add missing fields to `SuggestedFlow`:
-- `category?: "auth" | "transactional" | "core" | "content" | "settings" | "infra"`
-- `criticality?: "critical" | "important" | "secondary" | "infra"`
-- `businessValue?: number`
-- `functionType?: string`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-Add to `Project`:
-- `flowClassification?: { totalFlows: number; byCategory: Record<string, number>; byCriticality: Record<string, number>; suggestedMainFlowId?: string | null }`
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Add to `ReleaseRunSummary`:
-- `flowCategory?: string`
-- `flowCriticality?: string`
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-### 2. Rewrite flow-categories (`src/lib/flow-categories.ts`)
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-Replace the goal/source-based heuristic with `category` field lookup:
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-| CheckType | category values |
+### 3. Badge verdict sur les cartes Dashboard
+
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
+
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
 |---|---|
-| `user-flow` | `auth`, `transactional` |
-| `page-check` | `core`, `content`, `settings` |
-| `ui-element` | `infra` |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
 
-`getCheckType(flow)` → check `flow.category` first, fall back to current goal-based logic for backward compatibility.
-
-Update descriptions:
-- user-flow: "Sentinelle exécute une action utilisateur réelle sur votre application."
-- page-check: "Sentinelle vérifie que ces pages restent accessibles et stables après publication."
-- ui-element: "Sentinelle vérifie que les éléments essentiels de l'interface sont présents et utilisables."
-
-Add a helper `getStatusMessage(checkType, status, errorSummary?)` returning category-specific wording:
-- user-flow: "Parcours validé" / "Parcours échoué — {error}" / "Erreur d'exécution"
-- page-check: "Page accessible — Aucune erreur détectée" / "Page inaccessible — {error}" / "Erreur lors de la vérification"
-- ui-element: "Élément présent — Aucune erreur détectée" / "Élément absent ou non fonctionnel — {error}" / "Erreur lors de la vérification"
-
-### 3. Update FlowAccordion (`src/components/FlowAccordion.tsx`)
-
-- Use `getStatusMessage()` instead of the current hardcoded status text
-- Show `isMainFlow` badge when `isMainFlow` prop is true
-- Show `run.durationMs` formatted as seconds
-- Show steps summary for all types (not just non-page-checks)
-- Use `flow.criticality` to modulate visual weight (bold for critical, subdued for infra)
-
-### 4. Update ProjectDashboard (`src/pages/ProjectDashboard.tsx`)
-
-Replace the current "main flow + others" layout with 3 grouped sections:
-
-1. **Parcours utilisateur** — flows where category is auth/transactional
-2. **Pages critiques** — flows where category is core/content/settings
-3. **Éléments d'interface** — flows where category is infra
-
-Each section shows: title, count, description, then FlowAccordion cards.
-
-The main flow gets a special badge within its section (not a separate section anymore).
-
-Use `latestRelease.trigger` for the header subtitle instead of `lastRun.trigger`, and use `latestRelease.verdictHeadline` for the verdict subtitle when available.
-
-Match runs from `releaseRuns` to flows by `flowId`.
-
-### 5. Update ProjectSettings (`src/pages/ProjectSettings.tsx`)
-
-Same 3-section grouping using `category` field. Use `flowClassification.byCategory` from project for section header counts (e.g. "Parcours utilisateur (2)").
-
-Main flow selector: only show for auth/transactional and core category flows.
-
-Keep existing: checkbox toggle, credentials config, save logic.
-
-### Files impacted
-
-| File | Change |
-|---|---|
-| `src/lib/sentinelle-types.ts` | Add `category`, `criticality`, `businessValue`, `functionType` to `SuggestedFlow`; add `flowClassification` to `Project`; add `flowCategory`/`flowCriticality` to `ReleaseRunSummary` |
-| `src/lib/flow-categories.ts` | Rewrite `getCheckType` to use `category` field; update descriptions; add `getStatusMessage` helper |
-| `src/components/FlowAccordion.tsx` | Use `getStatusMessage`; show duration; adapt visual weight by criticality; show main flow badge |
-| `src/pages/ProjectDashboard.tsx` | Replace main/other split with 3 category-based sections; use release trigger/headline for context |
-| `src/pages/ProjectSettings.tsx` | Group by category with counts from `flowClassification`; restrict main flow selector to eligible categories |
+4 fichiers, ~80 lignes modifiées.
 
