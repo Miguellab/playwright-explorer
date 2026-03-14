@@ -252,6 +252,8 @@ export interface ReleaseRunSummary {
   screenshotCount?: number;
   consoleErrorCount?: number;
   failedRequestCount?: number;
+  flowCategory?: string;
+  flowCriticality?: string;
 }
 
 export interface Release {
