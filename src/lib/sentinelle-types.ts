@@ -101,6 +101,12 @@ export interface Project {
     flowIds: string[];
     flowLabels: string[];
   };
+  flowClassification?: {
+    totalFlows: number;
+    byCategory: Record<string, number>;
+    byCriticality: Record<string, number>;
+    suggestedMainFlowId?: string | null;
+  };
   discoveryMeta?: { analysisMode?: string };
   createdAt: string;
   updatedAt: string;
