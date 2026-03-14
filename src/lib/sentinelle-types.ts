@@ -50,6 +50,9 @@ export interface Goal {
   label: string;
 }
 
+export type FlowCategory = "auth" | "transactional" | "core" | "content" | "settings" | "infra";
+export type FlowCriticality = "critical" | "important" | "secondary" | "infra";
+
 export interface SuggestedFlow {
   id: string;
   goal: string;
@@ -64,7 +67,11 @@ export interface SuggestedFlow {
   hasCredentials?: boolean;
   credentials?: { email: string; password: string };
   authenticatedOnly?: boolean;
-  priority?: number;
+  priority?: number | string;
+  category?: FlowCategory;
+  criticality?: FlowCriticality;
+  businessValue?: number;
+  functionType?: string;
 }
 
 // ── Project ──
