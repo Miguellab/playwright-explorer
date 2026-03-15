@@ -109,6 +109,11 @@ export default function ProjectDashboard() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [dailyRunCount, setDailyRunCount] = useState<number | null>(null);
+  const [sectionOpen, setSectionOpen] = useState<Record<CheckType, boolean>>({
+    "user-flow": true,
+    "page-check": false,
+    "ui-element": false,
+  });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
