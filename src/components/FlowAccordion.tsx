@@ -38,9 +38,12 @@ interface FlowAccordionProps {
   projectId?: string;
   onRetestComplete?: () => void;
   disabled?: boolean;
+  queuePosition?: number;
+  totalInQueue?: number;
+  completedInQueue?: number;
 }
 
-export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled }: FlowAccordionProps) {
+export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled, queuePosition, totalInQueue, completedInQueue }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
   const [retesting, setRetesting] = useState(false);
@@ -101,7 +104,9 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
             {verdict === "OK" && <CheckCircle className="h-4 w-4 text-status-safe shrink-0" />}
             {verdict === "ALERTE" && <AlertTriangle className="h-4 w-4 text-status-alerte shrink-0" />}
             {verdict === "ERREUR" && <XCircle className="h-4 w-4 text-status-erreur shrink-0" />}
-            {verdict === "PENDING" && <Loader2 className="h-4 w-4 text-status-pending animate-spin shrink-0" />}
+            {verdict === "PENDING" && run?.status === "running" && <Loader2 className="h-4 w-4 text-status-pending animate-spin shrink-0" />}
+            {verdict === "PENDING" && run?.status === "queued" && <Clock className="h-4 w-4 text-muted-foreground shrink-0" />}
+            {verdict === "PENDING" && !run && <Clock className="h-4 w-4 text-muted-foreground shrink-0" />}
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -131,8 +136,18 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
                   {statusMessage}
                 </span>
               )}
-              {verdict === "PENDING" && run && (
-                <span className="text-xs text-muted-foreground block mt-0.5">En cours…</span>
+              {verdict === "PENDING" && !run && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  Ce parcours sera testé lors du prochain lancement
+                </span>
+              )}
+              {verdict === "PENDING" && run?.status === "queued" && queuePosition && totalInQueue && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  En file d'attente ({queuePosition}/{totalInQueue}) — ~{((queuePosition - (completedInQueue ?? 0)) * 15)}s restant
+                </span>
+              )}
+              {verdict === "PENDING" && run?.status === "running" && (
+                <span className="text-xs text-muted-foreground block mt-0.5">Test en cours…</span>
               )}
               {verdict === "OK" && stepsCount > 0 && (
                 <span className="text-xs text-muted-foreground block mt-0.5">

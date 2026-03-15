@@ -1,80 +1,56 @@
 
 
-## Improve PENDING flow display in ProjectDashboard and FlowAccordion
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Changes
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-**1. `src/pages/ProjectDashboard.tsx`**
+## Ce qui reste à faire
 
-Compute queue context and pass it to each `FlowAccordion`:
-- Count total flows, completed runs, and determine queue position for each flow
-- Pass new props: `queuePosition`, `totalInQueue`, `completedInQueue`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-```tsx
-// After findRunForFlow, compute queue stats
-const allFlows = SECTION_ORDER.flatMap(type => flowsByType[type]);
-const totalFlows = allFlows.length;
-const completedRuns = allFlows.filter(f => {
-  const r = findRunForFlow(f.id);
-  return r && r.status !== "queued" && r.status !== "running";
-}).length;
-// Queue position: flows without run or with queued status, ordered by array index
-let queueIndex = 0;
-const queuePositionMap: Record<string, number> = {};
-for (const f of allFlows) {
-  const r = findRunForFlow(f.id);
-  if (!r || r.status === "queued") {
-    queuePositionMap[f.id] = completedRuns + queueIndex + 1;
-    queueIndex++;
-  }
-}
-```
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Pass to FlowAccordion:
-```tsx
-<FlowAccordion
-  ...existing props
-  queuePosition={queuePositionMap[flow.id]}
-  totalInQueue={totalFlows}
-  completedInQueue={completedRuns}
-/>
-```
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**2. `src/components/FlowAccordion.tsx`**
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-Add props: `queuePosition?: number`, `totalInQueue?: number`, `completedInQueue?: number`.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-Update the PENDING display logic:
+### 3. Badge verdict sur les cartes Dashboard
 
-- **No run at all** (`!run`): Show `Clock` icon (not spinner), text "En attente", and subtitle "Ce parcours sera testé lors du prochain lancement"
-- **Run exists with `queued` status**: Show `Clock` icon, text "En file d'attente (N/Total)", and estimated time `~Xs restant` based on `(queuePosition - completedInQueue) * 15`
-- **Run exists with `running` status**: Show `Loader2` spinner, text "Test en cours…"
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-Icon change in header:
-```tsx
-{verdict === "PENDING" && run?.status === "running" && <Loader2 className="h-4 w-4 animate-spin text-status-pending" />}
-{verdict === "PENDING" && run?.status === "queued" && <Clock className="h-4 w-4 text-muted-foreground" />}
-{verdict === "PENDING" && !run && <Clock className="h-4 w-4 text-muted-foreground" />}
-```
+### 4. Collapsible CTO dans RunReport
 
-Subtitle area:
-```tsx
-{verdict === "PENDING" && !run && (
-  <span className="text-xs text-muted-foreground">Ce parcours sera testé lors du prochain lancement</span>
-)}
-{verdict === "PENDING" && run?.status === "queued" && queuePosition && totalInQueue && (
-  <span className="text-xs text-muted-foreground">
-    En file d'attente ({queuePosition}/{totalInQueue}) — ~{((queuePosition - (completedInQueue ?? 0)) * 15)}s restant
-  </span>
-)}
-{verdict === "PENDING" && run?.status === "running" && (
-  <span className="text-xs text-muted-foreground">Test en cours…</span>
-)}
-```
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-### Files impacted
-| File | Change |
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
 |---|---|
-| `src/pages/ProjectDashboard.tsx` | Compute queue position map, pass props to FlowAccordion |
-| `src/components/FlowAccordion.tsx` | Add queue props, differentiate no-run vs queued vs running display |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
