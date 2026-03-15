@@ -161,11 +161,15 @@ export default function ProjectDashboard() {
 
   // Auto-expand sections with failures
   useEffect(() => {
+    const monitored = project?.monitoredFlows ?? [];
+    if (monitored.length === 0) return;
+    const grouped = groupFlowsByType(monitored);
+    const allRuns = [...releaseRuns, ...runs];
     const updates: Partial<Record<CheckType, boolean>> = {};
     for (const type of SECTION_ORDER) {
-      const flows = flowsByType[type];
+      const flows = grouped[type];
       const hasFail = flows.some(f => {
-        const r = findRunForFlow(f.id);
+        const r = allRuns.find(run => run.flowId === f.id);
         return r && (r.status === "failed" || r.status === "error");
       });
       if (hasFail) updates[type] = true;
@@ -173,7 +177,7 @@ export default function ProjectDashboard() {
     if (Object.keys(updates).length > 0) {
       setSectionOpen(prev => ({ ...prev, ...updates }));
     }
-  }, [releaseRuns, runs]);
+  }, [project, releaseRuns, runs]);
 
   useEffect(() => {
     loadData().finally(() => setLoading(false));
