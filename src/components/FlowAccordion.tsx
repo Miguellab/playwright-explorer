@@ -38,9 +38,12 @@ interface FlowAccordionProps {
   projectId?: string;
   onRetestComplete?: () => void;
   disabled?: boolean;
+  queuePosition?: number;
+  totalInQueue?: number;
+  completedInQueue?: number;
 }
 
-export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled }: FlowAccordionProps) {
+export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComplete, disabled, queuePosition, totalInQueue, completedInQueue }: FlowAccordionProps) {
   const verdict = runToVerdict(run);
   const [open, setOpen] = useState(defaultOpen(verdict));
   const [retesting, setRetesting] = useState(false);
