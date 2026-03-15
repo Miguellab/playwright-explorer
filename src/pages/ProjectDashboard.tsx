@@ -23,6 +23,9 @@ import {
   History,
   Rocket,
   FlaskConical,
+  ChevronDown,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
