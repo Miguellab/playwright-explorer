@@ -48,6 +48,11 @@ export default function ProjectSettings() {
   const [credentialFlowId, setCredentialFlowId] = useState("");
   const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
   const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
+  const [sectionOpen, setSectionOpen] = useState<Record<CheckType, boolean>>({
+    "user-flow": false,
+    "page-check": false,
+    "ui-element": false,
+  });
 
   useEffect(() => {
     if (!id) return;
