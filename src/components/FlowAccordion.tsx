@@ -104,7 +104,9 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
             {verdict === "OK" && <CheckCircle className="h-4 w-4 text-status-safe shrink-0" />}
             {verdict === "ALERTE" && <AlertTriangle className="h-4 w-4 text-status-alerte shrink-0" />}
             {verdict === "ERREUR" && <XCircle className="h-4 w-4 text-status-erreur shrink-0" />}
-            {verdict === "PENDING" && <Loader2 className="h-4 w-4 text-status-pending animate-spin shrink-0" />}
+            {verdict === "PENDING" && run?.status === "running" && <Loader2 className="h-4 w-4 text-status-pending animate-spin shrink-0" />}
+            {verdict === "PENDING" && run?.status === "queued" && <Clock className="h-4 w-4 text-muted-foreground shrink-0" />}
+            {verdict === "PENDING" && !run && <Clock className="h-4 w-4 text-muted-foreground shrink-0" />}
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
