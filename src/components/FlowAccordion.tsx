@@ -136,8 +136,18 @@ export function FlowAccordion({ flow, run, isMainFlow, projectId, onRetestComple
                   {statusMessage}
                 </span>
               )}
-              {verdict === "PENDING" && run && (
-                <span className="text-xs text-muted-foreground block mt-0.5">En cours…</span>
+              {verdict === "PENDING" && !run && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  Ce parcours sera testé lors du prochain lancement
+                </span>
+              )}
+              {verdict === "PENDING" && run?.status === "queued" && queuePosition && totalInQueue && (
+                <span className="text-xs text-muted-foreground block mt-0.5">
+                  En file d'attente ({queuePosition}/{totalInQueue}) — ~{((queuePosition - (completedInQueue ?? 0)) * 15)}s restant
+                </span>
+              )}
+              {verdict === "PENDING" && run?.status === "running" && (
+                <span className="text-xs text-muted-foreground block mt-0.5">Test en cours…</span>
               )}
               {verdict === "OK" && stepsCount > 0 && (
                 <span className="text-xs text-muted-foreground block mt-0.5">

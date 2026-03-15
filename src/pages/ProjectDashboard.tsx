@@ -335,6 +335,9 @@ export default function ProjectDashboard() {
                 projectId={id}
                 onRetestComplete={loadData}
                 disabled={isActive}
+                queuePosition={queuePositionMap[flow.id]}
+                totalInQueue={totalInQueue}
+                completedInQueue={completedInQueue}
               />
             ))}
           </div>
