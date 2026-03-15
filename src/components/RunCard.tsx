@@ -13,6 +13,7 @@ import {
   RotateCcw,
   AlertCircle,
   ImageOff,
+  CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +24,12 @@ interface RunCardProps {
   onToggle: () => void;
   onRetest: (flowId: string) => void;
   retesting: boolean;
+  /** Compact mode: single-line card for passed runs, no expand */
+  compact?: boolean;
+  /** Category badge to display */
+  typeBadge?: { label: string; className: string };
+  /** Category-specific status message */
+  statusMessage?: string;
 }
 
 function statusToVerdict(status: string) {
@@ -35,15 +42,54 @@ function isErrorStatus(status: string) {
   return status === "failed" || status === "error";
 }
 
-export function RunCard({ run, isMainFlow, isExpanded, onToggle, onRetest, retesting }: RunCardProps) {
+export function RunCard({
+  run,
+  isMainFlow,
+  isExpanded,
+  onToggle,
+  onRetest,
+  retesting,
+  compact,
+  typeBadge,
+  statusMessage,
+}: RunCardProps) {
   const hasError = isErrorStatus(run.status);
   const hasScreenshots = run.assets?.screenshots && run.assets.screenshots.length > 0;
 
+  // Compact mode for passed runs
+  if (compact && run.status === "passed") {
+    return (
+      <div
+        id={run.id}
+        className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-surface hover:bg-muted/20 transition-colors"
+      >
+        <CheckCircle className="h-4 w-4 text-status-safe shrink-0" />
+        <span className="text-sm font-medium truncate">{run.flowLabel || "Parcours"}</span>
+        {typeBadge && (
+          <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border shrink-0", typeBadge.className)}>
+            {typeBadge.label}
+          </span>
+        )}
+        <span className="text-xs text-muted-foreground truncate ml-auto">
+          {statusMessage || "OK"}
+        </span>
+        {run.durationMs != null && run.durationMs > 0 && (
+          <span className="text-xs text-muted-foreground font-mono shrink-0">
+            {run.durationMs > 1000 ? `${(run.durationMs / 1000).toFixed(1)}s` : `${run.durationMs}ms`}
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <Card className={cn(
-      "border-border bg-surface",
-      hasError && "border-status-erreur/30"
-    )}>
+    <Card
+      id={run.id}
+      className={cn(
+        "border-border bg-surface",
+        hasError && "border-status-erreur/30"
+      )}
+    >
       <CardContent className="p-0">
         {/* Header */}
         <button
@@ -62,7 +108,15 @@ export function RunCard({ run, isMainFlow, isExpanded, onToggle, onRetest, retes
                 Parcours principal
               </span>
             )}
+            {typeBadge && (
+              <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded border", typeBadge.className)}>
+                {typeBadge.label}
+              </span>
+            )}
             <span className="text-sm font-medium">{run.flowLabel || "Parcours"}</span>
+            {statusMessage && (
+              <span className="text-xs text-muted-foreground hidden sm:inline">— {statusMessage}</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {run.durationMs != null && run.durationMs > 0 && (
