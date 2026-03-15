@@ -159,6 +159,22 @@ export default function ProjectDashboard() {
     }, 5000);
   }, [id, loadData]);
 
+  // Auto-expand sections with failures
+  useEffect(() => {
+    const updates: Partial<Record<CheckType, boolean>> = {};
+    for (const type of SECTION_ORDER) {
+      const flows = flowsByType[type];
+      const hasFail = flows.some(f => {
+        const r = findRunForFlow(f.id);
+        return r && (r.status === "failed" || r.status === "error");
+      });
+      if (hasFail) updates[type] = true;
+    }
+    if (Object.keys(updates).length > 0) {
+      setSectionOpen(prev => ({ ...prev, ...updates }));
+    }
+  }, [releaseRuns, runs]);
+
   useEffect(() => {
     loadData().finally(() => setLoading(false));
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
