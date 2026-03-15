@@ -1,56 +1,56 @@
 
 
-## Redesign Release Detail Page — Grouped Sections & Simplified Cards
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Overview
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Rewrite `src/pages/ReleaseDetail.tsx` to replace the current flat list of RunCards with 3 collapsible category sections, a cleaner anomaly banner with scroll-to-failure, simplified OK cards (no steps), and a separate "Diagnostics techniques" section for Playwright traces.
+## Ce qui reste à faire
 
-### Changes
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**1. `src/pages/ReleaseDetail.tsx` — Full restructure**
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**Header**: Keep as-is (verdict badge, trigger badge, headline, date/count/duration).
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Anomaly banner** (replaces current `vr.forUser` + `VerdictIssues`):
-- Short summary: use `vr.forUser` or generate from data (e.g. "Le parcours principal fonctionne. 2 anomalies détectées sur des vérifications secondaires.")
-- "Voir les anomalies" button that scrolls to first failed run via `document.getElementById` + `scrollIntoView`
-- Keep CTO details collapsible below
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**3 accordion sections** using `Collapsible`:
-- Group `release.runs` by category: use `run.flowCategory` from `ReleaseRunSummary` (available on release detail runs too via the `Run` type's category, or match against `project.monitoredFlows`). For `ReleaseDetail` which has full `Run[]`, match each `run.flowId` against `project.monitoredFlows` to get category, then use `getCheckType`.
-- Section headers: title + count + status summary (e.g. "✓ 4 OK · ⚠ 1 alerte")
-- Default state: "Parcours utilisateur" expanded, others collapsed. If any section has failures, expand it too.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Simplified RunCard for OK runs**:
-- Show only: flow label, type badge, verdict badge, status message (from `getStatusMessage`), duration
-- Do NOT render steps, screenshots, findings when `status === "passed"`
-- Keep full expandable detail only for failed/error runs (steps, screenshots, findings, retest button)
+### 3. Badge verdict sur les cartes Dashboard
 
-**Diagnostics techniques section** (bottom):
-- Separate collapsible section, collapsed by default
-- Lists all trace downloads grouped: "Trace — {flowLabel}" with download icon
-- Removed from inline run cards
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**2. `src/components/RunCard.tsx` — Add compact mode**
+### 4. Collapsible CTO dans RunReport
 
-Add a `compact?: boolean` prop. When `compact && run.status === "passed"`:
-- Render a single-line card: icon + label + type badge + status message + duration + verdict badge
-- No expand toggle, no steps, no screenshots
-- Keep full mode for failed/error runs (unchanged)
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-Add `typeBadge?: { label: string; className: string }` prop so ReleaseDetail can pass the category badge.
+---
 
-Add `statusMessage?: string` prop to display category-specific wording.
+## Fichiers modifiés
 
-Add `id` attribute on the card wrapper (`id={run.id}`) for scroll-to-failure.
-
-**3. No changes to types or flow-categories** — all needed data and helpers exist.
-
-### Files impacted
-
-| File | Change |
+| Fichier | Changement |
 |---|---|
-| `src/pages/ReleaseDetail.tsx` | Full restructure: category grouping, anomaly banner with scroll, traces section |
-| `src/components/RunCard.tsx` | Add compact mode, type badge, status message, scroll target id |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
