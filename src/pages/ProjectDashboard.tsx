@@ -204,6 +204,23 @@ export default function ProjectDashboard() {
   const findRunForFlow = (flowId: string) =>
     releaseRuns.find(r => r.flowId === flowId) ?? runs.find(r => r.flowId === flowId);
 
+  // Compute queue context for PENDING flows
+  const allFlows = SECTION_ORDER.flatMap(type => flowsByType[type]);
+  const totalInQueue = allFlows.length;
+  const completedInQueue = allFlows.filter(f => {
+    const r = findRunForFlow(f.id);
+    return r && r.status !== "queued" && r.status !== "running";
+  }).length;
+  let queueIndex = 0;
+  const queuePositionMap: Record<string, number> = {};
+  for (const f of allFlows) {
+    const r = findRunForFlow(f.id);
+    if (!r || r.status === "queued") {
+      queuePositionMap[f.id] = completedInQueue + queueIndex + 1;
+      queueIndex++;
+    }
+  }
+
   const isActive = testing || runs.some(r => r.status === "queued" || r.status === "running");
 
   // Release trigger context line
