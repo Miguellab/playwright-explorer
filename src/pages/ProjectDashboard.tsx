@@ -31,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { AuthenticatedZone } from "@/components/AuthenticatedZone";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 // ── Helpers ──
 
