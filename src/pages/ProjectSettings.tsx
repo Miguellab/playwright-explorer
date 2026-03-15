@@ -20,7 +20,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ArrowLeft, Loader2, Save, Trash2, Star, KeyRound, ShieldCheck, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CredentialsModal from "@/components/CredentialsModal";
 import { saveFlowCredentials, deleteFlowCredentials } from "@/lib/sentinelle-api";
@@ -47,6 +48,11 @@ export default function ProjectSettings() {
   const [credentialFlowId, setCredentialFlowId] = useState("");
   const [credentialFlowLabel, setCredentialFlowLabel] = useState("");
   const [flowCredentials, setFlowCredentials] = useState<Record<string, boolean>>({});
+  const [sectionOpen, setSectionOpen] = useState<Record<CheckType, boolean>>({
+    "user-flow": false,
+    "page-check": false,
+    "ui-element": false,
+  });
 
   useEffect(() => {
     if (!id) return;
@@ -136,7 +142,7 @@ export default function ProjectSettings() {
 
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
   const flowsByType = groupFlowsByType(suggestedFlows);
-  const byCategory = project.flowClassification?.byCategory;
+  
 
   return (
     <div className="container max-w-2xl py-10 space-y-8">
@@ -177,98 +183,99 @@ export default function ProjectSettings() {
                 if (flows.length === 0) return null;
                 const meta = CHECK_TYPE_META[type];
                 const selectedCount = flows.filter((f) => selectedFlowIds.has(f.id)).length;
-                const categoryCount = byCategory
-                  ? Object.entries(byCategory)
-                      .filter(([cat]) => {
-                        if (type === "user-flow") return cat === "auth" || cat === "transactional";
-                        if (type === "page-check") return cat === "core" || cat === "content" || cat === "settings";
-                        return cat === "infra";
-                      })
-                      .reduce((sum, [, count]) => sum + (count as number), 0)
-                  : flows.length;
+                const isOpen = sectionOpen[type];
 
                 return (
-                  <div key={type} className={cn("rounded-lg border p-4 space-y-3", meta.sectionClass)}>
-                    <div className="flex items-center gap-2">
-                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
-                        {meta.title} ({categoryCount})
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {selectedCount}/{flows.length} activé{selectedCount > 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{meta.description}</p>
-                    <div className="space-y-2">
-                      {flows.map((flow) => {
-                        const isSelected = selectedFlowIds.has(flow.id);
-                        const isMain = mainFlowId === flow.id;
-                        const eligible = isMainFlowEligible(flow);
-                        return (
-                          <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
-                            <div className="flex items-center gap-3">
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
-                              />
-                              <span className="text-sm flex-1">{flow.labelFr}</span>
-                              {isSelected && eligible && (
-                                <button
-                                  type="button"
-                                  className={cn(
-                                    "shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors",
-                                    isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
-                                  )}
-                                  onClick={() => setMainFlowIdState(flow.id)}
-                                  title="Définir comme parcours principal"
-                                >
-                                  {isMain && <Star className="h-3 w-3 text-background" />}
-                                </button>
-                              )}
-                            </div>
-                            {flow.descriptionFr && (
-                              <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
-                            )}
-                            {flow.requiresCredentials && (
-                              <div className="flex items-center gap-2 ml-8">
-                                {flowCredentials[flow.id] ? (
-                                  <>
-                                    <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
-                                      <ShieldCheck className="h-3 w-3" />
-                                      Compte test configuré
-                                    </span>
+                  <Collapsible
+                    key={type}
+                    open={isOpen}
+                    onOpenChange={(open) => setSectionOpen((prev) => ({ ...prev, [type]: open }))}
+                  >
+                    <div className={cn("rounded-lg border p-4 space-y-3", meta.sectionClass)}>
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full cursor-pointer">
+                        <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && "rotate-180")} />
+                        <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
+                          {meta.title} ({flows.length})
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {selectedCount}/{flows.length} activé{selectedCount > 1 ? "s" : ""}
+                        </span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="space-y-3">
+                        <p className="text-xs text-muted-foreground">{meta.description}</p>
+                        <div className="space-y-2">
+                          {flows.map((flow) => {
+                            const isSelected = selectedFlowIds.has(flow.id);
+                            const isMain = mainFlowId === flow.id;
+                            const eligible = isMainFlowEligible(flow);
+                            return (
+                              <div key={flow.id} className="rounded-lg border border-border p-3 space-y-2">
+                                <div className="flex items-center gap-3">
+                                  <Checkbox
+                                    checked={isSelected}
+                                    onCheckedChange={(checked) => toggleFlow(flow.id, !!checked)}
+                                  />
+                                  <span className="text-sm flex-1">{flow.labelFr}</span>
+                                  {isSelected && eligible && (
                                     <button
                                       type="button"
-                                      className="text-[11px] text-muted-foreground hover:text-foreground"
-                                      onClick={() => {
-                                        setCredentialFlowId(flow.id);
-                                        setCredentialFlowLabel(flow.labelFr);
-                                        setCredentialModalOpen(true);
-                                      }}
+                                      className={cn(
+                                        "shrink-0 h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                                        isMain ? "border-neon bg-neon" : "border-muted-foreground/40 hover:border-neon/60"
+                                      )}
+                                      onClick={() => setMainFlowIdState(flow.id)}
+                                      title="Définir comme parcours principal"
                                     >
-                                      Modifier
+                                      {isMain && <Star className="h-3 w-3 text-background" />}
                                     </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
-                                    onClick={() => {
-                                      setCredentialFlowId(flow.id);
-                                      setCredentialFlowLabel(flow.labelFr);
-                                      setCredentialModalOpen(true);
-                                    }}
-                                  >
-                                    <KeyRound className="h-3 w-3" />
-                                    Configurer les identifiants
-                                  </button>
+                                  )}
+                                </div>
+                                {flow.descriptionFr && (
+                                  <p className="text-xs text-muted-foreground ml-8">{flow.descriptionFr}</p>
+                                )}
+                                {flow.requiresCredentials && (
+                                  <div className="flex items-center gap-2 ml-8">
+                                    {flowCredentials[flow.id] ? (
+                                      <>
+                                        <span className="inline-flex items-center gap-1 text-[11px] text-status-safe">
+                                          <ShieldCheck className="h-3 w-3" />
+                                          Compte test configuré
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="text-[11px] text-muted-foreground hover:text-foreground"
+                                          onClick={() => {
+                                            setCredentialFlowId(flow.id);
+                                            setCredentialFlowLabel(flow.labelFr);
+                                            setCredentialModalOpen(true);
+                                          }}
+                                        >
+                                          Modifier
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1 text-[11px] text-status-alerte hover:text-foreground"
+                                        onClick={() => {
+                                          setCredentialFlowId(flow.id);
+                                          setCredentialFlowLabel(flow.labelFr);
+                                          setCredentialModalOpen(true);
+                                        }}
+                                      >
+                                        <KeyRound className="h-3 w-3" />
+                                        Configurer les identifiants
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                            );
+                          })}
+                        </div>
+                      </CollapsibleContent>
                     </div>
-                  </div>
+                  </Collapsible>
                 );
               })
             )}
