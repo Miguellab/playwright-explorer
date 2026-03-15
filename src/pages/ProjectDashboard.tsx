@@ -340,32 +340,76 @@ export default function ProjectDashboard() {
         const flows = flowsByType[type];
         if (flows.length === 0) return null;
         const meta = CHECK_TYPE_META[type];
+
+        // Build status summary
+        const okCount = flows.filter(f => {
+          const r = findRunForFlow(f.id);
+          return r?.status === "passed";
+        }).length;
+        const failCount = flows.filter(f => {
+          const r = findRunForFlow(f.id);
+          return r && (r.status === "failed" || r.status === "error");
+        }).length;
+        const pendingCount = flows.filter(f => {
+          const r = findRunForFlow(f.id);
+          return !r || r.status === "queued" || r.status === "running";
+        }).length;
+
         return (
-          <div key={type} className="space-y-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
-                  {meta.title}
-                </span>
-                <span className="text-xs text-muted-foreground">({flows.length})</span>
+          <Collapsible
+            key={type}
+            open={sectionOpen[type]}
+            onOpenChange={(open) => setSectionOpen(prev => ({ ...prev, [type]: open }))}
+          >
+            <CollapsibleTrigger className="w-full">
+              <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3">
+                  <ChevronDown className={cn(
+                    "h-4 w-4 text-muted-foreground transition-transform",
+                    sectionOpen[type] && "rotate-180"
+                  )} />
+                  <span className={cn("text-xs font-semibold px-2 py-0.5 rounded border", meta.badgeClass)}>
+                    {meta.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({flows.length})</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  {okCount > 0 && (
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <CheckCircle className="h-3 w-3" /> {okCount} OK
+                    </span>
+                  )}
+                  {failCount > 0 && (
+                    <span className="flex items-center gap-1 text-status-alerte">
+                      <XCircle className="h-3 w-3" /> {failCount} {failCount > 1 ? "alertes" : "alerte"}
+                    </span>
+                  )}
+                  {pendingCount > 0 && (
+                    <span className="text-muted-foreground">{pendingCount} en cours</span>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">{meta.description}</p>
-            </div>
-            {flows.map(flow => (
-              <FlowAccordion
-                key={flow.id}
-                flow={flow}
-                run={findRunForFlow(flow.id)}
-                isMainFlow={flow.id === mainFlowId}
-                projectId={id}
-                onRetestComplete={loadData}
-                disabled={isActive}
-                queuePosition={queuePositionMap[flow.id]}
-                totalInQueue={totalInQueue}
-                completedInQueue={completedInQueue}
-              />
-            ))}
-          </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="space-y-3 pt-3">
+                <p className="text-xs text-muted-foreground px-1">{meta.description}</p>
+                {flows.map(flow => (
+                  <FlowAccordion
+                    key={flow.id}
+                    flow={flow}
+                    run={findRunForFlow(flow.id)}
+                    isMainFlow={flow.id === mainFlowId}
+                    projectId={id}
+                    onRetestComplete={loadData}
+                    disabled={isActive}
+                    queuePosition={queuePositionMap[flow.id]}
+                    totalInQueue={totalInQueue}
+                    completedInQueue={completedInQueue}
+                  />
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         );
       })}
 
