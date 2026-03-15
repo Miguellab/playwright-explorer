@@ -1,42 +1,56 @@
 
 
-## Make ProjectDashboard sections collapsible (like ReleaseDetail)
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### What changes
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Wrap the 3 flow sections (Parcours utilisateur, Pages critiques, Éléments d'interface) in `Collapsible` components matching the ReleaseDetail pattern.
+## Ce qui reste à faire
 
-### `src/pages/ProjectDashboard.tsx`
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**Add state** for section open/close:
-```tsx
-const [sectionOpen, setSectionOpen] = useState<Record<CheckType, boolean>>({
-  "user-flow": true,
-  "page-check": false,
-  "ui-element": false,
-});
-```
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-Auto-expand sections with failures (like ReleaseDetail):
-```tsx
-useEffect(() => {
-  // expand sections that have failed runs
-}, [releaseRuns, runs]);
-```
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Replace** the current plain `<div>` section wrapper (lines 318-344) with the same `Collapsible` pattern from ReleaseDetail:
-- Clickable header bar with chevron, title, count, and status summary (✓ N OK · ⚠ N erreur)
-- `CollapsibleContent` wrapping the FlowAccordion cards
-- Description text inside the collapsible content
-- Default: "user-flow" expanded, others collapsed. Sections with errors auto-expand.
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Add** a `buildStatusSummary` helper (same as ReleaseDetail) that counts OK/erreur/pending from the flows' associated runs.
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Imports**: Add `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger`, `CheckCircle`, `XCircle`, `ChevronDown`.
+### 3. Badge verdict sur les cartes Dashboard
 
-### Files impacted
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-| File | Change |
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
 |---|---|
-| `src/pages/ProjectDashboard.tsx` | Wrap sections in Collapsible with status summary headers |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
