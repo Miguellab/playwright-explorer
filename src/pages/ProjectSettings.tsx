@@ -142,7 +142,7 @@ export default function ProjectSettings() {
 
   const suggestedFlows: SuggestedFlow[] = project.suggestedFlows ?? [];
   const flowsByType = groupFlowsByType(suggestedFlows);
-  const byCategory = project.flowClassification?.byCategory;
+  
 
   return (
     <div className="container max-w-2xl py-10 space-y-8">
