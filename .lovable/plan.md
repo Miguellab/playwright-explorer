@@ -1,76 +1,56 @@
 
 
-## Improve Sentinelle Landing Page — Copy, Data & Missing Elements
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-Single file change: `src/pages/Landing.tsx`. Same structure, improved content throughout.
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-### Changes
+## Ce qui reste à faire
 
-**Navbar** (lines 44-48)
-- Add "How it works" link (`#how`) between Features and Pricing
-- Keep Docs link
-- Change "Créer un compte" to "Create account"
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-**Hero** (lines 66-91)
-- Title: "Deploy with confidence." + "Sentinelle checks your app after every publish."
-- Subtitle: "Sentinelle automatically verifies your critical user flows and important pages after each deploy to detect what breaks before your users do."
-- Primary CTA: "Start monitoring my app" → `/signup`
-- Helper text: "Free plan available."
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-**New: Product Preview block** — Insert after Hero, before Problem
-- Terminal-style card (reuse same pattern as BugDetection) showing:
-  ```
-  sentinelle run #342
-  Publish detected
-  Running checks...
-  ✓ Login flow
-  ✓ Dashboard page
-  ✓ API requests
-  ✗ Create project button broken
-  Alert triggered
-  ```
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-**Problem** (lines 97-131)
-- Title: "Every deploy can break something."
-- Text: split into 3 sentences as specified
-- Replace flow steps: Deploy → Login works normally → A new release breaks the login → Users report the bug
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Before/After** (lines 137-179)
-- Without: add "Hotfix deploys" between "Support tickets" and "Lost trust"
-- With: change "Automated tests run" → "Automated checks run"
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Features** (lines 185-254)
-- User flows desc: add "This ensures that critical functionality still works after a deploy."
-- Critical pages desc: "Sentinelle verifies that important pages remain accessible and stable after deploy."
-- Interface elements desc: "Sentinelle verifies that important interface elements remain usable."
+### 3. Badge verdict sur les cartes Dashboard
 
-**How it works** (lines 267-289)
-- Add subtitle under title: "Setup time: about 2 minutes. No test scripts required."
-- Step descriptions unchanged
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**Bug Detection** (lines 295-338)
-- Replace terminal content with the new 8-line format (run #342, publish detected, running checks, 3 OK, 1 broken, alert triggered)
-- Update terminal header to "sentinelle — run #342"
-- Add caption below card: "Sentinelle detects issues before users encounter them."
+### 4. Collapsible CTO dans RunReport
 
-**Comparison** (lines 354-400)
-- Add "Custom Playwright" column (`p` key in data)
-- Add "Maintenance required" row: Sentinelle none, Cypress high, Maestro medium, Datadog medium, Custom very high
-- Custom Playwright values: deploy=no, discovery=no, UI=yes, infra=no, setup=Difficult, maintenance=Very high
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-**Pricing** (lines 406-488)
-- Change all "runs" → "checks" in feature lists
-- Subtitle: "Pricing depends on number of projects and checks per month."
-- Add `desc` field to Maker plan: "Perfect for indie makers and side projects."
-- Badge text: "Populaire" → "Popular"
+---
 
-**Final CTA** (lines 494-515)
-- Title: "Stop deploying blindly."
-- CTA: "Start monitoring my app"
+## Fichiers modifiés
 
-### Files impacted
-
-| File | Change |
+| Fichier | Changement |
 |---|---|
-| `src/pages/Landing.tsx` | Update copy, add product preview section, add comparison column/row, fix pricing wording |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 

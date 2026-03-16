@@ -43,6 +43,7 @@ function Navbar() {
 
         <div className="hidden items-center gap-6 md:flex">
           <a href="#features" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Features</a>
+          <a href="#how" className="text-sm text-muted-foreground transition-colors hover:text-foreground">How it works</a>
           <a href="#pricing" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Pricing</a>
           <a href="#how" className="text-sm text-muted-foreground transition-colors hover:text-foreground">Docs</a>
         </div>
@@ -52,7 +53,7 @@ function Navbar() {
             <Link to="/login">Connexion</Link>
           </Button>
           <Button size="sm" asChild>
-            <Link to="/signup">Créer un compte</Link>
+            <Link to="/signup">Create account</Link>
           </Button>
         </div>
       </div>
@@ -68,24 +69,74 @@ function Hero() {
     <section className="py-28 text-center">
       <div className="mx-auto max-w-3xl px-4">
         <h1 className="text-4xl font-extrabold tracking-tight md:text-6xl">
-          Publish without fear.
+          Deploy with confidence.
           <br />
-          <span className="text-primary">Sentinelle checks your app automatically.</span>
+          <span className="text-primary">Sentinelle checks your app after every publish.</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-          Sentinelle verifies your critical user flows and important pages after each publish to detect what breaks before your users do.
+          Sentinelle automatically verifies your critical user flows and important pages after each deploy to detect what breaks before your users do.
         </p>
         <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Button size="lg" asChild>
             <Link to="/signup">
-              Add my project <ChevronRight className="ml-1 h-4 w-4" />
+              Start monitoring my app <ChevronRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
           <Button variant="outline" size="lg" asChild>
             <Link to="/login">Connexion</Link>
           </Button>
         </div>
-        <p className="mt-4 text-xs text-muted-foreground">Free plan available</p>
+        <p className="mt-4 text-xs text-muted-foreground">Free plan available.</p>
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  PRODUCT PREVIEW                                                    */
+/* ------------------------------------------------------------------ */
+function ProductPreview() {
+  const lines = [
+    { text: "Publish detected", status: "info" },
+    { text: "Running checks...", status: "info" },
+    { text: "Login flow", status: "ok" },
+    { text: "Dashboard page", status: "ok" },
+    { text: "API requests", status: "ok" },
+    { text: "Create project button broken", status: "error" },
+    { text: "Alert triggered", status: "alert" },
+  ];
+
+  return (
+    <section className="pb-16">
+      <div className="mx-auto max-w-lg px-4">
+        <Card className="overflow-hidden border-border">
+          <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-2">
+            <Terminal className="h-4 w-4 text-muted-foreground" />
+            <span className="text-xs font-mono text-muted-foreground">sentinelle run #342</span>
+          </div>
+          <CardContent className="p-4 text-left font-mono text-sm space-y-0.5">
+            {lines.map((l, i) => (
+              <div
+                key={i}
+                className={
+                  l.status === "ok"
+                    ? "text-primary"
+                    : l.status === "error"
+                    ? "text-destructive font-bold"
+                    : l.status === "alert"
+                    ? "text-destructive font-bold"
+                    : "text-muted-foreground"
+                }
+              >
+                {l.status === "ok" && "✓ "}
+                {l.status === "error" && "✗ "}
+                {l.status === "info" && "→ "}
+                {l.status === "alert" && "⚠ "}
+                {l.text}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     </section>
   );
@@ -96,19 +147,18 @@ function Hero() {
 /* ------------------------------------------------------------------ */
 const problemSteps = [
   { label: "Deploy", icon: Rocket },
-  { label: "Nobody checks the critical flows", icon: X },
-  { label: "A feature breaks", icon: AlertTriangle },
-  { label: "Users discover the bug", icon: XCircle },
+  { label: "Login works normally", icon: CheckCircle },
+  { label: "A new release breaks the login", icon: AlertTriangle },
+  { label: "Users report the bug", icon: XCircle },
 ];
 
 function Problem() {
   return (
     <section className="border-t border-border py-24">
       <div className="mx-auto max-w-3xl px-4 text-center">
-        <h2 className="text-3xl font-bold tracking-tight">Every publish can break something.</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Every deploy can break something.</h2>
         <p className="mt-4 text-muted-foreground">
-          Modern web apps change fast. A new deploy can silently break a login, a button, or a page.
-          Most teams discover the problem when users report it.
+          Modern web apps evolve fast. A new deploy can silently break a login, a button or a critical page. Most teams discover the problem only when users report it.
         </p>
 
         <div className="mx-auto mt-12 flex max-w-xs flex-col items-center gap-2">
@@ -135,8 +185,8 @@ function Problem() {
 /*  BEFORE / AFTER                                                     */
 /* ------------------------------------------------------------------ */
 function BeforeAfter() {
-  const without = ["Deploy", "Users encounter bugs", "Support tickets", "Lost trust"];
-  const withS = ["Deploy", "Sentinelle detects the publish", "Automated tests run", "Alert if something breaks"];
+  const without = ["Deploy", "Users encounter bugs", "Support tickets", "Hotfix deploys", "Lost trust"];
+  const withS = ["Deploy", "Sentinelle detects the publish", "Automated checks run", "Alert if something breaks"];
 
   return (
     <section className="border-t border-border py-24">
@@ -144,7 +194,6 @@ function BeforeAfter() {
         <h2 className="text-center text-3xl font-bold tracking-tight">With and without Sentinelle</h2>
 
         <div className="mt-12 grid gap-6 md:grid-cols-2">
-          {/* Without */}
           <Card className="border-destructive/30">
             <CardHeader>
               <CardTitle className="text-lg text-destructive">Without Sentinelle</CardTitle>
@@ -159,7 +208,6 @@ function BeforeAfter() {
             </CardContent>
           </Card>
 
-          {/* With */}
           <Card className="border-primary/30">
             <CardHeader>
               <CardTitle className="text-lg text-primary">With Sentinelle</CardTitle>
@@ -186,7 +234,7 @@ const features = [
   {
     icon: MousePointerClick,
     title: "User flows",
-    desc: "Sentinelle runs real user flows such as login, navigation, and actions.",
+    desc: "Sentinelle runs real user flows such as login, navigation and key actions. This ensures that critical functionality still works after a deploy.",
     examples: ["Login", "Navigation", "Actions"],
     result: "✓ Flow validated",
     resultAlt: "⚠ Flow interrupted",
@@ -194,14 +242,14 @@ const features = [
   {
     icon: Layout,
     title: "Critical pages",
-    desc: "Sentinelle verifies that important pages remain accessible after deploy.",
+    desc: "Sentinelle verifies that important pages remain accessible and stable after deploy.",
     examples: ["Dashboard", "Admin pages", "Product pages"],
     checks: ["Page loads correctly", "No console errors", "No failed requests"],
   },
   {
     icon: ToggleRight,
     title: "Interface elements",
-    desc: "Sentinelle verifies that important interface actions still work.",
+    desc: "Sentinelle verifies that important interface elements remain usable.",
     examples: ["Buttons", "Navigation elements", "Key actions"],
   },
 ];
@@ -260,7 +308,7 @@ function Features() {
 const steps = [
   { icon: Globe, title: "Connect your app", desc: "Add your project URL." },
   { icon: Search, title: "Sentinelle discovers flows", desc: "Login, internal pages and actions." },
-  { icon: ToggleRight, title: "Choose what to monitor", desc: "User flows, critical pages, interface elements." },
+  { icon: ToggleRight, title: "Choose what to monitor", desc: "User flows, critical pages and interface elements." },
   { icon: Zap, title: "Publish safely", desc: "Sentinelle verifies your app automatically." },
 ];
 
@@ -269,6 +317,9 @@ function HowItWorks() {
     <section id="how" className="border-t border-border py-24">
       <div className="mx-auto max-w-5xl px-4">
         <h2 className="text-center text-3xl font-bold tracking-tight">Setup in minutes</h2>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
+          Setup time: about 2 minutes. No test scripts required.
+        </p>
 
         <div className="mt-12 grid gap-8 md:grid-cols-4">
           {steps.map((s, i) => (
@@ -295,9 +346,12 @@ function HowItWorks() {
 function BugDetection() {
   const lines = [
     { text: "Publish detected", status: "info" },
-    { text: "Login flow .............. OK", status: "ok" },
-    { text: "Admin page .............. OK", status: "ok" },
-    { text: "Create project button ... BROKEN", status: "error" },
+    { text: "Running checks...", status: "info" },
+    { text: "Login flow", status: "ok" },
+    { text: "Dashboard page", status: "ok" },
+    { text: "API requests", status: "ok" },
+    { text: "Create project button broken", status: "error" },
+    { text: "Alert triggered", status: "alert" },
   ];
 
   return (
@@ -311,9 +365,9 @@ function BugDetection() {
         <Card className="mx-auto mt-10 max-w-lg overflow-hidden border-border">
           <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-2">
             <Terminal className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-mono text-muted-foreground">sentinelle — run #42</span>
+            <span className="text-xs font-mono text-muted-foreground">sentinelle — run #342</span>
           </div>
-          <CardContent className="p-4 text-left font-mono text-sm">
+          <CardContent className="p-4 text-left font-mono text-sm space-y-0.5">
             {lines.map((l, i) => (
               <div
                 key={i}
@@ -322,17 +376,23 @@ function BugDetection() {
                     ? "text-primary"
                     : l.status === "error"
                     ? "text-destructive font-bold"
+                    : l.status === "alert"
+                    ? "text-destructive font-bold"
                     : "text-muted-foreground"
                 }
               >
                 {l.status === "ok" && "✓ "}
                 {l.status === "error" && "✗ "}
                 {l.status === "info" && "→ "}
+                {l.status === "alert" && "⚠ "}
                 {l.text}
               </div>
             ))}
           </CardContent>
         </Card>
+        <p className="mt-4 text-sm text-muted-foreground">
+          Sentinelle detects issues before users encounter them.
+        </p>
       </div>
     </section>
   );
@@ -352,11 +412,12 @@ function CellText({ children }: { children: React.ReactNode }) {
 }
 
 const compRows = [
-  { label: "Detect deploy automatically", s: true, c: false, m: false, d: false },
-  { label: "Automatic flow discovery", s: true, c: false, m: false, d: false },
-  { label: "Full UI automation", s: "Limited", c: true, m: true, d: false },
-  { label: "Infrastructure monitoring", s: false, c: false, m: false, d: true },
-  { label: "Ease of setup", s: "Very easy", c: "Complex", m: "Medium", d: "Medium" },
+  { label: "Detect deploy automatically", s: true, c: false, m: false, d: false, p: false },
+  { label: "Automatic flow discovery", s: true, c: false, m: false, d: false, p: false },
+  { label: "Full UI automation", s: "Limited", c: true, m: true, d: false, p: true },
+  { label: "Infrastructure monitoring", s: false, c: false, m: false, d: true, p: false },
+  { label: "Ease of setup", s: "Very easy", c: "Complex", m: "Medium", d: "Medium", p: "Difficult" },
+  { label: "Maintenance required", s: "None", c: "High", m: "Medium", d: "Medium", p: "Very high" },
 ];
 
 function Comparison() {
@@ -368,7 +429,7 @@ function Comparison() {
 
   return (
     <section className="border-t border-border py-24">
-      <div className="mx-auto max-w-4xl px-4">
+      <div className="mx-auto max-w-5xl px-4">
         <h2 className="text-center text-3xl font-bold tracking-tight">How Sentinelle compares</h2>
 
         <div className="mt-12 overflow-x-auto">
@@ -380,6 +441,7 @@ function Comparison() {
                 <TableHead className="text-center">Cypress</TableHead>
                 <TableHead className="text-center">Maestro</TableHead>
                 <TableHead className="text-center">Datadog</TableHead>
+                <TableHead className="text-center">Custom Playwright</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -390,6 +452,7 @@ function Comparison() {
                   <TableCell className="text-center">{renderCell(r.c)}</TableCell>
                   <TableCell className="text-center">{renderCell(r.m)}</TableCell>
                   <TableCell className="text-center">{renderCell(r.d)}</TableCell>
+                  <TableCell className="text-center">{renderCell(r.p)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -407,28 +470,32 @@ const plans = [
   {
     name: "Free",
     price: "0€",
-    features: ["1 project", "10 runs / month", "Manual tests", "Basic monitoring"],
+    desc: "",
+    features: ["1 project", "10 checks per month", "Manual tests", "Basic monitoring"],
     highlight: false,
   },
   {
     name: "Maker",
     price: "12€",
     period: "/month",
-    features: ["5 projects", "200 runs / month", "Automatic publish detection", "Alert system", "History"],
+    desc: "Perfect for indie makers and side projects.",
+    features: ["5 projects", "200 checks per month", "Automatic publish detection", "Alerts", "History"],
     highlight: true,
   },
   {
     name: "Startup",
     price: "39€",
     period: "/month",
-    features: ["20 projects", "1 000 runs / month", "Parallel tests", "Advanced history", "Trace downloads"],
+    desc: "",
+    features: ["20 projects", "1 000 checks per month", "Parallel tests", "Advanced history", "Trace downloads"],
     highlight: false,
   },
   {
     name: "Pro",
     price: "99€",
     period: "/month",
-    features: ["Unlimited projects", "5 000 runs / month", "Priority execution", "Priority support"],
+    desc: "",
+    features: ["Unlimited projects", "5 000 checks per month", "Priority execution", "Priority support"],
     highlight: false,
   },
 ];
@@ -439,7 +506,7 @@ function Pricing() {
       <div className="mx-auto max-w-5xl px-4">
         <h2 className="text-center text-3xl font-bold tracking-tight">Simple pricing</h2>
         <p className="mt-4 text-center text-muted-foreground">
-          Pricing depends on number of projects and test runs.
+          Pricing depends on number of projects and checks per month.
         </p>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -454,11 +521,12 @@ function Pricing() {
             >
               {p.highlight && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground">
-                  Populaire
+                  Popular
                 </Badge>
               )}
               <CardHeader>
                 <CardTitle className="text-lg">{p.name}</CardTitle>
+                {p.desc && <p className="text-xs text-muted-foreground">{p.desc}</p>}
                 <div className="mt-2">
                   <span className="text-3xl font-extrabold">{p.price}</span>
                   {p.period && <span className="text-sm text-muted-foreground">{p.period}</span>}
@@ -496,13 +564,13 @@ function FinalCta() {
     <section className="border-t border-border py-24">
       <div className="mx-auto max-w-2xl px-4">
         <Card className="border-primary/30 bg-card p-8 text-center shadow-[0_0_40px_-15px_hsl(var(--primary)/0.2)]">
-          <h2 className="text-3xl font-bold tracking-tight">Stop publishing blindly.</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Stop deploying blindly.</h2>
           <p className="mt-4 text-muted-foreground">
             Sentinelle verifies your application after every deploy.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Button size="lg" asChild>
-              <Link to="/signup">Add my project</Link>
+              <Link to="/signup">Start monitoring my app</Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
               <Link to="/login">Connexion</Link>
@@ -533,6 +601,7 @@ export default function Landing() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
       <Hero />
+      <ProductPreview />
       <Problem />
       <BeforeAfter />
       <Features />
