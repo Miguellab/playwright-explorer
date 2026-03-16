@@ -67,9 +67,12 @@ function verdictContext(release: Release | ReleaseDetail | null): { label: strin
   // Use verdictHeadline from API if available
   if (release.verdictHeadline) {
     const v = release.verdict as "OK" | "ALERTE" | "ERREUR" | "PENDING";
-    const subtitle = release.verdictResult?.forUser
-      ?? (v === "OK" ? "Toutes les vérifications configurées sont validées." : "");
-    return { label: release.verdictHeadline, subtitle, verdict: v };
+    const parts = release.verdictHeadline.split(" — ");
+    const label = parts[0];
+    const subtitle = parts.length > 1
+      ? parts.slice(1).join(" — ")
+      : release.verdictResult?.forUser ?? (v === "OK" ? "Toutes les vérifications configurées sont validées." : "");
+    return { label, subtitle, verdict: v };
   }
   // Use enriched verdict if available
   if (release.verdictResult) {
