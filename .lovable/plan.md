@@ -1,80 +1,56 @@
 
 
-## Implement User Authentication (Signup, Login, Profiles)
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Database
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-**Migration 1 — `profiles` table**
-```sql
-CREATE TABLE public.profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  display_name text,
-  avatar_url text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+## Ce qui reste à faire
 
-ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-CREATE POLICY "Users can view own profile"
-  ON public.profiles FOR SELECT TO authenticated
-  USING (auth.uid() = id);
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-CREATE POLICY "Users can update own profile"
-  ON public.profiles FOR UPDATE TO authenticated
-  USING (auth.uid() = id);
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-CREATE POLICY "Users can insert own profile"
-  ON public.profiles FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = id);
-```
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Migration 2 — Auto-create profile on signup (trigger)**
-```sql
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = public
-AS $$
-BEGIN
-  INSERT INTO public.profiles (id, display_name)
-  VALUES (NEW.id, NEW.raw_user_meta_data ->> 'display_name');
-  RETURN NEW;
-END;
-$$;
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-```
+### 3. Badge verdict sur les cartes Dashboard
 
-### New Files
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-| File | Purpose |
+### 4. Collapsible CTO dans RunReport
+
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
+
+---
+
+## Fichiers modifiés
+
+| Fichier | Changement |
 |---|---|
-| `src/contexts/AuthContext.tsx` | Auth provider with `onAuthStateChange` listener, `signUp`, `signIn`, `signOut`, profile fetch. Exposes `user`, `profile`, `loading`, auth methods via context. |
-| `src/pages/Login.tsx` | Email + password login form. Links to `/signup` and forgot password. Redirects to `/dashboard` on success. Dark theme, matches app style. |
-| `src/pages/Signup.tsx` | Email + password + display name signup form. Passes `display_name` in `options.data`. Redirects to `/dashboard` or shows email confirmation message. |
-| `src/components/ProtectedRoute.tsx` | Wraps children; redirects to `/login` if not authenticated. Shows loading spinner while checking. |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
 
-### Modified Files
-
-| File | Change |
-|---|---|
-| `src/App.tsx` | Wrap routes in `AuthProvider`. Add `/login` and `/signup` routes (public). Wrap `AppLayout` route in `ProtectedRoute`. |
-| `src/components/AppSidebar.tsx` | Add logout button at the bottom using `useAuth().signOut`. |
-| `src/components/AppLayout.tsx` | Optionally display user name in header from auth context. |
-
-### Auth Flow
-
-1. User visits `/signup` → fills form → `supabase.auth.signUp({ email, password, options: { data: { display_name } } })` → trigger creates profile row → redirect to `/dashboard`
-2. User visits `/login` → fills form → `supabase.auth.signInWithPassword(...)` → redirect to `/dashboard`
-3. `AuthProvider` listens to `onAuthStateChange`, fetches profile from `profiles` table
-4. `ProtectedRoute` checks auth state before rendering app routes
-5. Sidebar shows logout button → calls `supabase.auth.signOut()` → redirects to `/`
-
-### Design
-
-Login/Signup pages: centered card on dark background, neon accent for primary buttons, consistent with current landing page style. No heavy redesign.
+4 fichiers, ~80 lignes modifiées.
 
