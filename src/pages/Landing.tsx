@@ -36,9 +36,8 @@ function Navbar() {
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 font-mono text-sm font-bold tracking-tight text-primary">
-          <Shield className="h-4 w-4" />
-          Sentinelle
+        <Link to="/" className="text-sm font-bold tracking-tight text-neon">
+          SENTINELLE
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
