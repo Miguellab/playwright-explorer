@@ -1,50 +1,56 @@
 
 
-## Full Marketing Landing Page for Sentinelle
+# Mise à jour Sentinelle — Verdicts FR + améliorations
 
-### Overview
+## Ce qui est déjà fait (v3 précédente)
+- `deleteProject`, `toggleProject` existent dans `sentinelle-api.ts`
+- Toggle Switch sur Dashboard + ProjectDashboard
+- Zone danger suppression dans ProjectSettings
+- Galerie screenshots dans RunReport
+- Pages legacy supprimées
 
-Create a new `src/pages/Landing.tsx` page with all requested sections (navbar, hero, problem, before/after, features, how it works, bug detection, comparison, pricing, final CTA). Update routing so `/landing` serves this page (or replace the current Index). The page is standalone — it does NOT use `AppLayout` or `AppNav`.
+## Ce qui reste à faire
 
-### Routing (`src/App.tsx`)
+### 1. Remplacer les verdicts SAFE/RISKY/FAILED → OK/ALERTE/ERREUR
 
-- Add a new route outside the `AppLayout` wrapper: `<Route path="/landing" element={<Landing />} />`
-- Replace the current `/` route to point to `Landing` instead of `Dashboard`, and move Dashboard to `/dashboard` inside `AppLayout`.
+**`src/lib/sentinelle-types.ts`** (ligne 3) :
+- `Verdict = "OK" | "ALERTE" | "ERREUR"`
+- Ajouter `action?: string` à `VerdictIssue` (ligne 101-106)
 
-### New file: `src/pages/Landing.tsx`
+**`src/components/VerdictBadge.tsx`** — Refonte complète du mapping :
+- `OK` → `CheckCircle`, vert, label "OK"
+- `ALERTE` → `AlertTriangle`, orange, label "ALERTE"  
+- `ERREUR` → `XCircle`, rouge, label "ERREUR"
+- Mettre à jour `VerdictText` avec les nouveaux textes FR
 
-Single self-contained page component (~600 lines). All sections rendered sequentially with consistent spacing (`py-24`). Uses existing design tokens (background, card, primary/neon green, muted-foreground, border, status colors).
+### 2. Refonte affichage verdict dans RunReport.tsx
 
-**Navbar**: Sticky top bar. Left: Shield icon + "Sentinelle". Center/right: anchor links (Features, Pricing, Docs). Far right: two buttons — "Connexion" (outline, links to `/login`) and "Créer un compte" (primary, links to `/signup`).
+Remplacer le header actuel (lignes 113-136) par :
+- **Bannière colorée pleine largeur** en haut : fond vert/orange/rouge selon verdict, avec icône + verdict + headline en bold
+- `forUser` affiché en `whitespace-pre-line` sous la bannière
+- **Section "Détails techniques"** : `Collapsible` qui affiche `forCTO` en `font-mono` (déjà importé le composant)
+- **Issues** : chaque issue affiche severity badge + message + `action` en italique (nouveau champ)
 
-**Hero**: Large centered title with neon accent on key phrase. Subtitle in muted-foreground. Two CTA buttons + "Free plan available" small text.
+### 3. Badge verdict sur les cartes Dashboard
 
-**Problem**: Title + paragraph + 4-step vertical flow diagram using cards with arrow icons between them.
+**`src/pages/Dashboard.tsx`** — Dans chaque carte projet :
+- Le projet ne contient pas les données du dernier run. Deux options : (a) fetch les runs pour chaque projet, ou (b) afficher juste le statut dot existant.
+- **Approche retenue** : charger `listRuns(p.id, 1)` pour chaque projet au chargement du Dashboard, stocker le dernier run par projet, afficher un petit `VerdictBadge` à côté du nom + headline en sous-texte.
 
-**Before/After**: Two-column grid. Left column (without Sentinelle) uses destructive/red accents. Right column (with Sentinelle) uses primary/green accents. Each is a card with a vertical list of steps.
+### 4. Collapsible CTO dans RunReport
 
-**Features**: 3-column grid of cards — "Parcours utilisateur", "Pages critiques", "Éléments d'interface". Each card has icon, title, description, example list, and a result badge.
+Ajouter un `Collapsible` dans la section "Résumé pour vous" (lignes 149-167) avec un bouton "Détails techniques" qui révèle `vs.forCTO` en monospace.
 
-**How it works**: 4-step horizontal (desktop) / vertical (mobile) numbered steps with icons.
+---
 
-**Bug detection**: Simulated terminal/console card showing a real detection scenario with green checkmarks and a red alert line.
+## Fichiers modifiés
 
-**Comparison table**: Styled table with Sentinelle highlighted. Columns: Sentinelle, Cypress, Maestro, Datadog. Uses Check/X icons with green/muted colors.
-
-**Pricing**: 4-column grid of pricing cards. "Maker" card highlighted with a "Populaire" badge and primary border. Each card: plan name, price, feature list, CTA button.
-
-**Final CTA**: Dark card with neon border/glow, title, subtitle, two buttons.
-
-**Footer**: Minimal — "© 2025 Sentinelle" centered.
-
-### Components used
-
-All from existing UI library: `Button`, `Card`, `Badge`, `Table` components, plus lucide icons (`Shield`, `Check`, `X`, `ArrowDown`, `Globe`, `MousePointerClick`, `Layout`, `Zap`, `AlertTriangle`, `Download`, `ChevronRight`).
-
-### Files impacted
-
-| File | Change |
+| Fichier | Changement |
 |---|---|
-| `src/pages/Landing.tsx` | New file — full landing page |
-| `src/App.tsx` | Add `/landing` route, change `/` to Landing, move Dashboard to `/dashboard` |
+| `sentinelle-types.ts` | Verdict → OK/ALERTE/ERREUR, `action` dans VerdictIssue |
+| `VerdictBadge.tsx` | Nouveau mapping couleurs/icônes/textes FR |
+| `RunReport.tsx` | Bannière verdict colorée, collapsible CTO, issues avec action |
+| `Dashboard.tsx` | Fetch dernier run par projet, afficher verdict badge + headline |
+
+4 fichiers, ~80 lignes modifiées.
 
