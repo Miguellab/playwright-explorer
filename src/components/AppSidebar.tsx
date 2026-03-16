@@ -1,6 +1,7 @@
-import { LayoutDashboard, Settings } from "lucide-react";
+import { LayoutDashboard, Settings, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -13,17 +14,24 @@ import {
 } from "@/components/ui/sidebar";
 
 const items = [
-  { title: "Projets", url: "/", icon: LayoutDashboard },
+  { title: "Projets", url: "/dashboard", icon: LayoutDashboard },
   { title: "Paramètres", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
+  const { signOut, profile } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarContent>
+      <SidebarContent className="flex flex-col h-full">
         {/* Logo */}
         <div className="flex items-center px-4 py-5">
           {!collapsed ? (
@@ -35,7 +43,7 @@ export function AppSidebar() {
           )}
         </div>
 
-        <SidebarGroup>
+        <SidebarGroup className="flex-1">
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
@@ -43,7 +51,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={item.url === "/dashboard"}
                       className="hover:bg-muted/50"
                       activeClassName="bg-muted text-neon font-medium"
                     >
@@ -56,6 +64,23 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* User + Logout */}
+        <div className="border-t border-border px-3 py-3">
+          {!collapsed && profile?.display_name && (
+            <p className="text-xs text-muted-foreground truncate mb-2 px-1">
+              {profile.display_name}
+            </p>
+          )}
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={handleLogout} className="hover:bg-muted/50 text-muted-foreground hover:text-foreground">
+                <LogOut className="mr-2 h-4 w-4" />
+                {!collapsed && <span>Déconnexion</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </div>
       </SidebarContent>
     </Sidebar>
   );
