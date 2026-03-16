@@ -11,7 +11,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Shield,
+  
   Check,
   X,
   ArrowDown,
